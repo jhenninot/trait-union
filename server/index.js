@@ -10,6 +10,7 @@ import routesCercles from './routes/cercles.js'
 import routesInvitations from './routes/invitations.js'
 import routesAdmin from './routes/admin.js'
 import routesVoix from './routes/voix.js'
+import routesProfil from './routes/profil.js'
 import { ErreurEmail } from './email/brevo.js'
 import { ErreurStockage } from './stockage/s3.js'
 
@@ -38,6 +39,7 @@ app.use('/api/cercles', routesCercles)
 app.use('/api/invitations', routesInvitations)
 app.use('/api/admin', routesAdmin)
 app.use('/api/voix', routesVoix)
+app.use('/api/profil', routesProfil)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })

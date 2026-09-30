@@ -5,6 +5,7 @@ import { photos, albums, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif, lienSigne, infoObjet, supprimerObjet } from '../stockage/s3.js'
+import { lienAvatar } from '../avatars.js'
 
 // Photos d'un cercle, montées sous /api/cercles/:cercleId/photos après chargerCercle
 // (req.cercle, req.role, req.peutGerer). Tout membre du cercle voit et ajoute des photos.
@@ -53,6 +54,7 @@ function presenter(req, photo) {
     hauteur: photo.hauteur,
     creeLe: photo.creeLe,
     creeParPrenom: photo.creeParPrenom ?? null,
+    creeParAvatar: photo.creeParId ? lienAvatar(req.stockage, photo.creeParId, photo.creeParAvatar) : null,
     deMoi: photo.creeParId === req.utilisateur.id,
     peutSupprimer: peutSupprimer(req, photo),
     miniature: lien('miniature'),
@@ -65,6 +67,7 @@ const colonnes = {
   cercleId: photos.cercleId,
   creeParId: photos.creeParId,
   creeParPrenom: utilisateurs.prenom,
+  creeParAvatar: utilisateurs.avatar,
   albumId: photos.albumId,
   legende: photos.legende,
   largeur: photos.largeur,
@@ -166,7 +169,7 @@ router.post('/:photoId/publier', exigerStockage, chargerPhoto, async (req, res) 
     }
     await db.update(photos).set({ statut: 'publiee' }).where(eq(photos.id, photo.id))
   }
-  res.json(presenter(req, { ...photo, creeParPrenom: req.utilisateur.prenom }))
+  res.json(presenter(req, { ...photo, creeParPrenom: req.utilisateur.prenom, creeParAvatar: req.utilisateur.avatar }))
 })
 
 // Modifie la légende et/ou l'album (seuls les champs envoyés changent ; albumId null = sans album)

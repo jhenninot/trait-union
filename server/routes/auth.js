@@ -7,6 +7,7 @@ import { ouvrirSession, fermerSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import routesGoogle, { googleActif } from './google.js'
 import { emailActif } from '../email/brevo.js'
+import { presenterAvatar } from '../avatars.js'
 
 const router = Router()
 router.use('/google', routesGoogle)
@@ -29,7 +30,7 @@ router.get('/etat', async (req, res) => {
   res.json({
     initialise: true,
     google: googleActif,
-    utilisateur: profilPublic(req.utilisateur),
+    utilisateur: { ...profilPublic(req.utilisateur), ...await presenterAvatar(req.utilisateur) },
     typeSession: req.session.type,
     email: await emailActif(),
     cercles: await mesCercles(req.utilisateur.id)

@@ -20,6 +20,7 @@ import Photos from './vues/Photos.vue'
 import PhotosAccompagne from './vues/PhotosAccompagne.vue'
 import AdminPhotos from './vues/AdminPhotos.vue'
 import Recevoir from './vues/Recevoir.vue'
+import Profil from './vues/Profil.vue'
 import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
 import { surveillerPartages } from './partage.js'
@@ -36,6 +37,7 @@ const router = createRouter({
     { path: '/cercles/:id/photos', component: Photos, meta: { connecte: true } },
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
     { path: '/recevoir', component: Recevoir, meta: { connecte: true, appareil: true } },
+    { path: '/profil', component: Profil, meta: { connecte: true } },
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },

@@ -19,6 +19,9 @@ export const utilisateurs = pgTable('utilisateurs', {
   motDePasse: text('mot_de_passe'), // empreinte scrypt, jamais le mot de passe en clair
   googleId: text('google_id').unique(), // identifiant « sub » du compte Google lié
   estAdmin: boolean('est_admin').notNull().default(false),
+  // Avatar : « modele:<id> » (image fournie avec l'application, client/public/avatars/)
+  // ou « photo:<jeton> » (photo stockée chez l'hébergeur S3, voir server/avatars.js)
+  avatar: text('avatar'),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })
 })
 

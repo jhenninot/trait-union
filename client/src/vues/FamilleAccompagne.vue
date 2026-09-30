@@ -2,10 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
+import Avatar from './Avatar.vue'
 
 // « Ma famille » pour la personne accompagnée : les visages et prénoms de son cercle
 const personnes = ref([])
 const charge = ref(false)
+// Visages plus petits sur smartphone (deux personnes par ligne)
+const taille = window.matchMedia('(max-width: 600px)').matches ? 88 : 132
 
 onMounted(async () => {
   const vus = new Set()
@@ -28,7 +31,7 @@ onMounted(async () => {
     <p v-if="charge && !personnes.length" class="vide">Personne pour l'instant.</p>
     <div class="grille">
       <div v-for="p in personnes" :key="p.id" class="personne">
-        <span class="initiale" aria-hidden="true">{{ p.prenom.charAt(0) }}</span>
+        <Avatar :src="p.avatar" :prenom="p.prenom" :taille="taille" />
         <span class="prenom">{{ p.prenom }}</span>
         <span v-if="p.nom" class="nom">{{ p.nom }}</span>
       </div>
@@ -51,17 +54,6 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0 0 24px; }
   gap: 6px;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.08);
 }
-.initiale {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--vert-clair);
-  color: var(--vert);
-  font-size: 3rem;
-  font-weight: 700;
-}
 .prenom { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); }
 .nom { font-size: 1.3rem; color: var(--gris); }
 /* Smartphone : deux personnes par ligne */
@@ -70,7 +62,6 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0 0 24px; }
   h1 { font-size: 2rem; margin-bottom: 16px; }
   .grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .personne { padding: 16px 8px; border-radius: 18px; }
-  .initiale { width: 72px; height: 72px; font-size: 2.2rem; }
   .prenom { font-size: 1.4rem; }
   .nom { font-size: 1.05rem; }
 }

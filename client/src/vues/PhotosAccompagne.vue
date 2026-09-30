@@ -10,6 +10,7 @@ import { partagerPhoto, partageDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { revenir } from '../historique.js'
+import Avatar from './Avatar.vue'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -167,7 +168,10 @@ function manuel(sens) {
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>
-      <p class="envoi">Envoyée par {{ photo.creeParPrenom ?? 'la famille' }}, {{ dateEnvoi(photo.creeLe) }}</p>
+      <p class="envoi">
+        <Avatar v-if="photo.creeParPrenom" :src="photo.creeParAvatar" :prenom="photo.creeParPrenom" :taille="44" />
+        <span>Envoyée par {{ photo.creeParPrenom ?? 'la famille' }}, {{ dateEnvoi(photo.creeLe) }}</span>
+      </p>
       <p v-if="diaporama" class="envoi">Touchez la photo pour arrêter le diaporama</p>
       <div v-else class="commandes">
         <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)">◀</button>
@@ -207,7 +211,7 @@ function manuel(sens) {
 .plein .cadre img { border-radius: 0; box-shadow: none; }
 .plein .legende, .plein .envoi { color: white; }
 .legende { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); margin: 4px 0 0; text-align: center; }
-.envoi { font-size: 1.4rem; color: var(--gris); margin: 0; text-align: center; }
+.envoi { font-size: 1.4rem; color: var(--gris); margin: 0; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .commandes { display: flex; gap: 16px; width: 100%; max-width: 900px; margin-top: 8px; }
 .commandes button { border-radius: 20px; font-weight: 700; background: #f3f0ea; color: var(--bleu-nuit); }
 .fleche { flex: 1; font-size: 2.6rem; padding: 14px; }

@@ -11,6 +11,7 @@ import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
 import { avecParametres, revenir } from '../historique.js'
+import Avatar from './Avatar.vue'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -367,7 +368,10 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           <button type="button" class="secondaire" @click="legendeEnEdition = null">Annuler</button>
         </form>
         <p v-else-if="photo.legende" class="legende">{{ photo.legende }}</p>
-        <p class="aide">Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}</p>
+        <p class="aide auteur">
+          <Avatar v-if="photo.creeParPrenom" :src="photo.creeParAvatar" :prenom="photo.creeParPrenom" :taille="28" />
+          Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
+        </p>
         <button v-if="partage && legendeEnEdition == null" class="partager" @click="partagerPhoto(photo)">Partager</button>
         <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
@@ -493,4 +497,5 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
   .carte-album { width: 104px; }
   .fleche { top: auto; bottom: 16px; transform: none; }
 }
+.auteur { display: flex; align-items: center; gap: 8px; }
 </style>

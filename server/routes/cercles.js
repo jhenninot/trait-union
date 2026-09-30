@@ -12,6 +12,7 @@ import { urlApplication } from '../url.js'
 import routesAgenda from './agenda.js'
 import routesPhotos from './photos.js'
 import routesAlbums from './albums.js'
+import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -81,8 +82,9 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar })
     .from(membres)
+    .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
     .orderBy(membres.role, membres.prenom)
   // Nombre d'appareils connectés pour chaque personne accompagnée
@@ -93,12 +95,17 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne'), eq(sessions.type, 'appareil')))
     .groupBy(sessions.utilisateurId)
   const parUtilisateur = new Map(appareils.map((a) => [a.utilisateurId, a.n]))
+  const lienAvatar = await liensAvatars()
   res.json({
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, ...m }) => ({
       ...m,
+      moi: utilisateurId === req.utilisateur.id,
+      avatar: lienAvatar(utilisateurId, avatar),
+      // Les aidants choisissent l'avatar des personnes accompagnées
+      avatarChoix: req.peutGerer && m.role === 'accompagne' ? avatar : undefined,
       email: req.peutGerer ? email : undefined,
       appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId) ?? 0) : undefined
     }))
@@ -188,6 +195,22 @@ router.post('/:cercleId/membres/:membreId/deconnecter', chargerCercle, exigerGes
   res.status(204).end()
 })
 
+// Avatar d'une personne accompagnée, choisi par un aidant (même fonctionnement que « Mon profil »)
+async function chargerCompteAccompagne(req, res, next) {
+  const [u] = await db.select().from(utilisateurs).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  if (!u) return res.status(404).json({ erreur: 'Membre introuvable' })
+  req.compte = u
+  next()
+}
+
+router.post('/:cercleId/membres/:membreId/avatar/envoi', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  res.json(await preparerEnvoi(req.membre.utilisateurId, req.body.taille))
+})
+
+router.put('/:cercleId/membres/:membreId/avatar', chargerCercle, exigerGestion, chargerAccompagne, chargerCompteAccompagne, async (req, res) => {
+  res.json(await changerAvatar(req.compte, req.body.avatar))
+})
+
 router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, async (req, res) => {
   const [membre] = await db.delete(membres)
     .where(and(eq(membres.id, req.params.membreId), eq(membres.cercleId, req.cercle.id)))
@@ -196,7 +219,11 @@ router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, asyn
   // Une personne accompagnée n'a pas d'autre moyen de connexion : on supprime son compte
   if (membre.role === 'accompagne' && membre.utilisateurId) {
     const [{ n }] = await db.select({ n: count() }).from(membres).where(eq(membres.utilisateurId, membre.utilisateurId))
-    if (n === 0) await db.delete(utilisateurs).where(eq(utilisateurs.id, membre.utilisateurId))
+    if (n === 0) {
+      const [u] = await db.delete(utilisateurs).where(eq(utilisateurs.id, membre.utilisateurId)).returning()
+      // Sa photo de profil éventuelle est supprimée chez l'hébergeur
+      if (u?.avatar) await changerAvatar(u, null).catch(() => {})
+    }
   }
   res.status(204).end()
 })

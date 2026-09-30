@@ -7,6 +7,7 @@ import { aLesDroits, estAuxiliaire } from '../roles.js'
 import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
+import Avatar from '../vues/Avatar.vue'
 
 // Menu des aidants, proches et administrateurs : barre latérale sur grand écran,
 // barre d'onglets en bas et panneau « Plus » sur téléphone.
@@ -112,7 +113,10 @@ const estActif = (chemin) => route.path === chemin
 
     <div class="bas-menu">
       <RouterLink to="/application" class="lien" :class="{ actif: estActif('/application') }"><Icone nom="mobile" /> Application mobile</RouterLink>
-      <p class="lien qui"><Icone nom="compte" /> <span>{{ session.utilisateur.prenom }}<span v-if="session.utilisateur.estAdmin"> · admin</span></span></p>
+      <RouterLink to="/profil" class="lien qui" :class="{ actif: estActif('/profil') }" title="Mon profil">
+        <Avatar :src="session.utilisateur.avatar" :prenom="session.utilisateur.prenom" :taille="28" />
+        <span>{{ session.utilisateur.prenom }}<span v-if="session.utilisateur.estAdmin"> · admin</span></span>
+      </RouterLink>
       <button class="lien" @click="seDeconnecter"><Icone nom="deconnexion" /> Se déconnecter</button>
     </div>
   </nav>
@@ -169,8 +173,8 @@ const estActif = (chemin) => route.path === chemin
 }
 .lien:hover { background: #f5f3ef; }
 .lien.actif { background: var(--vert-clair); color: var(--vert); }
-.qui { color: var(--gris); }
-.qui:hover { background: none; }
+.qui { padding-top: 6px; padding-bottom: 6px; }
+.qui .avatar { margin: 0 -4px; }
 .titre-section {
   font-size: 0.75rem;
   text-transform: uppercase;

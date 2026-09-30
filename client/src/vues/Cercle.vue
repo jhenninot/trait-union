@@ -5,12 +5,15 @@ import { api } from '../api.js'
 import { session, rafraichirSession } from '../session.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
+import Avatar from './Avatar.vue'
+import ChoixAvatar from './ChoixAvatar.vue'
 
 // Page « Famille et aidants » d'un cercle : membres et invitations
 const router = useRouter()
 const { url, cercle, erreur, charger, action, accompagnes, autres } = utiliserCercle()
 const invitation = ref(null) // { role, lien, expireLe, emailEnvoye, erreurEmail }
 const emailInvite = ref('')
+const avatarOuvert = ref(null) // personne accompagnée dont on choisit l'avatar
 
 const inviter = (role) => action(async () => {
   const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations`, { role, email: emailInvite.value || undefined })
@@ -52,16 +55,39 @@ const rejoindre = () => action(async () => {
 
       <h2>Personnes accompagnées</h2>
       <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
-      <div v-for="m in accompagnes" :key="m.id" class="carte ligne">
-        <strong>{{ m.prenom }} {{ m.nom }}</strong>
-        <RouterLink v-if="cercle.peutGerer" :to="`${url}/tablettes`">Gérer sa tablette</RouterLink>
+      <div v-for="m in accompagnes" :key="m.id" class="carte">
+        <div class="ligne">
+          <span class="personne">
+            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="44" />
+            <strong>{{ m.prenom }} {{ m.nom }}</strong>
+          </span>
+          <span v-if="cercle.peutGerer" class="liens">
+            <button class="lien" @click="avatarOuvert = avatarOuvert === m.id ? null : m.id">
+              {{ avatarOuvert === m.id ? 'Fermer' : 'Changer son avatar' }}
+            </button>
+            <RouterLink :to="`${url}/tablettes`">Gérer sa tablette</RouterLink>
+          </span>
+        </div>
+        <ChoixAvatar
+          v-if="avatarOuvert === m.id"
+          class="choix"
+          :base="`${url}/membres/${m.id}`"
+          :avatar="m.avatar"
+          :choix="m.avatarChoix"
+          :prenom="m.prenom"
+          @change="Object.assign(m, $event)"
+        />
       </div>
 
       <h2>Aidants, proches et auxiliaires</h2>
       <div v-for="m in autres" :key="m.id" class="carte ligne">
-        <span>
-          <strong>{{ m.prenom }} {{ m.nom }}</strong>
-          <span v-if="m.email" class="aide"> · {{ m.email }}</span>
+        <span class="personne">
+          <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" />
+          <span>
+            <strong>{{ m.prenom }} {{ m.nom }}</strong>
+            <span v-if="m.email" class="aide"> · {{ m.email }}</span>
+            <RouterLink v-if="m.moi" to="/profil" class="aide"> · modifier mon avatar</RouterLink>
+          </span>
         </span>
         <span>
           <span class="aide">{{ libellesRoles[m.role] }}</span>
@@ -99,6 +125,9 @@ const rejoindre = () => action(async () => {
 <style scoped>
 .surtitre { margin: 0; }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.personne { display: flex; align-items: center; gap: 12px; }
+.liens { display: flex; align-items: center; gap: 8px; }
+.choix { margin-top: 16px; border-top: 1px solid #ebe8e3; padding-top: 12px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .encart input { width: 100%; }
