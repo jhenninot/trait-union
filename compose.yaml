@@ -1,0 +1,31 @@
+# Trait d'union : pile à coller dans Dockge.
+# L'image est construite par GitHub Actions et publiée sur ghcr.io à chaque push sur main.
+# Watchtower ne met à jour que les conteneurs portant le label
+# com.centurylinklabs.watchtower.enable=true (ici, uniquement l'application).
+
+services:
+  app:
+    image: ghcr.io/jhenninot/trait-union:latest
+    container_name: trait-union
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Europe/Paris
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  watchtower:
+    # Fork maintenu de containrrr/watchtower (archivé, incompatible avec Docker 29)
+    image: nickfedor/watchtower:latest
+    container_name: trait-union-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Décommenter si le paquet GHCR reste privé (après un `docker login ghcr.io` sur l'hôte)
+      # - /root/.docker/config.json:/config.json:ro
+    environment:
+      TZ: Europe/Paris
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"

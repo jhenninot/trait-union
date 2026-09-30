@@ -1,0 +1,23 @@
+{
+  "name": "trait-union",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trait d'union : le lien entre toi et les tiens.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^8.3.1",
+    "vue": "^3.5.43"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
