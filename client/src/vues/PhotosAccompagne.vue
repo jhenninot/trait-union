@@ -8,6 +8,7 @@ import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { partagerPhoto, partageDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
+import { zoom as vZoom } from '../zoom.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -151,7 +152,7 @@ function manuel(sens) {
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
         <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
-      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
+      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>

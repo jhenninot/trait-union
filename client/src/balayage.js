@@ -50,6 +50,11 @@ export const balayage = {
     let apresBalayage = false
     const fin = async (e) => {
       if (!depart || e.pointerId !== depart.id) return
+      // Photo agrandie ou pincée (v-zoom) : pas de changement de photo
+      if (el.dataset.zoom) {
+        depart = null
+        return
+      }
       const dx = e.clientX - depart.x
       const dy = e.clientY - depart.y
       const vitesse = Math.abs(dx) / Math.max(1, performance.now() - depart.t)
@@ -70,12 +75,22 @@ export const balayage = {
       }
     }
     el.addEventListener('pointerdown', (e) => {
-      if (enCours || (e.pointerType === 'mouse' && e.button !== 0)) return
+      // Deuxième doigt (zoom) : le geste en cours est abandonné
+      if (depart) {
+        depart = null
+        placer(image(el), 0, 1)
+        return
+      }
+      if (enCours || el.dataset.zoom || (e.pointerType === 'mouse' && e.button !== 0)) return
       if (e.target.closest('input, textarea, select, button')) return
       depart = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }
     })
     el.addEventListener('pointermove', (e) => {
       if (!depart || e.pointerId !== depart.id) return
+      if (el.dataset.zoom) {
+        depart = null
+        return
+      }
       const dx = e.clientX - depart.x
       if (Math.abs(dx) > Math.abs(e.clientY - depart.y)) {
         const largeur = el.clientWidth || window.innerWidth

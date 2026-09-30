@@ -8,6 +8,7 @@ import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
+import { zoom as vZoom } from '../zoom.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -316,6 +317,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
     <div
       v-if="photo"
       v-balayage="{ suivante: () => deplacer(1), precedente: () => deplacer(-1) }"
+      v-zoom="pleinEcran"
       class="visionneuse"
       :class="{ 'plein-ecran': pleinEcran }"
       @click.self="pleinEcran ? sortirPleinEcran() : (ouverte = null)"
