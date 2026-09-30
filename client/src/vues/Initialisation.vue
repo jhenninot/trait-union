@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
+import { motDePasseValide } from '../motDePasse.js'
+import ChampMotDePasse from './ChampMotDePasse.vue'
 import { rafraichirSession } from '../session.js'
 
 const router = useRouter()
@@ -10,6 +12,7 @@ const erreur = ref('')
 
 async function creer() {
   erreur.value = ''
+  if (!motDePasseValide(f.value.motDePasse)) return (erreur.value = 'Le mot de passe ne respecte pas toutes les règles')
   try {
     await api('POST', '/auth/initialiser', f.value)
     await rafraichirSession()
@@ -28,9 +31,7 @@ async function creer() {
       <label>Prénom <input v-model="f.prenom" required /></label>
       <label>Nom <input v-model="f.nom" /></label>
       <label>Email <input v-model="f.email" type="email" autocomplete="username" required /></label>
-      <label>Mot de passe (8 caractères minimum)
-        <input v-model="f.motDePasse" type="password" autocomplete="new-password" minlength="8" required />
-      </label>
+      <ChampMotDePasse v-model="f.motDePasse" />
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <button>Créer le compte administrateur</button>
     </form>

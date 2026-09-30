@@ -17,9 +17,14 @@ export function email(valeur) {
   return v
 }
 
+// Règles du mot de passe : aussi affichées dans le front (client/src/motDePasse.js)
 export function motDePasse(valeur) {
-  if (typeof valeur !== 'string' || valeur.length < 8) {
-    throw new ErreurSaisie('Le mot de passe doit faire au moins 8 caractères')
+  if (typeof valeur !== 'string' || valeur.length < 10) {
+    throw new ErreurSaisie('Le mot de passe doit faire au moins 10 caractères')
+  }
+  if (!/\p{N}/u.test(valeur)) throw new ErreurSaisie('Le mot de passe doit contenir au moins un chiffre')
+  if (!/[^\p{L}\p{N}]/u.test(valeur)) {
+    throw new ErreurSaisie('Le mot de passe doit contenir au moins un caractère spécial (ex. ! ? @ # - _)')
   }
   if (valeur.length > 200) throw new ErreurSaisie('Le mot de passe est trop long')
   return valeur
