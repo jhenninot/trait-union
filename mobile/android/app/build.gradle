@@ -18,15 +18,7 @@ android {
         }
     }
     signingConfigs {
-        // Clé de test commune (publique, dans le dépôt) : toutes les versions de test ont la même
-        // signature, donc une nouvelle APK s'installe par-dessus l'ancienne sans désinstaller.
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-        // Clé privée, seulement si les secrets ANDROID_KEYSTORE_* sont définis dans GitHub
+        // Clé privée de Julien, fournie par GitHub Actions (secrets ANDROID_KEYSTORE_*)
         if (System.getenv('TU_KEYSTORE_FILE')) {
             release {
                 storeFile file(System.getenv('TU_KEYSTORE_FILE'))
@@ -37,9 +29,6 @@ android {
         }
     }
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
             if (System.getenv('TU_KEYSTORE_FILE')) signingConfig signingConfigs.release
             minifyEnabled false

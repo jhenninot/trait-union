@@ -57,9 +57,9 @@ Le dossier `mobile/` contient un projet [Capacitor](https://capacitorjs.com) : u
 
 - À chaque push sur `main` qui touche `mobile/`, le workflow `.github/workflows/android.yml` construit l'APK et la publie dans la release `android` : lien permanent https://github.com/jhenninot/trait-union/releases/download/android/trait-union.apk (aussi en artefact du workflow). On peut le relancer à la main depuis l'onglet Actions.
 - Facultatif : une variable de dépôt `APP_URL` (Settings > Secrets and variables > Actions > Variables) pré-remplit l'adresse du serveur au premier lancement.
-- Signature : sans configuration, l'APK est signée avec la clé de test du dépôt (`mobile/android/app/debug.keystore`, publique) ; les nouvelles versions s'installent par-dessus les anciennes. Avant une diffusion plus large, créer une clé privée (`keytool -genkeypair -keystore trait-union.keystore -alias trait-union -keyalg RSA -keysize 2048 -validity 10000`) et ajouter les secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 trait-union.keystore`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` et `ANDROID_KEY_PASSWORD` : le workflow construit alors une version release signée avec cette clé (il faudra désinstaller une fois la version de test).
+- Signature : l'APK est signée avec la clé privée de Julien, fournie au workflow par les secrets du dépôt `ANDROID_KEYSTORE_BASE64` (fichier `.keystore` en base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` et `ANDROID_KEY_PASSWORD`. Sans ces secrets, le workflow échoue. La clé ne doit jamais être perdue ni changée : Android refuse une mise à jour signée avec une autre clé (il faudrait désinstaller l'application).
 - La connexion avec Google ne fonctionne pas dans l'application Android (Google refuse les vues web intégrées) : utiliser email et mot de passe, ou la PWA.
-- En local : `cd mobile && npm install && npm run apk` (Android SDK et Java 21 nécessaires). `npm run icones` régénère les icônes et l'écran de démarrage depuis `mobile/assets/`.
+- En local : `cd mobile && npm install && npm run apk` (Android SDK et Java 21 nécessaires ; APK de debug signée avec la clé de debug locale). `npm run icones` régénère les icônes et l'écran de démarrage depuis `mobile/assets/`.
 
 ## Déploiement (Docker / Dockge)
 
