@@ -76,4 +76,14 @@ const moment = () => {
 .titre-programme { font-weight: 700; color: var(--vert); }
 .ligne-programme strong { color: var(--vert); margin-right: 8px; }
 .suite { color: var(--gris); font-size: 1.3rem; }
+/* Smartphone */
+@media (max-width: 600px) {
+  .accompagne { padding: 16px 12px; }
+  .bonjour { font-size: 2.2rem; }
+  .jour { font-size: 1.5rem; }
+  .heure { font-size: 3.4rem; }
+  .moment { font-size: 1.3rem; margin: 0 0 8px; }
+  .programme { align-self: stretch; padding: 14px 16px; font-size: 1.25rem; border-radius: 18px; }
+  .ligne-programme strong { display: block; margin: 0; }
+}
 </style>

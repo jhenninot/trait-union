@@ -226,12 +226,26 @@ input.grand { font-size: 1.7rem; padding: 16px 18px; border-radius: 16px; border
 .choix button.choisi { background: var(--vert); color: white; }
 .emoji { font-size: 2rem; }
 .boutons { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
-.retour { font-size: 1.5rem; padding: 18px 32px; border-radius: 20px; background: #f3f0ea; color: var(--bleu-nuit); }
+.retour { font-weight: 700; font-size: 1.5rem; padding: 18px 32px; border-radius: 20px; background: #f3f0ea; color: var(--bleu-nuit); }
 .erreur { font-size: 1.4rem; }
 @media (max-width: 600px) {
-  .agenda { padding: 16px; }
-  h1 { font-size: 1.9rem; }
-  button.principal { font-size: 1.3rem; padding: 14px 20px; }
+  .agenda { padding: 16px 12px; }
+  h1 { font-size: 1.7rem; }
+  h2 { font-size: 1.5rem; margin: 20px 0 8px; }
+  h3 { font-size: 1.25rem; }
+  .entete { gap: 8px; }
+  button.principal { font-size: 1.2rem; padding: 12px 18px; white-space: nowrap; }
+  .boutons button { flex: 1; }
+  .vues { gap: 6px; margin-top: 12px; }
+  .vues button { font-size: 1.1rem; padding: 12px 4px; }
+  .aujourdhui { padding: 2px 12px 12px; border-radius: 18px; }
+  .aujourdhui .rdv, .rdv { font-size: 0.95rem; padding: 12px 14px; border-radius: 16px; }
+  .question { font-size: 1.3rem; }
+  input.grand { font-size: 1.4rem; padding: 12px 14px; }
+  .choix { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .choix button { font-size: 1.05rem; padding: 14px 4px; border-radius: 16px; }
+  .emoji { font-size: 1.7rem; }
+  .retour { font-size: 1.2rem; padding: 14px 18px; }
   .rdv { grid-template-columns: 1fr auto; }
   .heure { grid-column: 1; }
   .titre, .lieu { grid-column: 1 / -1; }

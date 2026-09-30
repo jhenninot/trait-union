@@ -109,17 +109,23 @@ export function decaler(vue, reference, sens) {
   return new Date(reference.getFullYear(), reference.getMonth() + sens, 1)
 }
 
-export function titrePeriode(vue, reference) {
+// `court` : version pour les petits écrans (« 28 sept. – 4 oct. »)
+export function titrePeriode(vue, reference, court = false) {
+  if (vue === 'semaine' && court) {
+    const { debut } = periode('semaine', reference)
+    const f = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return `${f(debut)} – ${f(ajouterJours(debut, 6))}`
+  }
   if (vue === 'mois') {
     const t = reference.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
     return t.charAt(0).toUpperCase() + t.slice(1)
   }
   const { debut } = periode('semaine', reference)
   const fin = ajouterJours(debut, 6)
-  const court = { day: 'numeric', month: 'long' }
+  const format = { day: 'numeric', month: 'long' }
   const memeMois = debut.getMonth() === fin.getMonth()
-  const de = memeMois ? debut.getDate() : debut.toLocaleDateString('fr-FR', court)
-  return `Semaine du ${de} au ${fin.toLocaleDateString('fr-FR', { ...court, year: 'numeric' })}`
+  const de = memeMois ? debut.getDate() : debut.toLocaleDateString('fr-FR', format)
+  return `Semaine du ${de} au ${fin.toLocaleDateString('fr-FR', { ...format, year: 'numeric' })}`
 }
 
 export function jours(debut, fin) {

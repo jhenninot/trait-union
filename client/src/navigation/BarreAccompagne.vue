@@ -44,8 +44,8 @@ const boutons = [
 .bouton.actif { background: var(--vert); color: white; }
 .emoji { font-size: 3.4rem; line-height: 1; }
 @media (max-width: 600px) {
-  .barre { padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); gap: 10px; }
-  .bouton { min-height: 96px; font-size: 1.3rem; border-radius: 18px; }
-  .emoji { font-size: 2.4rem; }
+  .barre { padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); gap: 8px; }
+  .bouton { min-height: 80px; font-size: 1.05rem; line-height: 1.15; text-align: center; padding: 6px 4px; border-radius: 16px; gap: 4px; }
+  .emoji { font-size: 2.1rem; }
 }
 </style>

@@ -35,6 +35,7 @@ function lacher(e) {
 }
 
 const titre = computed(() => titrePeriode(props.vue, props.reference))
+const titreCourt = computed(() => titrePeriode(props.vue, props.reference, true))
 const listeJours = computed(() => {
   const { debut, fin } = periode(props.vue, props.reference)
   const aujourdhui = valeurJour(new Date())
@@ -60,7 +61,7 @@ const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
   <div class="calendrier" :class="{ grand }">
     <div class="periode">
       <button class="fleche" aria-label="Période précédente" @click="naviguer(-1)">‹</button>
-      <strong>{{ titre }}</strong>
+      <strong><span class="long">{{ titre }}</span><span class="court">{{ titreCourt }}</span></strong>
       <button class="fleche" aria-label="Période suivante" @click="naviguer(1)">›</button>
     </div>
 
@@ -105,6 +106,7 @@ const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
 .periode strong { color: var(--bleu-nuit); text-align: center; }
 .fleche { background: var(--vert-clair); color: var(--vert); font-size: 1.6rem; line-height: 1; padding: 6px 16px; }
 .zone { overflow: hidden; touch-action: pan-y; }
+.court { display: none; }
 
 .mois { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .entete { text-align: center; font-size: 0.8rem; color: var(--gris); padding-bottom: 2px; }
@@ -181,6 +183,20 @@ const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
 .grand .nom-jour { font-size: 1.1rem; }
 .grand .nom-jour strong { font-size: 1.5rem; }
 .grand .bloc { font-size: 1.1rem; }
+
+/* Smartphone de la personne accompagnée */
+@media (max-width: 600px) {
+  .long { display: none; }
+  .court { display: inline; }
+  .grand .periode strong { font-size: 1.3rem; }
+  .grand .fleche { font-size: 2rem; padding: 6px 18px; }
+  .grand .entete { font-size: 0.85rem; }
+  .grand .case { min-height: 60px; border-radius: 10px; padding: 3px; }
+  .grand .numero { font-size: 1.05rem; padding: 0 4px; }
+  .grand .puce { font-size: 0; height: 7px; }
+  .grand .jour { padding: 10px 12px; }
+  .grand .bloc { font-size: 1.05rem; }
+}
 
 .glisse-suivant-enter-active, .glisse-suivant-leave-active,
 .glisse-precedent-enter-active, .glisse-precedent-leave-active { transition: transform 0.18s ease, opacity 0.18s ease; }

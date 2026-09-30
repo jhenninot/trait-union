@@ -64,4 +64,14 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0 0 24px; }
 }
 .prenom { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); }
 .nom { font-size: 1.3rem; color: var(--gris); }
+/* Smartphone : deux personnes par ligne */
+@media (max-width: 600px) {
+  .famille { padding: 20px 12px; }
+  h1 { font-size: 2rem; margin-bottom: 16px; }
+  .grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .personne { padding: 16px 8px; border-radius: 18px; }
+  .initiale { width: 72px; height: 72px; font-size: 2.2rem; }
+  .prenom { font-size: 1.4rem; }
+  .nom { font-size: 1.05rem; }
+}
 </style>
