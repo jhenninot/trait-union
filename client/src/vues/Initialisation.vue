@@ -1,14 +1,16 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { api } from '../api.js'
 import { motDePasseValide } from '../motDePasse.js'
 import ChampMotDePasse from './ChampMotDePasse.vue'
-import { rafraichirSession } from '../session.js'
+import { session, rafraichirSession } from '../session.js'
+import BoutonGoogle from './BoutonGoogle.vue'
+import Separateur from './Separateur.vue'
 
 const router = useRouter()
 const f = ref({ prenom: '', nom: '', email: '', motDePasse: '' })
-const erreur = ref('')
+const erreur = ref(useRoute().query.erreur || '')
 
 async function creer() {
   erreur.value = ''
@@ -34,6 +36,10 @@ async function creer() {
       <ChampMotDePasse v-model="f.motDePasse" />
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <button>Créer le compte administrateur</button>
+      <template v-if="session.google">
+        <Separateur />
+        <BoutonGoogle mode="initialiser" texte="Créer le compte avec Google" />
+      </template>
     </form>
   </main>
 </template>

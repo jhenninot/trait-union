@@ -7,7 +7,7 @@ export const NOM_COOKIE = 'tu_session'
 const JOUR = 24 * 60 * 60 * 1000
 // Durée (glissante) d'une session : un appareil configuré pour une personne
 // accompagnée reste connecté un an, les autres comptes 30 jours.
-const DUREES = { mot_de_passe: 30 * JOUR, appareil: 365 * JOUR }
+const DUREES = { mot_de_passe: 30 * JOUR, google: 30 * JOUR, appareil: 365 * JOUR }
 
 export async function ouvrirSession(res, req, utilisateurId, type, libelle = null) {
   const jeton = nouveauJeton()

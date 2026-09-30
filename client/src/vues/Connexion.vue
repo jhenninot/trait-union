@@ -2,14 +2,16 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '../api.js'
-import { rafraichirSession } from '../session.js'
+import { session, rafraichirSession } from '../session.js'
+import BoutonGoogle from './BoutonGoogle.vue'
+import Separateur from './Separateur.vue'
 import logo from '../logo.svg'
 
 const router = useRouter()
 const route = useRoute()
 const email = ref('')
 const motDePasse = ref('')
-const erreur = ref('')
+const erreur = ref(route.query.erreur || '')
 const envoi = ref(false)
 
 async function seConnecter() {
@@ -38,6 +40,10 @@ async function seConnecter() {
         <p v-if="erreur" class="erreur">{{ erreur }}</p>
         <button :disabled="envoi">Se connecter</button>
       </form>
+      <template v-if="session.google">
+        <Separateur />
+        <BoutonGoogle :suite="route.query.suite" />
+      </template>
     </div>
     <p class="aide">
       Cet appareil est destiné à une personne accompagnée ?

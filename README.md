@@ -30,6 +30,15 @@ PostgreSQL, via l'ORM [Drizzle](https://orm.drizzle.team). Le schéma est décri
 
 Aidants, proches et administrateurs se connectent par email et mot de passe (10 caractères minimum, dont au moins un chiffre et un caractère spécial ; empreinte scrypt). Les sessions sont stockées en base (seule l'empreinte du jeton), transmises par cookie `httpOnly` ou par en-tête `Authorization: Bearer` pour la future appli mobile. Aucun secret supplémentaire n'est nécessaire dans le `.env`.
 
+### Connexion avec Google (facultatif)
+
+Le bouton « Se connecter avec Google » n'apparaît que si `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` sont définis. Google ne crée pas de compte à lui seul : il connecte un compte existant (même email, lié automatiquement), crée le compte administrateur au premier lancement, ou crée le compte d'une personne qui ouvre un lien d'invitation.
+
+1. Sur [console.cloud.google.com](https://console.cloud.google.com), créer un projet, puis dans « API et services » configurer l'écran de consentement OAuth (type Externe, champs d'application `openid`, `email`, `profile`) et le publier.
+2. « Identifiants » → « Créer des identifiants » → « ID client OAuth » → type « Application Web ».
+3. URI de redirection autorisée : `https://<votre domaine>/api/auth/google/retour` (Google impose HTTPS, sauf pour `http://localhost`).
+4. Dans l'onglet `.env` de Dockge : `APP_URL=https://<votre domaine>`, `GOOGLE_CLIENT_ID=...`, `GOOGLE_CLIENT_SECRET=...`, puis redéployer la pile.
+
 ## Déploiement (Docker / Dockge)
 
 - À chaque push sur `main`, GitHub Actions construit l'image et la publie sur `ghcr.io/jhenninot/trait-union:latest` (workflow `.github/workflows/docker.yml`).

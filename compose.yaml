@@ -5,6 +5,10 @@
 #
 # Variables à définir dans l'onglet « .env » de la pile Dockge (voir .env.example) :
 #   POSTGRES_PASSWORD=un-mot-de-passe-long
+# Facultatif, pour la connexion avec Google (voir README) :
+#   APP_URL=https://trait-union.mondomaine.fr
+#   GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+#   GOOGLE_CLIENT_SECRET=...
 
 services:
   app:
@@ -16,6 +20,9 @@ services:
     environment:
       TZ: Europe/Paris
       DATABASE_URL: postgres://traitunion:${POSTGRES_PASSWORD:?à définir dans le .env}@db:5432/traitunion
+      APP_URL: ${APP_URL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       db:
         condition: service_healthy

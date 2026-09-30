@@ -17,6 +17,7 @@ export const utilisateurs = pgTable('utilisateurs', {
   nom: text('nom'),
   email: text('email').unique(), // toujours en minuscules
   motDePasse: text('mot_de_passe'), // empreinte scrypt, jamais le mot de passe en clair
+  googleId: text('google_id').unique(), // identifiant « sub » du compte Google lié
   estAdmin: boolean('est_admin').notNull().default(false),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })
 })
@@ -42,7 +43,7 @@ export const membres = pgTable('membres', {
   uniqueIndex('membres_cercle_utilisateur_idx').on(t.cercleId, t.utilisateurId)
 ])
 
-export const typeSession = pgEnum('type_session', ['mot_de_passe', 'appareil'])
+export const typeSession = pgEnum('type_session', ['mot_de_passe', 'google', 'appareil'])
 
 // Sessions ouvertes. Seule l'empreinte SHA-256 du jeton est stockée.
 export const sessions = pgTable('sessions', {

@@ -4,13 +4,15 @@ import { useRouter, useRoute } from 'vue-router'
 import { api } from '../api.js'
 import { motDePasseValide } from '../motDePasse.js'
 import ChampMotDePasse from './ChampMotDePasse.vue'
+import BoutonGoogle from './BoutonGoogle.vue'
+import Separateur from './Separateur.vue'
 import { session, rafraichirSession } from '../session.js'
 
 const router = useRouter()
 const route = useRoute()
 const jeton = route.params.jeton
 const invitation = ref(null)
-const erreur = ref('')
+const erreur = ref(route.query.erreur || '')
 const f = ref({ prenom: '', nom: '', email: '', motDePasse: '' })
 const libellesRoles = { aidant: 'aidant', proche: 'proche' }
 
@@ -49,6 +51,10 @@ async function accepter() {
         <button @click="accepter">Rejoindre le cercle</button>
       </div>
       <form v-else class="carte" @submit.prevent="accepter">
+        <template v-if="session.google">
+          <BoutonGoogle mode="invitation" :jeton="jeton" texte="Rejoindre avec Google" />
+          <Separateur />
+        </template>
         <p>Créez votre compte :</p>
         <label>Prénom <input v-model="f.prenom" required /></label>
         <label>Nom <input v-model="f.nom" /></label>

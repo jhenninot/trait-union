@@ -8,7 +8,7 @@ import * as valider from '../auth/validation.js'
 
 const router = Router()
 
-async function invitationValide(jeton) {
+export async function invitationValide(jeton) {
   const [ligne] = await db
     .select({ invitation: invitations, cercle: cercles })
     .from(invitations)
@@ -23,28 +23,10 @@ router.get('/:jeton', async (req, res) => {
   res.json({ cercle: ligne.cercle.nom, role: ligne.invitation.role })
 })
 
-// Accepte l'invitation : avec le compte connecté, ou en créant un compte
-router.post('/:jeton/accepter', async (req, res) => {
-  const ligne = await invitationValide(req.params.jeton)
-  if (!ligne) return res.status(404).json({ erreur: 'Cette invitation n\'est plus valable. Demandez-en une nouvelle.' })
-  const { invitation } = ligne
-
-  let utilisateur = req.utilisateur
-  let nouveau = null
-  if (!utilisateur) {
-    nouveau = {
-      prenom: valider.texte(req.body.prenom, 'prénom'),
-      nom: valider.texte(req.body.nom, 'nom', { obligatoire: false }),
-      email: valider.email(req.body.email),
-      motDePasse: await hacherMotDePasse(valider.motDePasse(req.body.motDePasse))
-    }
-    const [existant] = await db.select({ id: utilisateurs.id }).from(utilisateurs).where(eq(utilisateurs.email, nouveau.email))
-    if (existant) return res.status(409).json({ erreur: 'Un compte existe déjà avec cet email : connectez-vous puis rouvrez le lien.' })
-  } else if (req.session.type === 'appareil') {
-    return res.status(403).json({ erreur: 'Cet appareil est réservé à une personne accompagnée' })
-  }
-
-  const resultat = await db.transaction(async (tx) => {
+// Rattache l'utilisateur (existant, ou à créer à partir de `nouveau`) au cercle de l'invitation.
+// Renvoie l'utilisateur, ou null si l'invitation vient d'être utilisée par quelqu'un d'autre.
+export async function accepterInvitation(invitation, utilisateur, nouveau = null) {
+  return db.transaction(async (tx) => {
     // Marque l'invitation utilisée en premier : un seul acceptant possible
     const [prise] = await tx.update(invitations).set({ accepteeLe: new Date() })
       .where(and(eq(invitations.id, invitation.id), isNull(invitations.accepteeLe)))
@@ -66,6 +48,29 @@ router.post('/:jeton/accepter', async (req, res) => {
     }
     return utilisateur
   })
+}
+
+// Accepte l'invitation : avec le compte connecté, ou en créant un compte
+router.post('/:jeton/accepter', async (req, res) => {
+  const ligne = await invitationValide(req.params.jeton)
+  if (!ligne) return res.status(404).json({ erreur: 'Cette invitation n\'est plus valable. Demandez-en une nouvelle.' })
+  const { invitation } = ligne
+
+  let nouveau = null
+  if (!req.utilisateur) {
+    nouveau = {
+      prenom: valider.texte(req.body.prenom, 'prénom'),
+      nom: valider.texte(req.body.nom, 'nom', { obligatoire: false }),
+      email: valider.email(req.body.email),
+      motDePasse: await hacherMotDePasse(valider.motDePasse(req.body.motDePasse))
+    }
+    const [existant] = await db.select({ id: utilisateurs.id }).from(utilisateurs).where(eq(utilisateurs.email, nouveau.email))
+    if (existant) return res.status(409).json({ erreur: 'Un compte existe déjà avec cet email : connectez-vous puis rouvrez le lien.' })
+  } else if (req.session.type === 'appareil') {
+    return res.status(403).json({ erreur: 'Cet appareil est réservé à une personne accompagnée' })
+  }
+
+  const resultat = await accepterInvitation(invitation, req.utilisateur, nouveau)
   if (!resultat) return res.status(404).json({ erreur: 'Cette invitation vient d\'être utilisée.' })
   if (nouveau) await ouvrirSession(res, req, resultat.id, 'mot_de_passe')
   res.json({ utilisateur: profilPublic(resultat), cercleId: invitation.cercleId })

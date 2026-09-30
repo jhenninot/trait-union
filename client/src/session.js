@@ -5,6 +5,7 @@ import { api } from './api.js'
 export const session = reactive({
   charge: false,
   initialise: true,
+  google: false,
   utilisateur: null,
   typeSession: null,
   cercles: []

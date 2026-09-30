@@ -5,8 +5,10 @@ import { utilisateurs, codesConnexion, membres, cercles } from '../db/schema.js'
 import { hacherMotDePasse, verifierMotDePasse, empreinteFactice, empreinte, limiteur } from '../auth/securite.js'
 import { ouvrirSession, fermerSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
+import routesGoogle, { googleActif } from './google.js'
 
 const router = Router()
+router.use('/google', routesGoogle)
 const limiteConnexion = limiteur({ max: 10, fenetreMs: 15 * 60 * 1000 })
 const limiteCode = limiteur({ max: 10, fenetreMs: 15 * 60 * 1000 })
 
@@ -22,9 +24,10 @@ export async function mesCercles(utilisateurId) {
 // État de connexion : le front s'en sert au démarrage pour choisir l'écran à afficher.
 router.get('/etat', async (req, res) => {
   const [{ n }] = await db.select({ n: count() }).from(utilisateurs)
-  if (!req.utilisateur) return res.json({ initialise: n > 0, utilisateur: null })
+  if (!req.utilisateur) return res.json({ initialise: n > 0, google: googleActif, utilisateur: null })
   res.json({
     initialise: true,
+    google: googleActif,
     utilisateur: profilPublic(req.utilisateur),
     typeSession: req.session.type,
     cercles: await mesCercles(req.utilisateur.id)
