@@ -93,9 +93,11 @@ const listeParlee = (elements) => elements.length <= 1
   ? elements.join('')
   : `${elements.slice(0, -1).join(', ')} et ${elements.at(-1)}`
 
-function programme(agenda, jour, libelle) {
-  const duJour = agenda.filter((r) => r.debut <= new Date(jour.getTime() + 86_400_000 - 1) && (r.fin ?? r.debut) >= jour)
-  if (!duJour.length) return `Rien n'est prévu ${libelle}.`
+// `apres` : ne garde que ce qui n'est pas encore terminé (programme d'aujourd'hui)
+function programme(agenda, jour, libelle, apres = null) {
+  const tous = agenda.filter((r) => r.debut <= new Date(jour.getTime() + 86_400_000 - 1) && (r.fin ?? r.debut) >= jour)
+  const duJour = apres ? tous.filter((r) => (r.fin ?? r.debut) > apres) : tous
+  if (!duJour.length) return tous.length ? `Plus rien n'est prévu ${libelle}.` : `Rien n'est prévu ${libelle}.`
   const elements = duJour.slice(0, 5).map((r) => `${r.journeeEntiere || r.debut < jour ? '' : `à ${heureParlee(r.debut)}, `}${r.titre}`)
   const suite = duJour.length > 5 ? ` Et ${duJour.length - 5} autres choses.` : ''
   return `${libelle.charAt(0).toUpperCase()}${libelle.slice(1)}, vous avez : ${listeParlee(elements)}.${suite}`
@@ -123,7 +125,7 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       const { agenda } = await donneesPersonne(utilisateur, 1)
       const moment = maintenant.getHours() < 12 ? 'le matin' : maintenant.getHours() < 18 ? 'l\'après-midi' : 'le soir'
       return {
-        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${programme(agenda, aujourdhui, 'aujourd\'hui')}`,
+        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`,
         lien: '/'
       }
     }

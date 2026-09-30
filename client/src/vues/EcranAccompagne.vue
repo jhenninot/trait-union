@@ -11,12 +11,14 @@ import { parler, lectureDisponible } from '../voix.js'
 const maintenant = ref(new Date())
 let minuterie
 // Ce qui est prévu aujourd'hui, rechargé de temps en temps
-const programme = ref([])
+const rendezVousDuJour = ref([])
 const chargerProgramme = async () => {
   const jour = debutDuJour()
   // Les rendez-vous privés n'apparaissent que dans l'agenda
-  programme.value = (await rendezVousAccompagne(session.cercles, jour, ajouterJours(jour, 1))).filter((r) => !r.masque)
+  rendezVousDuJour.value = (await rendezVousAccompagne(session.cercles, jour, ajouterJours(jour, 1))).filter((r) => !r.masque)
 }
+// Un rendez-vous terminé disparaît (l'heure est mise à jour toutes les 30 secondes)
+const programme = computed(() => rendezVousDuJour.value.filter((r) => new Date(r.fin ?? r.debut) > maintenant.value))
 // Albums où des photos sont arrivées depuis la dernière visite
 const photos = ref(null)
 const chargerPhotos = async () => {

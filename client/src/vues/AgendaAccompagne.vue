@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
 import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
@@ -16,6 +16,10 @@ const VUES = [
   { valeur: 'mois', libelle: 'Mois' }
 ]
 const vue = ref('liste')
+// Heure courante, pour retirer de « Aujourd'hui » les rendez-vous terminés
+const horloge = ref(new Date())
+const minuterieHorloge = setInterval(() => (horloge.value = new Date()), 30_000)
+onUnmounted(() => clearInterval(minuterieHorloge))
 const reference = ref(new Date())
 const jourChoisi = ref(valeurJour(new Date()))
 const liste = ref([])
@@ -55,7 +59,9 @@ const sections = computed(() => {
     const cle = jourChoisi.value
     return [{ cle, titre: nomDuJour(combiner(cle)), enAvant: true, rendezVous: duJour(liste.value, cle) }]
   }
-  const aujourdhui = liste.value.filter((r) => valeurJour(new Date(r.debut)) <= cleAujourdhui)
+  // Aujourd'hui : seulement ce qui n'est pas encore terminé
+  const maintenant = horloge.value
+  const aujourdhui = liste.value.filter((r) => valeurJour(new Date(r.debut)) <= cleAujourdhui && new Date(r.fin ?? r.debut) > maintenant)
   const ensuite = parJour(liste.value.filter((r) => valeurJour(new Date(r.debut)) > cleAujourdhui))
   return [{ cle: cleAujourdhui, titre: 'Aujourd\'hui', enAvant: true, rendezVous: aujourdhui }, ...ensuite]
 })
