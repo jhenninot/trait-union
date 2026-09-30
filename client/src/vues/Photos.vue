@@ -6,6 +6,7 @@ import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
+import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -87,12 +88,17 @@ const supprimerAlbum = () => action(async () => {
   await chargerAlbums()
 })
 
-function choisir(evenement) {
-  for (const fichier of evenement.target.files) {
+function ajouter(fichiers) {
+  for (const fichier of fichiers) {
     aEnvoyer.value.push({ fichier, apercu: URL.createObjectURL(fichier), legende: '', etat: 'attente', message: '' })
   }
+}
+function choisir(evenement) {
+  ajouter(evenement.target.files)
   evenement.target.value = ''
 }
+// Photos partagées depuis une autre application (page /recevoir) : prêtes à envoyer
+ajouter(prendreRecues())
 
 function retirer(i) {
   URL.revokeObjectURL(aEnvoyer.value[i].apercu)
@@ -174,6 +180,7 @@ const supprimer = () => action(async () => {
   chargerAlbums()
 })
 
+const partage = partageDisponible()
 const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'))
 </script>
 
@@ -288,6 +295,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </form>
         <p v-else-if="photo.legende" class="legende">{{ photo.legende }}</p>
         <p class="aide">Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}</p>
+        <button v-if="partage && legendeEnEdition == null" class="partager" @click="partagerPhoto(photo)">Partager</button>
         <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Sans album</option>
@@ -397,6 +405,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .legende { font-size: 1.15rem; margin: 0; }
 .infos .actions { justify-content: center; }
 .infos .lien { color: white; }
+.partager { margin: 6px 0; }
 .edition { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 .edition input { min-width: 240px; }
 @media (max-width: 600px) {

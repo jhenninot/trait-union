@@ -4,6 +4,7 @@ import { session } from './session.js'
 import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
+import { etatPartage } from './partage.js'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
 // les aidants, proches et administrateurs (menu complet), et les pages publiques (sans menu).
@@ -24,6 +25,7 @@ const miseEnPage = computed(() => {
     <div class="page"><RouterView /></div>
   </div>
   <RouterView v-else />
+  <p v-if="etatPartage.message" class="bulle-partage" role="status">{{ etatPartage.message }}</p>
 </template>
 
 <style>
@@ -89,4 +91,19 @@ button:disabled { opacity: 0.6; cursor: default; }
 .erreur { color: var(--rouge); }
 .aide { color: var(--gris); font-size: 0.9rem; }
 a { color: var(--vert); }
+.bulle-partage {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 100;
+  margin: 0;
+  max-width: calc(100% - 32px);
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--bleu-nuit);
+  color: white;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  text-align: center;
+}
 </style>

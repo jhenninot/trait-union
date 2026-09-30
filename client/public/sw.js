@@ -1,10 +1,14 @@
 // Service worker de Trait d'union : rend l'application installable et affiche une page
 // « hors ligne » quand il n'y a pas de réseau. Les données (/api) ne sont jamais mises en cache :
 // elles concernent des personnes et doivent toujours être à jour.
-const VERSION = 'v1'
+// Il reçoit aussi les photos partagées vers la PWA installée (share_target du manifeste).
+const VERSION = 'v2'
 const CACHE = `trait-union-${VERSION}`
 const HORS_LIGNE = '/hors-ligne.html'
 const A_PRECHARGER = [HORS_LIGNE, '/icones/icone-192.png', '/manifest.webmanifest']
+// Photos partagées en attente, lues puis effacées par la page /recevoir (src/partage.js)
+const CACHE_PARTAGE = 'trait-union-partage'
+const MAX_RECUES = 30
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(A_PRECHARGER)).then(() => self.skipWaiting()))
@@ -13,14 +17,35 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((cles) => Promise.all(cles.filter((c) => c !== CACHE).map((c) => caches.delete(c))))
+      .then((cles) => Promise.all(cles.filter((c) => c !== CACHE && c !== CACHE_PARTAGE).map((c) => caches.delete(c))))
       .then(() => self.clients.claim())
   )
 })
 
+// Photos partagées depuis une autre application : gardées dans un cache, puis la page les propose
+async function recevoirPartage(request) {
+  try {
+    const donnees = await request.formData()
+    const fichiers = donnees.getAll('photos').filter((f) => f instanceof File && f.type.startsWith('image/'))
+    await caches.delete(CACHE_PARTAGE)
+    const cache = await caches.open(CACHE_PARTAGE)
+    await Promise.all(fichiers.slice(0, MAX_RECUES).map((f, i) => cache.put(
+      `/partage-recu/${i}`,
+      new Response(f, { headers: { 'Content-Type': f.type, 'X-Nom': encodeURIComponent(f.name || 'photo.jpg') } })
+    )))
+  } catch {
+    // Rien de lisible : la page dira qu'aucune photo n'est en attente
+  }
+  return Response.redirect('/recevoir', 303)
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
+  if (request.method === 'POST' && url.origin === location.origin && url.pathname === '/partage-recu') {
+    event.respondWith(recevoirPartage(request))
+    return
+  }
   if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return
 
   // Pages : toujours le réseau (index.html à jour), la page hors ligne en secours

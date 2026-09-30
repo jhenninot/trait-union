@@ -6,6 +6,7 @@ import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../pho
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
+import { partagerPhoto, partageDisponible } from '../partage.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -80,6 +81,7 @@ const photo = computed(() => liste.value[index.value])
 
 // Légende et auteur lus à voix haute
 const lecture = lectureDisponible()
+const partage = partageDisponible()
 const lirePhoto = () => {
   const p = photo.value
   parler(`${p.legende ? `${p.legende}. ` : ''}Photo envoyée par ${p.creeParPrenom ?? 'la famille'}, le ${dateEnvoi(p.creeLe)}.`)
@@ -136,6 +138,7 @@ function manuel(sens) {
         <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)">◀</button>
         <button class="diaporama" @click="basculerDiaporama">▶ Diaporama</button>
         <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto">🔊</button>
+        <button v-if="partage" class="diaporama" @click="partagerPhoto(photo)">Partager</button>
         <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)">▶</button>
       </div>
     </template>

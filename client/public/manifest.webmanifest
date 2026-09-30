@@ -9,6 +9,12 @@
   "display": "standalone",
   "background_color": "#faf8f5",
   "theme_color": "#2f8f6b",
+  "share_target": {
+    "action": "/partage-recu",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": { "files": [{ "name": "photos", "accept": ["image/*"] }] }
+  },
   "icons": [
     { "src": "/icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

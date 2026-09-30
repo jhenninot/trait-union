@@ -65,6 +65,7 @@ Le dossier `mobile/` contient un projet [Capacitor](https://capacitorjs.com) : u
 - Facultatif : une variable de dépôt `APP_URL` (Settings > Secrets and variables > Actions > Variables) pré-remplit l'adresse du serveur au premier lancement.
 - Signature : l'APK est signée avec la clé privée de Julien, fournie au workflow par les secrets du dépôt `ANDROID_KEYSTORE_BASE64` (fichier `.keystore` en base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` et `ANDROID_KEY_PASSWORD`. Sans ces secrets, le workflow échoue. La clé ne doit jamais être perdue ni changée : Android refuse une mise à jour signée avec une autre clé (il faudrait désinstaller l'application).
 - La connexion avec Google ne fonctionne pas dans l'application Android (Google refuse les vues web intégrées) : utiliser email et mot de passe, ou la PWA.
+- Partage de photos : l'APK et la PWA installée apparaissent dans le menu « Partager » d'Android (Galerie, WhatsApp…) ; les photos reçues arrivent sur la page `/recevoir`. Le bouton « Partager » des visionneuses ouvre le menu de partage d'Android (APK), le partage web (navigateur) ou télécharge la photo (ordinateur). Voir `client/src/partage.js`. Il faut réinstaller l'APK une fois pour en profiter.
 - En local : `cd mobile && npm install && npm run apk` (Android SDK et Java 21 nécessaires ; APK de debug signée avec la clé de debug locale). `npm run icones` régénère les icônes et l'écran de démarrage depuis `mobile/assets/`.
 
 ## Déploiement (Docker / Dockge)

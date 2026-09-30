@@ -50,6 +50,8 @@ app.use('/api', (err, req, res, next) => {
 
 // Front Vue compilé
 app.use(express.static(distDir))
+// Partage vers la PWA : normalement reçu par le service worker (client/public/sw.js)
+app.post('/partage-recu', (req, res) => res.redirect(303, '/recevoir'))
 app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(distDir, 'index.html'))
 })
