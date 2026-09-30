@@ -6,6 +6,7 @@ import { nouveautesPhotos } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { api } from '../api.js'
 import { parler, lectureDisponible } from '../voix.js'
+import Icone from '../navigation/Icone.vue'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
@@ -74,7 +75,7 @@ const moment = () => {
     <p class="heure">{{ heure() }}</p>
     <p class="moment">{{ moment() }}</p>
     <button v-if="lecture" class="ecouter" :disabled="lecteurOccupe" @click="ecouterJournee">
-      <span aria-hidden="true">🔊</span> Écouter ma journée
+      <Icone nom="son" class="en-ligne" /> Écouter ma journée
     </button>
     <div class="cartes">
     <RouterLink v-if="programme.length" to="/agenda" class="programme">
@@ -86,14 +87,14 @@ const moment = () => {
     </RouterLink>
     <RouterLink v-if="nouvellesPhotos.length" :to="lienPhotos" class="photos">
       <img v-if="nouvellesPhotos[0].couverture" :src="nouvellesPhotos[0].couverture" alt="" class="miniature" />
-      <span v-else class="miniature vide" aria-hidden="true">🖼️</span>
+      <span v-else class="miniature vide"><Icone nom="photo" class="em" /></span>
       <span class="texte-photos">
         <strong>{{ nombreNouvelles }} nouvelle{{ nombreNouvelles > 1 ? 's' : '' }} photo{{ nombreNouvelles > 1 ? 's' : '' }}</strong>
         <span class="noms">{{ nouvellesPhotos.map((a) => a.nom).join(', ') }}</span>
       </span>
     </RouterLink>
     <RouterLink v-else-if="photos?.total" to="/photos" class="photos calme">
-      <span class="emoji" aria-hidden="true">🖼️</span> Pas de nouvelle photo
+      <Icone nom="photo" class="en-ligne" /> Pas de nouvelle photo
     </RouterLink>
     </div>
   </main>

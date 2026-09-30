@@ -11,6 +11,7 @@ import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
+import Icone from '../navigation/Icone.vue'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -144,11 +145,11 @@ function manuel(sens) {
     <template v-if="album === undefined">
       <div class="entete">
         <h1>Mes photos</h1>
-        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
       <div class="albums">
         <button class="album" @click="ouvrirAlbum(null)">
-          <span class="couverture toutes">🖼️</span>
+          <span class="couverture toutes"><Icone nom="albums" class="em" /></span>
           <span class="nom">Toutes les photos</span>
         </button>
         <button v-for="a in albums" :key="a.id" class="album" @click="ouvrirAlbum(a)">
@@ -160,9 +161,9 @@ function manuel(sens) {
     </template>
     <template v-else-if="photo">
       <div v-if="!diaporama" class="haut">
-        <button v-if="albums.length" class="retour" @click="retourAlbums">◀ Albums</button>
+        <button v-if="albums.length" class="retour" @click="retourAlbums"><Icone nom="precedent" class="en-ligne" /> Albums</button>
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
-        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
       <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
@@ -174,17 +175,17 @@ function manuel(sens) {
       </p>
       <p v-if="diaporama" class="envoi">Touchez la photo pour arrêter le diaporama</p>
       <div v-else class="commandes">
-        <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)">◀</button>
-        <button class="diaporama" @click="basculerDiaporama">▶ Diaporama</button>
-        <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto">🔊</button>
+        <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)"><Icone nom="precedent" class="en-ligne" /></button>
+        <button class="diaporama" @click="basculerDiaporama"><Icone nom="lecture" class="en-ligne" /> Diaporama</button>
+        <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto"><Icone nom="son" class="en-ligne" /></button>
         <button v-if="partage" class="diaporama" @click="partagerPhoto(photo)">Partager</button>
-        <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)">▶</button>
+        <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)"><Icone nom="suivant" class="en-ligne" /></button>
       </div>
     </template>
     <template v-else-if="charge">
       <div class="haut">
-        <button v-if="albums.length" class="retour" @click="retourAlbums">◀ Albums</button>
-        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <button v-if="albums.length" class="retour" @click="retourAlbums"><Icone nom="precedent" class="en-ligne" /> Albums</button>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
       <p class="vide">Pas encore de photo.<br />Votre famille peut vous en envoyer.</p>
     </template>

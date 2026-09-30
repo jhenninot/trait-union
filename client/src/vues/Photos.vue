@@ -12,6 +12,7 @@ import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
 import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
+import Icone from '../navigation/Icone.vue'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -262,18 +263,18 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       <template v-if="actif">
         <div class="albums" role="tablist" aria-label="Albums">
           <button class="carte-album" :class="{ choisi: filtre === 'tous' }" @click="choisirFiltre('tous')">
-            <span class="couverture tous">🖼️</span>
+            <span class="couverture tous"><Icone nom="albums" class="em" /></span>
             <span class="nom">Toutes les photos</span>
             <span class="aide">{{ compteurs.total }}</span>
           </button>
           <button v-for="a in albums" :key="a.id" class="carte-album" :class="{ choisi: filtre === a.id }" @click="choisirFiltre(a.id)">
             <img v-if="a.couverture" :src="a.couverture" alt="" class="couverture" />
-            <span v-else class="couverture vide">📁</span>
+            <span v-else class="couverture vide"><Icone nom="dossier" class="em" /></span>
             <span class="nom">{{ a.nom }}</span>
             <span class="aide">{{ a.nombre }}</span>
           </button>
           <button v-if="albums.length && compteurs.sansAlbum" class="carte-album" :class="{ choisi: filtre === 'aucun' }" @click="choisirFiltre('aucun')">
-            <span class="couverture vide">🗂️</span>
+            <span class="couverture vide"><Icone nom="photo" class="em" /></span>
             <span class="nom">Sans album</span>
             <span class="aide">{{ compteurs.sansAlbum }}</span>
           </button>
@@ -353,10 +354,10 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       :class="{ 'plein-ecran': pleinEcran }"
       @click.self="pleinEcran ? sortirPleinEcran() : fermer()"
     >
-      <button v-if="pleinEcran" class="fermer discret" aria-label="Quitter le plein écran" @click="sortirPleinEcran">✕</button>
+      <button v-if="pleinEcran" class="fermer discret" aria-label="Quitter le plein écran" @click="sortirPleinEcran"><Icone nom="fermer" class="en-ligne" /></button>
       <template v-else>
-        <button class="fermer" aria-label="Fermer" @click="fermer">✕</button>
-        <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran">⛶</button>
+        <button class="fermer" aria-label="Fermer" @click="fermer"><Icone nom="fermer" class="en-ligne" /></button>
+        <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran"><Icone nom="agrandir" class="en-ligne" /></button>
         <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
       </template>
       <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" @click="pleinEcran ? sortirPleinEcran() : entrerPleinEcran()" />

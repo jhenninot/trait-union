@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { assistant, ecouter, parler, arreterParole } from '../voix.js'
+import Icone from '../navigation/Icone.vue'
 
 // Assistant vocal de la personne accompagnée, ouvert par le bouton « Parler ».
 // Le serveur cherche des mots-clés dans ce qui a été dit (server/voix/assistant.js) ; si une
@@ -69,10 +70,10 @@ watch(() => assistant.ouvert, (ouvert) => ouvert && demarrer(), { immediate: tru
 
 // Choix proposés quand on n'a rien entendu (les mêmes que ceux du serveur)
 const CHOIX = [
-  { libelle: 'Ma journée', emoji: '☀️', intention: 'journee' },
-  { libelle: 'Mes photos', emoji: '🖼️', lien: '/photos' },
-  { libelle: 'Ma famille', emoji: '👨‍👩‍👧', lien: '/famille' },
-  { libelle: 'Mon agenda', emoji: '📅', lien: '/agenda' }
+  { libelle: 'Ma journée', icone: 'soleil', intention: 'journee' },
+  { libelle: 'Mes photos', icone: 'photo', lien: '/photos' },
+  { libelle: 'Ma famille', icone: 'famille', lien: '/famille' },
+  { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda' }
 ]
 </script>
 
@@ -80,7 +81,7 @@ const CHOIX = [
   <div v-if="assistant.ouvert" class="assistant" role="dialog" aria-modal="true" aria-label="Assistant vocal">
     <div class="contenu">
       <template v-if="etat === 'ecoute'">
-        <span class="micro" aria-hidden="true">🎤</span>
+        <Icone nom="micro" class="micro em" />
         <p class="grand">Je vous écoute…</p>
         <p class="aide-voix">Dites par exemple « Mes photos » ou « Qu'est-ce que je fais aujourd'hui ? »</p>
       </template>
@@ -95,10 +96,10 @@ const CHOIX = [
         <p class="grand">{{ reponse.texte }}</p>
         <div v-if="reponse.choix || reponse.rien" class="choix">
           <button v-for="c in reponse.choix ?? CHOIX" :key="c.libelle" class="choix-bouton" @click="choisir(c)">
-            <span class="emoji" aria-hidden="true">{{ c.emoji }}</span>{{ c.libelle }}
+            <Icone :nom="c.icone" class="emoji em" />{{ c.libelle }}
           </button>
         </div>
-        <button class="principal" @click="demarrer"><span aria-hidden="true">🎤</span> Parler à nouveau</button>
+        <button class="principal" @click="demarrer"><Icone nom="micro" class="en-ligne" /> Parler à nouveau</button>
       </template>
 
       <button class="fermer" @click="fermer()">Fermer</button>
@@ -130,7 +131,7 @@ const CHOIX = [
   gap: 20px;
   text-align: center;
 }
-.micro { font-size: 5rem; animation: pulsation 1.4s ease-in-out infinite; }
+.micro { color: var(--vert); font-size: 5rem; animation: pulsation 1.4s ease-in-out infinite; }
 @keyframes pulsation { 50% { transform: scale(1.15); } }
 .grand { font-size: 2.2rem; font-weight: 700; color: var(--bleu-nuit); margin: 0; line-height: 1.3; }
 .aide-voix { font-size: 1.4rem; color: var(--gris); margin: 0; }

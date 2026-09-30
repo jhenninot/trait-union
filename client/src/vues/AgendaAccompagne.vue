@@ -5,6 +5,7 @@ import { session } from '../session.js'
 import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, valeurHeure, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import { parler, lectureDisponible } from '../voix.js'
+import Icone from '../navigation/Icone.vue'
 
 // « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
 // ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
@@ -82,9 +83,9 @@ const REPETITION = [
   { valeur: 'mensuelle', libelle: 'Chaque mois' }
 ]
 const QUI = [
-  { valeur: 'tous', emoji: '👨‍👩‍👧', libelle: 'Toute ma famille' },
-  { valeur: 'accompagne_aidants', emoji: '🤝', libelle: 'Moi et mes aidants' },
-  { valeur: 'accompagne', emoji: '🙂', libelle: 'Moi seulement' }
+  { valeur: 'tous', icone: 'famille', libelle: 'Toute ma famille' },
+  { valeur: 'accompagne_aidants', icone: 'coeur', libelle: 'Moi et mes aidants' },
+  { valeur: 'accompagne', icone: 'compte', libelle: 'Moi seulement' }
 ]
 
 function ajouter() {
@@ -258,7 +259,7 @@ async function effacer(rdv, portee) {
       <p v-if="!saisie.id || saisie.visibiliteModifiable" class="question">Qui peut le voir ?</p>
       <div v-if="!saisie.id || saisie.visibiliteModifiable" class="choix">
         <button v-for="q in QUI" :key="q.valeur" type="button" :class="{ choisi: saisie.visibilite === q.valeur }" @click="saisie.visibilite = q.valeur">
-          <span class="emoji" aria-hidden="true">{{ q.emoji }}</span>{{ q.libelle }}
+          <Icone :nom="q.icone" class="emoji em" />{{ q.libelle }}
         </button>
       </div>
 
@@ -272,7 +273,7 @@ async function effacer(rdv, portee) {
     <template v-else>
       <div class="entete">
         <h1>Mon agenda</h1>
-        <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><span aria-hidden="true">🔊</span><span class="texte-ecouter"> Écouter</span></button>
+        <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><Icone nom="son" class="en-ligne" /><span class="texte-ecouter"> Écouter</span></button>
         <button class="principal" @click="ajouter">+ Ajouter</button>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>

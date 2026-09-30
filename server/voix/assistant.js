@@ -106,10 +106,10 @@ function programme(agenda, jour, libelle, apres = null) {
 const MOTS_ALBUM_IGNORES = new Set(['photo', 'photos', 'album', 'albums', 'souvenirs', 'famille', 'avec', 'chez', 'dans'])
 
 const CHOIX = [
-  { libelle: 'Ma journée', emoji: '☀️', intention: 'journee' },
-  { libelle: 'Mes photos', emoji: '🖼️', lien: '/photos' },
-  { libelle: 'Ma famille', emoji: '👨‍👩‍👧', lien: '/famille' },
-  { libelle: 'Mon agenda', emoji: '📅', lien: '/agenda' }
+  { libelle: 'Ma journée', icone: 'soleil', intention: 'journee' },
+  { libelle: 'Mes photos', icone: 'photo', lien: '/photos' },
+  { libelle: 'Ma famille', icone: 'famille', lien: '/famille' },
+  { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda' }
 ]
 
 // Réponse à une intention : { texte (à lire), lien (page à ouvrir, facultatif), choix (facultatif) }

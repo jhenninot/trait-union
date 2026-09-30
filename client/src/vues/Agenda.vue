@@ -4,6 +4,7 @@ import { api } from '../api.js'
 import { utiliserCercle } from '../cercle.js'
 import { RECURRENCES, texteRecurrence, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
+import Icone from '../navigation/Icone.vue'
 
 // Agenda d'un cercle pour les aidants et les proches : vue mois, semaine ou liste
 // (à venir ou passés), ajout et modification. Chacun choisit qui peut voir le
@@ -258,7 +259,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
           <div v-else class="detail">
             <strong>{{ rdv.titre }}</strong>
             <span v-if="rdv.lieu" class="aide">{{ rdv.lieu }}</span>
-            <span v-if="texteRecurrence(rdv)" class="aide">🔁 {{ texteRecurrence(rdv) }}</span>
+            <span v-if="texteRecurrence(rdv)" class="aide"><Icone nom="repeter" class="en-ligne" /> {{ texteRecurrence(rdv) }}</span>
             <p v-if="rdv.notes" class="notes">{{ rdv.notes }}</p>
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>

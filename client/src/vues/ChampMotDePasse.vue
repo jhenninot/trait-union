@@ -1,5 +1,6 @@
 <script setup>
 import { reglesMotDePasse } from '../motDePasse.js'
+import Icone from '../navigation/Icone.vue'
 
 // Champ de nouveau mot de passe avec la liste des règles cochées au fil de la saisie
 const valeur = defineModel({ type: String, default: '' })
@@ -11,7 +12,7 @@ const valeur = defineModel({ type: String, default: '' })
   </label>
   <ul class="regles">
     <li v-for="r in reglesMotDePasse" :key="r.texte" :class="{ ok: r.ok(valeur) }">
-      {{ r.ok(valeur) ? '✓' : '○' }} {{ r.texte }}
+      <Icone :nom="r.ok(valeur) ? 'coche' : 'rond'" class="en-ligne" /> {{ r.texte }}
     </li>
   </ul>
 </template>
