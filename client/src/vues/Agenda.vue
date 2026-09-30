@@ -5,6 +5,7 @@ import { utiliserCercle } from '../cercle.js'
 import { RECURRENCES, texteRecurrence, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import Icone from '../navigation/Icone.vue'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 // Agenda d'un cercle pour les aidants et les proches : vue mois, semaine ou liste
 // (à venir ou passés), ajout et modification. Chacun choisit qui peut voir le
@@ -180,7 +181,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
       <p class="aide surtitre">{{ cercle.nom }}</p>
       <div class="titre">
         <h1>Agenda</h1>
-        <button v-if="!formulaire" @click="nouveau">Ajouter un rendez-vous</button>
+        <button v-if="!formulaire" @click="nouveau"><Icone nom="ajouter" class="en-ligne" /> Ajouter un rendez-vous</button>
       </div>
 
       <form v-if="formulaire" class="carte" @submit.prevent="enregistrer">
@@ -274,8 +275,8 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
               <button class="lien" @click="suppression = null">Annuler</button>
             </div>
             <div v-else-if="rdv.peutModifier" class="actions">
-              <button class="lien" @click="modifier(rdv)">Modifier</button>
-              <button class="danger" @click="supprimer(rdv)">Supprimer</button>
+              <BoutonIcone icone="modifier" libelle="Modifier" @click="modifier(rdv)" />
+              <BoutonIcone icone="effacer" libelle="Supprimer" danger @click="supprimer(rdv)" />
             </div>
           </div>
         </div>

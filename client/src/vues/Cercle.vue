@@ -7,6 +7,8 @@ import { utiliserCercle, heure, copier } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
 import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
+import Icone from '../navigation/Icone.vue'
 
 // Page « Famille et aidants » d'un cercle : membres et invitations
 const router = useRouter()
@@ -62,10 +64,12 @@ const rejoindre = () => action(async () => {
             <strong>{{ m.prenom }} {{ m.nom }}</strong>
           </span>
           <span v-if="cercle.peutGerer" class="liens">
-            <button class="lien" @click="avatarOuvert = avatarOuvert === m.id ? null : m.id">
-              {{ avatarOuvert === m.id ? 'Fermer' : 'Changer son avatar' }}
-            </button>
-            <RouterLink :to="`${url}/tablettes`">Gérer sa tablette</RouterLink>
+            <BoutonIcone
+              :icone="avatarOuvert === m.id ? 'fermer' : 'compte'"
+              :libelle="avatarOuvert === m.id ? 'Fermer' : 'Changer son avatar'"
+              @click="avatarOuvert = avatarOuvert === m.id ? null : m.id"
+            />
+            <RouterLink :to="`${url}/tablettes`" class="bouton-icone" aria-label="Gérer sa tablette" title="Gérer sa tablette"><Icone nom="tablette" /></RouterLink>
           </span>
         </div>
         <ChoixAvatar
@@ -89,9 +93,9 @@ const rejoindre = () => action(async () => {
             <RouterLink v-if="m.moi" to="/profil" class="aide"> · modifier mon avatar</RouterLink>
           </span>
         </span>
-        <span>
+        <span class="liens">
           <span class="aide">{{ libellesRoles[m.role] }}</span>
-          <button v-if="cercle.peutGerer" class="danger" @click="retirer(m)">Retirer</button>
+          <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </span>
       </div>
 
@@ -115,7 +119,7 @@ const rejoindre = () => action(async () => {
           </template>
           <input :value="invitation.lien" readonly @focus="$event.target.select()" />
           <p class="aide">Valable une seule fois, jusqu'au {{ heure(invitation.expireLe) }}.</p>
-          <button class="secondaire" @click="copier(invitation.lien)">Copier le lien</button>
+          <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(invitation.lien)" />
         </div>
       </div>
     </template>

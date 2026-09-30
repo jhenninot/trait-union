@@ -6,6 +6,7 @@ import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, valeurHeur
 import Calendrier from './Calendrier.vue'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 // « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
 // ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
@@ -233,7 +234,7 @@ async function effacer(rdv, portee) {
         </button>
       </div>
       <input v-if="saisie.quand === 'autre'" v-model="saisie.autreJour" type="date" class="grand" aria-label="Jour" />
-      <button v-if="!saisie.plusieursJours" type="button" class="lien-simple" @click="saisie.plusieursJours = true">+ Sur plusieurs jours</button>
+      <button v-if="!saisie.plusieursJours" type="button" class="lien-simple" @click="saisie.plusieursJours = true"><Icone nom="ajouter" class="en-ligne" /> Sur plusieurs jours</button>
       <label v-else class="question">Jusqu'à quel jour ?
         <input v-model="saisie.jourFin" type="date" class="grand" />
       </label>
@@ -274,7 +275,7 @@ async function effacer(rdv, portee) {
       <div class="entete">
         <h1>Mon agenda</h1>
         <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><Icone nom="son" class="en-ligne" /><span class="texte-ecouter"> Écouter</span></button>
-        <button class="principal" @click="ajouter">+ Ajouter</button>
+        <button class="principal" @click="ajouter"><Icone nom="ajouter" class="en-ligne" /> Ajouter</button>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
@@ -296,8 +297,8 @@ async function effacer(rdv, portee) {
             <span class="titre">{{ titreRdv(rdv) }}</span>
             <span v-if="rdv.lieu" class="lieu">{{ rdv.lieu }}</span>
             <span v-if="rdv.peutModifier && effacement !== rdv.cle" class="gestes">
-              <button class="modifier" @click="modifierRdv(rdv)">Modifier</button>
-              <button class="effacer" @click="supprimer(rdv)">Effacer</button>
+              <BoutonIcone icone="modifier" libelle="Modifier" gros @click="modifierRdv(rdv)" />
+              <BoutonIcone icone="effacer" libelle="Effacer" gros danger @click="supprimer(rdv)" />
             </span>
             <span v-if="effacement === rdv.cle" class="choix-effacer">
               Effacer :
@@ -342,10 +343,7 @@ button.ecouter { margin-left: auto; background: var(--vert-clair); color: var(--
 .heure { font-size: 1.6em; font-weight: 700; color: var(--vert); }
 .titre { font-size: 1.6em; font-weight: 700; color: var(--bleu-nuit); }
 .lieu { grid-column: 2; color: var(--gris); font-size: 1.2em; }
-.gestes { grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 4px; }
-.gestes button { background: none; font-size: 1.1rem; padding: 6px 10px; }
-.modifier { color: var(--vert); }
-.effacer { color: var(--rouge); }
+.gestes { grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 8px; }
 .choix-effacer { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 1.1rem; font-weight: 600; color: var(--rouge); }
 .choix-effacer button { background: var(--rouge); font-size: 1.1rem; padding: 10px 14px; border-radius: 12px; }
 .choix-effacer .retour-petit { background: #f3f0ea; color: var(--bleu-nuit); }

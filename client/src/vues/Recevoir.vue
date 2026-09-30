@@ -5,6 +5,7 @@ import { session } from '../session.js'
 import { recues, chargerRecues, effacerRecues } from '../partage.js'
 import { api } from '../api.js'
 import { envoyerPhoto } from '../photos.js'
+import Icone from '../navigation/Icone.vue'
 
 // Photos partagées vers Trait d'union depuis une autre application (Galerie, WhatsApp...).
 // Aidants et proches : on choisit le cercle (s'il y en a plusieurs), puis la page Photos du
@@ -114,7 +115,7 @@ async function envoyer() {
         <div class="choix-albums">
           <button :class="{ choisi: albumChoisi === '' }" :disabled="etat === 'envoi'" @click="albumChoisi = ''">Sans album</button>
           <button v-for="a in albums" :key="a.id" :class="{ choisi: albumChoisi === a.id }" :disabled="etat === 'envoi'" @click="albumChoisi = a.id">{{ a.nom }}</button>
-          <button :class="{ choisi: albumChoisi === 'nouveau' }" :disabled="etat === 'envoi'" @click="albumChoisi = 'nouveau'">＋ Nouvel album</button>
+          <button :class="{ choisi: albumChoisi === 'nouveau' }" :disabled="etat === 'envoi'" @click="albumChoisi = 'nouveau'"><Icone nom="ajouter" class="en-ligne" /> Nouvel album</button>
         </div>
         <input
           v-if="albumChoisi === 'nouveau'"

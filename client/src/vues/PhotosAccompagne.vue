@@ -178,7 +178,7 @@ function manuel(sens) {
         <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)"><Icone nom="precedent" class="en-ligne" /></button>
         <button class="diaporama" @click="basculerDiaporama"><Icone nom="lecture" class="en-ligne" /> Diaporama</button>
         <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto"><Icone nom="son" class="en-ligne" /></button>
-        <button v-if="partage" class="diaporama" @click="partagerPhoto(photo)">Partager</button>
+        <button v-if="partage" class="diaporama" aria-label="Partager" title="Partager" @click="partagerPhoto(photo)"><Icone nom="partager" class="en-ligne" /></button>
         <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)"><Icone nom="suivant" class="en-ligne" /></button>
       </div>
     </template>

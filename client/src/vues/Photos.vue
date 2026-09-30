@@ -13,6 +13,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
 import Icone from '../navigation/Icone.vue'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -279,7 +280,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
             <span class="aide">{{ compteurs.sansAlbum }}</span>
           </button>
           <button class="carte-album nouveau" @click="nomAlbum = { id: null, nom: '' }">
-            <span class="couverture vide">＋</span>
+            <span class="couverture vide"><Icone nom="ajouter" class="em" /></span>
             <span class="nom">Nouvel album</span>
           </button>
         </div>
@@ -291,8 +292,8 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </form>
         <div v-else-if="albumCourant?.peutModifier" class="actions-album">
           <strong>{{ albumCourant.nom }}</strong>
-          <button class="lien" @click="nomAlbum = { id: albumCourant.id, nom: albumCourant.nom }">Renommer</button>
-          <button class="danger" @click="supprimerAlbum">Supprimer l'album</button>
+          <BoutonIcone icone="modifier" libelle="Renommer l'album" @click="nomAlbum = { id: albumCourant.id, nom: albumCourant.nom }" />
+          <BoutonIcone icone="effacer" libelle="Supprimer l'album" danger @click="supprimerAlbum" />
         </div>
       </template>
 
@@ -306,13 +307,13 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
             <span v-else-if="a.etat === 'fait'" class="succes">Envoyée</span>
             <span v-else-if="a.etat === 'erreur'" class="erreur">{{ a.message }}</span>
           </div>
-          <button v-if="!envoiEnCours && a.etat !== 'fait'" class="lien" @click="retirer(i)">Retirer</button>
+          <BoutonIcone v-if="!envoiEnCours && a.etat !== 'fait'" icone="effacer" libelle="Retirer" danger @click="retirer(i)" />
         </div>
         <label v-if="actif" class="choix-album">Ranger dans l'album
           <select v-model="albumEnvoi" :disabled="envoiEnCours">
             <option value="">Sans album</option>
             <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
-            <option :value="NOUVEL_ALBUM">＋ Nouvel album…</option>
+            <option :value="NOUVEL_ALBUM">+ Nouvel album…</option>
           </select>
         </label>
         <input
@@ -358,10 +359,10 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       <template v-else>
         <button class="fermer" aria-label="Fermer" @click="fermer"><Icone nom="fermer" class="en-ligne" /></button>
         <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran"><Icone nom="agrandir" class="en-ligne" /></button>
-        <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
+        <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)"><Icone nom="precedent" class="en-ligne" /></button>
       </template>
       <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" @click="pleinEcran ? sortirPleinEcran() : entrerPleinEcran()" />
-      <button v-if="!pleinEcran && ouverte < liste.length - 1" class="fleche droite" aria-label="Photo suivante" @click="deplacer(1)">›</button>
+      <button v-if="!pleinEcran && ouverte < liste.length - 1" class="fleche droite" aria-label="Photo suivante" @click="deplacer(1)"><Icone nom="suivant" class="en-ligne" /></button>
       <div v-if="!pleinEcran" class="infos">
         <form v-if="legendeEnEdition != null" class="edition" @submit.prevent="enregistrerLegende">
           <input v-model="legendeEnEdition" maxlength="500" placeholder="Légende" />
@@ -373,7 +374,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           <Avatar v-if="photo.creeParPrenom" :src="photo.creeParAvatar" :prenom="photo.creeParPrenom" :taille="28" />
           Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
         </p>
-        <button v-if="partage && legendeEnEdition == null" class="partager" @click="partagerPhoto(photo)">Partager</button>
+        <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
         <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Sans album</option>
@@ -381,8 +382,8 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           </select>
         </label>
         <div v-if="photo.peutSupprimer && legendeEnEdition == null" class="actions">
-          <button class="lien" @click="legendeEnEdition = photo.legende ?? ''">{{ photo.legende ? 'Modifier la légende' : 'Ajouter une légende' }}</button>
-          <button class="danger" @click="supprimer">Supprimer</button>
+          <BoutonIcone icone="modifier" :libelle="photo.legende ? 'Modifier la légende' : 'Ajouter une légende'" @click="legendeEnEdition = photo.legende ?? ''" />
+          <BoutonIcone icone="effacer" libelle="Supprimer la photo" danger @click="supprimer" />
         </div>
       </div>
     </div>

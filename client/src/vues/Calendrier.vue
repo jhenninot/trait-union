@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { periode, jours, duJour, titrePeriode, valeurJour, heureCourte, titreRdv } from '../agenda.js'
+import Icone from '../navigation/Icone.vue'
 
 // Vue semaine ou mois d'un agenda. On change de période avec les flèches ou d'un
 // geste (balayage vers la gauche ou la droite). Toucher un jour le sélectionne.
@@ -62,9 +63,9 @@ const heure = (rdv, cle) => (rdv.journeeEntiere || valeurJour(new Date(rdv.debut
 <template>
   <div class="calendrier" :class="{ grand }">
     <div class="periode">
-      <button class="fleche" aria-label="Période précédente" @click="naviguer(-1)">‹</button>
+      <button class="fleche" aria-label="Période précédente" @click="naviguer(-1)"><Icone nom="precedent" class="en-ligne" /></button>
       <strong><span class="long">{{ titre }}</span><span class="court">{{ titreCourt }}</span></strong>
-      <button class="fleche" aria-label="Période suivante" @click="naviguer(1)">›</button>
+      <button class="fleche" aria-label="Période suivante" @click="naviguer(1)"><Icone nom="suivant" class="en-ligne" /></button>
     </div>
 
     <div class="zone" @touchstart.passive="toucher" @touchend="lacher">

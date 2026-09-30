@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 // Page « Tablettes » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
@@ -48,8 +49,8 @@ const retirer = (m) => action(async () => {
         </div>
         <div v-if="cercle.peutGerer" class="actions">
           <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>
-          <button v-if="m.appareils" class="danger" @click="deconnecterAppareils(m)">Déconnecter ses appareils</button>
-          <button class="danger" @click="retirer(m)">Retirer</button>
+          <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
+          <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
       </div>
 
@@ -58,7 +59,7 @@ const retirer = (m) => action(async () => {
           ou allez sur la page de connexion, choisissez « Le configurer avec un code » et saisissez :</p>
         <p class="code">{{ codeAppareil.code }}</p>
         <p class="aide">Valable une seule fois, jusqu'au {{ heure(codeAppareil.expireLe) }}.</p>
-        <button class="secondaire" @click="copier(codeAppareil.lien)">Copier le lien</button>
+        <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(codeAppareil.lien)" />
       </div>
 
       <form v-if="cercle.peutGerer" class="carte" @submit.prevent="ajouterAccompagne">
