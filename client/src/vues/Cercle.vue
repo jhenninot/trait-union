@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
-import { rafraichirSession } from '../session.js'
+import { session, rafraichirSession } from '../session.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,6 +70,12 @@ const retirer = (m) => action(async () => {
   }
 })
 
+const rejoindre = () => action(async () => {
+  await api('POST', `${url}/rejoindre`)
+  await rafraichirSession()
+  await charger()
+})
+
 const copier = (texte) => navigator.clipboard?.writeText(texte)
 </script>
 
@@ -78,6 +84,10 @@ const copier = (texte) => navigator.clipboard?.writeText(texte)
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-if="cercle">
       <h1>{{ cercle.nom }}</h1>
+      <div v-if="!cercle.monRole && session.utilisateur.estAdmin" class="carte ligne">
+        <span>Vous voyez ce cercle en tant qu'administrateur, sans en être membre.</span>
+        <button @click="rejoindre">Rejoindre comme aidant</button>
+      </div>
 
       <h2>Personnes accompagnées</h2>
       <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>

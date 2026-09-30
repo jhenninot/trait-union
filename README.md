@@ -23,7 +23,7 @@ PostgreSQL, via l'ORM [Drizzle](https://orm.drizzle.team). Le schéma est décri
 ## Comptes et connexion
 
 - **Premier lancement** : l'application propose de créer le compte administrateur (seulement tant qu'aucun compte n'existe).
-- **Administrateur** : crée les cercles et voit tous les cercles.
+- **Administrateur** : crée les cercles et voit tous les cercles ; il peut en faire partie comme aidant (case cochée à la création, ou bouton « Rejoindre comme aidant » sur le cercle).
 - **Aidant** (rôle dans un cercle) : invite des aidants et des proches par lien (7 jours, usage unique), ajoute les personnes accompagnées, configure leurs appareils, retire des membres.
 - **Proche** (rôle dans un cercle) : accède au cercle pour échanger ; ne gère pas les membres.
 - **Personne accompagnée** : pas d'email ni de mot de passe. Un aidant génère un code à 6 chiffres (30 minutes, usage unique) à saisir sur l'appareil (page `/appareil`) ; l'appareil reste ensuite connecté un an (durée prolongée à chaque utilisation) et n'affiche qu'un écran d'accueil simple. L'aidant peut déconnecter ses appareils à tout moment.

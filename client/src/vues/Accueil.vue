@@ -8,6 +8,7 @@ import EcranAccompagne from './EcranAccompagne.vue'
 const router = useRouter()
 const tousLesCercles = ref([])
 const nomCercle = ref('')
+const rejoindre = ref(true)
 const erreur = ref('')
 const libellesRoles = { accompagne: 'Personne accompagnée', aidant: 'Aidant', proche: 'Proche' }
 
@@ -19,7 +20,7 @@ chargerCercles()
 async function creerCercle() {
   erreur.value = ''
   try {
-    const cercle = await api('POST', '/cercles', { nom: nomCercle.value })
+    const cercle = await api('POST', '/cercles', { nom: nomCercle.value, rejoindre: rejoindre.value })
     await rafraichirSession()
     router.push(`/cercles/${cercle.id}`)
   } catch (e) {
@@ -44,6 +45,7 @@ async function creerCercle() {
       <h2>Administration</h2>
       <form class="carte" @submit.prevent="creerCercle">
         <label>Nouveau cercle <input v-model="nomCercle" placeholder="Le cercle de Mamie" required /></label>
+        <label class="case"><input v-model="rejoindre" type="checkbox" /> J'en fais partie comme aidant</label>
         <p v-if="erreur" class="erreur">{{ erreur }}</p>
         <button>Créer le cercle</button>
       </form>
@@ -57,6 +59,7 @@ async function creerCercle() {
 </template>
 
 <style scoped>
+.case { flex-direction: row; align-items: center; gap: 8px; font-weight: normal; }
 .cercle {
   display: flex;
   justify-content: space-between;

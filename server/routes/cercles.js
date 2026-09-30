@@ -50,8 +50,20 @@ router.get('/', async (req, res) => {
   res.json(tous.map((c) => ({ ...c, role: miens.get(c.id)?.role ?? null, membreId: miens.get(c.id)?.membreId ?? null })))
 })
 
+// Ajoute l'utilisateur connecté au cercle comme aidant
+async function ajouterCommeAidant(cercleId, u, tx = db) {
+  await tx.insert(membres)
+    .values({ cercleId, utilisateurId: u.id, prenom: u.prenom, nom: u.nom, email: u.email, role: 'aidant' })
+    .onConflictDoNothing()
+}
+
 router.post('/', exigerAdmin, async (req, res) => {
-  const [cercle] = await db.insert(cercles).values({ nom: valider.texte(req.body.nom, 'nom du cercle') }).returning()
+  const nom = valider.texte(req.body.nom, 'nom du cercle')
+  const cercle = await db.transaction(async (tx) => {
+    const [c] = await tx.insert(cercles).values({ nom }).returning()
+    if (req.body.rejoindre) await ajouterCommeAidant(c.id, req.utilisateur, tx)
+    return c
+  })
   res.status(201).json(cercle)
 })
 
@@ -79,6 +91,13 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId) ?? 0) : undefined
     }))
   })
+})
+
+// Un administrateur qui n'est pas membre rejoint le cercle comme aidant
+router.post('/:cercleId/rejoindre', chargerCercle, exigerAdmin, async (req, res) => {
+  if (req.role) return res.status(409).json({ erreur: 'Vous êtes déjà membre de ce cercle' })
+  await ajouterCommeAidant(req.cercle.id, req.utilisateur)
+  res.status(204).end()
 })
 
 // Lien d'invitation (7 jours, usage unique) pour un aidant ou un proche
