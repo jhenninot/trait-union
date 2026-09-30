@@ -49,6 +49,7 @@ async function seConnecter() {
       Cet appareil est destiné à une personne accompagnée ?
       <RouterLink to="/appareil">Le configurer avec un code</RouterLink>
     </p>
+    <p class="aide"><RouterLink to="/confidentialite">Politique de confidentialité</RouterLink></p>
   </main>
 </template>
 

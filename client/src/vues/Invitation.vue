@@ -67,6 +67,7 @@ async function accepter() {
           <RouterLink :to="{ path: '/connexion', query: { suite: route.fullPath } }">Connectez-vous</RouterLink>
           puis rouvrez ce lien.
         </p>
+        <p class="aide"><RouterLink to="/confidentialite">Politique de confidentialité</RouterLink></p>
       </form>
     </template>
   </main>

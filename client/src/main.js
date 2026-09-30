@@ -8,6 +8,7 @@ import Initialisation from './vues/Initialisation.vue'
 import Appareil from './vues/Appareil.vue'
 import Invitation from './vues/Invitation.vue'
 import Cercle from './vues/Cercle.vue'
+import Confidentialite from './vues/Confidentialite.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -18,11 +19,13 @@ const router = createRouter({
     { path: '/bienvenue', component: Initialisation },
     { path: '/appareil', component: Appareil },
     { path: '/invitation/:jeton', component: Invitation },
+    { path: '/confidentialite', component: Confidentialite, meta: { publique: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
 
 router.beforeEach(async (to) => {
+  if (to.meta.publique) return true
   if (!session.charge) {
     try { await rafraichirSession() } catch { return true }
   }
