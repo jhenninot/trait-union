@@ -34,6 +34,8 @@ function naviguer(sens) {
 
 const niveaux = computed(() => visibilites(accompagnes.value.length === 1 ? accompagnes.value[0].prenom : null))
 const libelleNiveau = (v) => niveaux.value.find((n) => n.valeur === v)?.court
+// Une auxiliaire de vie ne voit que les rendez-vous cochés « auxiliaires » (et les siens)
+const suisAuxiliaire = computed(() => !cercle.value?.peutGerer && cercle.value?.monRole === 'auxiliaire')
 
 const charger = () => action(async () => {
   let filtre
@@ -58,7 +60,11 @@ const groupes = computed(() => {
 
 function nouveau() {
   const jour = vue.value === 'liste' ? valeurJour(new Date()) : jourChoisi.value
-  formulaire.value = { id: null, titre: '', jour, heure: '', heureFin: '', lieu: '', notes: '', visibilite: 'tous' }
+  formulaire.value = {
+    id: null, titre: '', jour, heure: '', heureFin: '', lieu: '', notes: '',
+    visibilite: suisAuxiliaire.value ? 'aidants' : 'tous',
+    auxiliaires: suisAuxiliaire.value
+  }
 }
 
 function modifier(rdv) {
@@ -71,7 +77,8 @@ function modifier(rdv) {
     heureFin: rdv.fin ? valeurHeure(new Date(rdv.fin)) : '',
     lieu: rdv.lieu ?? '',
     notes: rdv.notes ?? '',
-    visibilite: rdv.visibilite
+    visibilite: rdv.visibilite,
+    auxiliaires: rdv.auxiliaires
   }
 }
 
@@ -83,6 +90,7 @@ const enregistrer = () => action(async () => {
     lieu: f.lieu,
     notes: f.notes,
     visibilite: f.visibilite,
+    auxiliaires: f.auxiliaires,
     journeeEntiere: !f.heure,
     debut: combiner(f.jour, f.heure || '00:00').toISOString(),
     fin: f.heure && f.heureFin ? combiner(f.jour, f.heureFin).toISOString() : null
@@ -127,6 +135,9 @@ const supprimer = (rdv) => action(async () => {
           <label v-for="n in niveaux" :key="n.valeur" class="choix">
             <input v-model="formulaire.visibilite" type="radio" :value="n.valeur" /> {{ n.libelle }}
           </label>
+          <label class="choix auxiliaires">
+            <input v-model="formulaire.auxiliaires" type="checkbox" :disabled="suisAuxiliaire" /> Visible aussi par les auxiliaires de vie
+          </label>
           <p class="aide">Vous voyez toujours les rendez-vous que vous créez.</p>
         </fieldset>
         <div class="actions">
@@ -165,6 +176,7 @@ const supprimer = (rdv) => action(async () => {
             <p v-if="rdv.notes" class="notes">{{ rdv.notes }}</p>
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>
+              <span v-if="rdv.auxiliaires" class="pastille auxiliaire">Auxiliaires</span>
               Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}
             </span>
             <div v-if="rdv.peutModifier" class="actions">
@@ -205,5 +217,7 @@ legend { font-weight: 500; padding: 0 4px; }
 .pastille { display: inline-block; border-radius: 999px; padding: 1px 8px; margin-right: 6px; font-size: 0.8rem; background: #eef0f6; color: var(--bleu-nuit); }
 .pastille.aidants { background: #fdf0dc; color: #8a5a00; }
 .pastille.accompagne, .pastille.accompagne_aidants { background: var(--vert-clair); color: var(--vert); }
+.pastille.auxiliaire { background: #f1e8f7; color: #6b3d8a; }
+.choix.auxiliaires { border-top: 1px solid #ebe8e3; padding-top: 8px; margin-top: 2px; }
 @media (max-width: 480px) { .rdv { flex-direction: column; gap: 4px; } .heure { width: auto; } }
 </style>

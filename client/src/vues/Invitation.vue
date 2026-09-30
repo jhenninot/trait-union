@@ -14,7 +14,7 @@ const jeton = route.params.jeton
 const invitation = ref(null)
 const erreur = ref(route.query.erreur || '')
 const f = ref({ prenom: '', nom: '', email: '', motDePasse: '' })
-const libellesRoles = { aidant: 'aidant', proche: 'proche' }
+const libellesRoles = { aidant: 'aidant', proche: 'proche', auxiliaire: 'auxiliaire de vie' }
 
 onMounted(async () => {
   try {

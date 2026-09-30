@@ -13,17 +13,26 @@ const VISIBILITES = ['tous', 'aidants', 'accompagne', 'accompagne_aidants']
 
 // Niveaux visibles selon le rôle. Les aidants (et les administrateurs) ont une vue
 // d'aidant ; un proche ne voit que « tous ». La personne qui a créé un rendez-vous le
-// voit toujours, quel que soit son niveau.
+// voit toujours, quel que soit son niveau. Une auxiliaire de vie ne voit que les rendez-vous
+// cochés « auxiliaires », quel que soit leur niveau.
+const estAuxiliaire = (req) => !req.peutGerer && req.role === 'auxiliaire'
+
 function niveauxVisibles(req) {
   if (req.peutGerer) return ['tous', 'aidants', 'accompagne_aidants']
   if (req.role === 'accompagne') return ['tous', 'accompagne', 'accompagne_aidants']
+  if (estAuxiliaire(req)) return []
   return ['tous']
 }
 
 function filtreVisibles(req) {
+  const niveaux = niveauxVisibles(req)
   return and(
     eq(rendezVous.cercleId, req.cercle.id),
-    or(inArray(rendezVous.visibilite, niveauxVisibles(req)), eq(rendezVous.creeParId, req.utilisateur.id))
+    or(
+      niveaux.length ? inArray(rendezVous.visibilite, niveaux) : undefined,
+      estAuxiliaire(req) ? eq(rendezVous.auxiliaires, true) : undefined,
+      eq(rendezVous.creeParId, req.utilisateur.id)
+    )
   )
 }
 
@@ -40,12 +49,14 @@ function date(valeur, champ, { obligatoire = true } = {}) {
   return d
 }
 
-function lireSaisie(body) {
+function lireSaisie(req) {
+  const body = req.body
   const debut = date(body.debut, 'début')
   const journeeEntiere = Boolean(body.journeeEntiere)
   const fin = journeeEntiere ? null : date(body.fin, 'fin', { obligatoire: false })
   if (fin && fin < debut) throw new ErreurSaisie('La fin doit être après le début')
-  const visibilite = body.visibilite ?? 'tous'
+  // Ce qu'ajoute une auxiliaire est par défaut pour les aidants, et toujours visible des auxiliaires
+  const visibilite = body.visibilite ?? (estAuxiliaire(req) ? 'aidants' : 'tous')
   if (!VISIBILITES.includes(visibilite)) throw new ErreurSaisie('Niveau de visibilité invalide')
   return {
     titre: valider.texte(body.titre, 'titre'),
@@ -54,7 +65,8 @@ function lireSaisie(body) {
     debut,
     fin,
     journeeEntiere,
-    visibilite
+    visibilite,
+    auxiliaires: estAuxiliaire(req) || Boolean(body.auxiliaires)
   }
 }
 
@@ -67,12 +79,14 @@ const colonnes = {
   fin: rendezVous.fin,
   journeeEntiere: rendezVous.journeeEntiere,
   visibilite: rendezVous.visibilite,
+  auxiliaires: rendezVous.auxiliaires,
   creeParId: rendezVous.creeParId,
   creeParPrenom: utilisateurs.prenom,
   modifieLe: rendezVous.modifieLe
 }
 
-const estVisible = (req, rdv) => niveauxVisibles(req).includes(rdv.visibilite) || rdv.creeParId === req.utilisateur.id
+const estVisible = (req, rdv) => niveauxVisibles(req).includes(rdv.visibilite) ||
+  (estAuxiliaire(req) && rdv.auxiliaires) || rdv.creeParId === req.utilisateur.id
 
 const presenter = (req) => ({ creeParId, ...rdv }) => ({
   ...rdv,
@@ -102,7 +116,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const [rdv] = await db.insert(rendezVous)
-    .values({ ...lireSaisie(req.body), cercleId: req.cercle.id, creeParId: req.utilisateur.id })
+    .values({ ...lireSaisie(req), cercleId: req.cercle.id, creeParId: req.utilisateur.id })
     .returning()
   res.status(201).json(presenter(req)({ ...rdv, creeParPrenom: req.utilisateur.prenom }))
 })
@@ -116,7 +130,7 @@ async function chargerRendezVous(req, res, next) {
 }
 
 router.put('/:rdvId', chargerRendezVous, async (req, res) => {
-  await db.update(rendezVous).set(lireSaisie(req.body)).where(eq(rendezVous.id, req.rdv.id))
+  await db.update(rendezVous).set(lireSaisie(req)).where(eq(rendezVous.id, req.rdv.id))
   const [rdv] = await db.select(colonnes).from(rendezVous)
     .leftJoin(utilisateurs, eq(rendezVous.creeParId, utilisateurs.id))
     .where(eq(rendezVous.id, req.rdv.id))

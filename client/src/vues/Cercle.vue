@@ -57,7 +57,7 @@ const rejoindre = () => action(async () => {
         <RouterLink v-if="cercle.peutGerer" :to="`${url}/tablettes`">Gérer sa tablette</RouterLink>
       </div>
 
-      <h2>Aidants et proches</h2>
+      <h2>Aidants, proches et auxiliaires</h2>
       <div v-for="m in autres" :key="m.id" class="carte ligne">
         <span>
           <strong>{{ m.prenom }} {{ m.nom }}</strong>
@@ -71,13 +71,15 @@ const rejoindre = () => action(async () => {
 
       <div v-if="cercle.peutGerer" class="carte">
         <strong>Inviter quelqu'un</strong>
-        <p class="aide">Un aidant gère le cercle (tâches, rendez-vous, médicaments). Un proche peut échanger et envoyer des photos.</p>
+        <p class="aide">Un aidant gère le cercle (tâches, rendez-vous, médicaments). Un proche peut échanger et envoyer des photos.
+          Une auxiliaire de vie voit seulement les rendez-vous qui lui sont ouverts, pas les photos.</p>
         <label v-if="session.email" class="champ-email">Son adresse email (facultatif)
           <input v-model="emailInvite" type="email" placeholder="Pour lui envoyer le lien par email" />
         </label>
         <div class="actions">
           <button class="secondaire" @click="inviter('aidant')">Inviter un aidant</button>
           <button class="secondaire" @click="inviter('proche')">Inviter un proche</button>
+          <button class="secondaire" @click="inviter('auxiliaire')">Inviter une auxiliaire de vie</button>
         </div>
         <div v-if="invitation" class="encart">
           <p v-if="invitation.emailEnvoye">Invitation envoyée par email à <strong>{{ invitation.emailEnvoye }}</strong>. Vous pouvez aussi lui transmettre ce lien :</p>

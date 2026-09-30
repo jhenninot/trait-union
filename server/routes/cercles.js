@@ -33,6 +33,12 @@ async function chargerCercle(req, res, next) {
   next()
 }
 
+// Les auxiliaires de vie n'ont pas accès aux photos de la famille
+function refuserAuxiliaires(req, res, next) {
+  if (!req.peutGerer && req.role === 'auxiliaire') return res.status(403).json({ erreur: 'Les photos ne sont pas accessibles aux auxiliaires de vie' })
+  next()
+}
+
 function exigerGestion(req, res, next) {
   if (!req.peutGerer) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
   next()
@@ -108,10 +114,10 @@ router.post('/:cercleId/rejoindre', chargerCercle, exigerAdmin, async (req, res)
   res.status(204).end()
 })
 
-// Lien d'invitation (7 jours, usage unique) pour un aidant ou un proche
+// Lien d'invitation (7 jours, usage unique) pour un aidant, un proche ou une auxiliaire de vie
 router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
   const role = req.body.role
-  if (!['aidant', 'proche'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  if (!['aidant', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
   // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
   const destinataire = req.body.email ? valider.email(req.body.email) : null
   if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
@@ -127,7 +133,7 @@ router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, 
       paragraphes: [
         'Bonjour,',
         `${[u.prenom, u.nom].filter(Boolean).join(' ')} vous invite à rejoindre le cercle « ${req.cercle.nom} » sur Trait d'union, ` +
-          `en tant ${role === 'aidant' ? 'qu\'aidant' : 'que proche'}.`,
+          `en tant ${{ aidant: 'qu\'aidant', proche: 'que proche', auxiliaire: 'qu\'auxiliaire de vie' }[role]}.`,
         `Ce lien est personnel et ne sert qu'une fois. Il est valable jusqu'au ${expireLe.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'long' })}.`
       ],
       bouton: { texte: 'Rejoindre le cercle', lien: `${urlApplication(req)}/invitation/${jeton}` }
@@ -197,7 +203,7 @@ router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, asyn
 
 // Agenda du cercle (rendez-vous)
 router.use('/:cercleId/rendez-vous', chargerCercle, routesAgenda)
-router.use('/:cercleId/photos', chargerCercle, routesPhotos)
-router.use('/:cercleId/albums', chargerCercle, routesAlbums)
+router.use('/:cercleId/photos', chargerCercle, refuserAuxiliaires, routesPhotos)
+router.use('/:cercleId/albums', chargerCercle, refuserAuxiliaires, routesAlbums)
 
 export default router

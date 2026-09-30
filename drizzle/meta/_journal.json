@@ -57,6 +57,13 @@
       "when": 1790783094063,
       "tag": "0007_albums_vus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790785875790,
+      "tag": "0008_auxiliaires",
+      "breakpoints": true
     }
   ]
 }

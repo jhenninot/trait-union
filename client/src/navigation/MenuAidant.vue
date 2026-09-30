@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { session, deconnecter } from '../session.js'
-import { aLesDroits } from '../roles.js'
+import { aLesDroits, estAuxiliaire } from '../roles.js'
 import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
@@ -43,6 +43,8 @@ const cercleId = computed(() => {
 })
 const cercle = computed(() => choix.value.find((c) => c.id === cercleId.value) ?? null)
 const peutGerer = computed(() => session.utilisateur.estAdmin || aLesDroits(cercle.value?.role, 'aidant'))
+// Les auxiliaires de vie n'ont pas accès aux photos
+const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value?.role))
 
 watch(() => route.params.id, (id) => {
   if (id) try { localStorage.setItem(MEMOIRE, id) } catch { /* stockage indisponible */ }
@@ -51,7 +53,9 @@ watch(() => route.fullPath, () => (ouvert.value = false))
 
 // Changer de cercle garde la même rubrique (Famille, Agenda, Photos ou Tablettes)
 function changerCercle(id) {
-  const rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
+  let rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
+  const cible = choix.value.find((c) => c.id === id)
+  if (rubrique === '/photos' && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -91,7 +95,7 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
         <Icone nom="agenda" /> Agenda
       </RouterLink>
-      <RouterLink :to="`/cercles/${cercle.id}/photos`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }">
+      <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/photos`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }">
         <Icone nom="photo" /> Photos
       </RouterLink>
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
@@ -118,7 +122,7 @@ const estActif = (chemin) => route.path === chemin
     <RouterLink to="/" :class="{ actif: estActif('/') }"><Icone nom="accueil" />Accueil</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/agenda`" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }"><Icone nom="agenda" />Agenda</RouterLink>
-    <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/photos`" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }"><Icone nom="photo" />Photos</RouterLink>
+    <RouterLink v-if="cercle && voitPhotos" :to="`/cercles/${cercle.id}/photos`" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }"><Icone nom="photo" />Photos</RouterLink>
     <button :class="{ actif: ouvert }" @click="ouvert = !ouvert"><Icone nom="plus" />Plus</button>
   </nav>
 </template>

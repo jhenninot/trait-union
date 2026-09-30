@@ -28,7 +28,9 @@ export const cercles = pgTable('cercles', {
   nom: text('nom').notNull()
 })
 
-export const roleMembre = pgEnum('role_membre', ['accompagne', 'aidant', 'proche'])
+// auxiliaire : auxiliaire de vie (professionnel) ; ne voit ni les photos ni l'agenda familial,
+// seulement les rendez-vous ouverts aux auxiliaires (server/routes/agenda.js).
+export const roleMembre = pgEnum('role_membre', ['accompagne', 'aidant', 'proche', 'auxiliaire'])
 
 export const membres = pgTable('membres', {
   ...commun,
@@ -110,7 +112,9 @@ export const rendezVous = pgTable('rendez_vous', {
   debut: timestamp('debut', { withTimezone: true }).notNull(),
   fin: timestamp('fin', { withTimezone: true }),
   journeeEntiere: boolean('journee_entiere').notNull().default(false),
-  visibilite: visibiliteRendezVous('visibilite').notNull().default('tous')
+  visibilite: visibiliteRendezVous('visibilite').notNull().default('tous'),
+  // Visible aussi par les auxiliaires de vie, en plus du niveau ci-dessus
+  auxiliaires: boolean('auxiliaires').notNull().default(false)
 }, (t) => [
   index('rendez_vous_cercle_debut_idx').on(t.cercleId, t.debut)
 ])
