@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, dateEnvoi } from '../photos.js'
+import { auRetour } from '../miseAJour.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -15,6 +16,7 @@ const index = ref(0)
 const diaporama = ref(false)
 let minuterieDiaporama
 let minuterieRechargement
+let arreterRetour
 
 async function charger() {
   albums.value = await albumsAccompagne(session.cercles)
@@ -48,9 +50,11 @@ function retourAlbums() {
 onMounted(() => {
   charger()
   minuterieRechargement = setInterval(charger, 10 * 60_000)
+  arreterRetour = auRetour(charger) // nouvelles photos dès qu'on revient sur l'appli
 })
 onUnmounted(() => {
   clearInterval(minuterieRechargement)
+  arreterRetour?.()
   clearInterval(minuterieDiaporama)
 })
 

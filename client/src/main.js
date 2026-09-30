@@ -20,6 +20,7 @@ import Photos from './vues/Photos.vue'
 import PhotosAccompagne from './vues/PhotosAccompagne.vue'
 import AdminPhotos from './vues/AdminPhotos.vue'
 import { preparerInstallation } from './installation.js'
+import { surveillerMisesAJour } from './miseAJour.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -59,4 +60,5 @@ router.beforeEach(async (to) => {
 })
 
 preparerInstallation()
+surveillerMisesAJour(router)
 createApp(App).use(router).mount('#app')

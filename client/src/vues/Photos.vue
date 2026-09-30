@@ -4,6 +4,7 @@ import { api } from '../api.js'
 import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
+import { auRetour } from '../miseAJour.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -46,6 +47,13 @@ watch(url, () => {
   charger()
   chargerAlbums()
 }, { immediate: true })
+
+// Nouvelles photos et albums quand on revient sur l'appli (sauf pendant un envoi)
+onUnmounted(auRetour(() => {
+  if (envoiEnCours.value || aEnvoyer.value.length) return
+  charger()
+  chargerAlbums()
+}))
 
 function choisirFiltre(f) {
   if (filtre.value === f) return
