@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle } from '../cercle.js'
-import { visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
+import { RECURRENCES, texteRecurrence, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 
 // Agenda d'un cercle pour les aidants et les proches : vue mois, semaine ou liste
@@ -38,8 +38,13 @@ const libelleNiveau = (v) => niveaux.value.find((n) => n.valeur === v)?.court
 const charger = () => action(async () => {
   let filtre
   if (vue.value === 'liste') {
-    const aujourdhui = debutDuJour().toISOString()
-    filtre = passes.value ? `jusqua=${aujourdhui}` : `depuis=${aujourdhui}`
+    // Liste : les trois prochains mois, ou les trois derniers
+    const aujourdhui = debutDuJour()
+    const autre = new Date(aujourdhui)
+    autre.setMonth(autre.getMonth() + (passes.value ? -3 : 3))
+    filtre = passes.value
+      ? `depuis=${autre.toISOString()}&jusqua=${aujourdhui.toISOString()}`
+      : `depuis=${aujourdhui.toISOString()}&jusqua=${autre.toISOString()}`
   } else {
     const { debut, fin } = periode(vue.value, reference.value)
     filtre = `depuis=${debut.toISOString()}&jusqua=${fin.toISOString()}`
@@ -56,36 +61,76 @@ const groupes = computed(() => {
   return [{ cle: jourChoisi.value, titre: nomDuJour(combiner(jourChoisi.value)), rendezVous: duJour(liste.value, jourChoisi.value) }]
 })
 
-function nouveau() {
-  const jour = vue.value === 'liste' ? valeurJour(new Date()) : jourChoisi.value
-  formulaire.value = { id: null, titre: '', jour, heure: '', heureFin: '', lieu: '', notes: '', visibilite: 'tous' }
+// Heure + 1 h (sans dépasser 23h59)
+function uneHeureApres(heure) {
+  const [h, m] = heure.split(':').map(Number)
+  return h >= 23 ? '23:59' : `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+function nouveau() {
+  const jour = vue.value === 'liste' ? valeurJour(new Date()) : jourChoisi.value
+  formulaire.value = {
+    id: null, titre: '', journeeEntiere: false,
+    jour, heure: '09:00', jourFin: jour, heureFin: '10:00',
+    recurrence: 'aucune', intervalle: 1, recurrenceFin: '',
+    lieu: '', notes: '', visibilite: 'tous'
+  }
+}
+
+// Modifier une occurrence modifie toute la série : le formulaire part de la première
 function modifier(rdv) {
-  const debut = new Date(rdv.debut)
+  const debut = new Date(rdv.serieDebut)
+  const fin = rdv.serieFin ? new Date(rdv.serieFin) : debut
   formulaire.value = {
     id: rdv.id,
     titre: rdv.titre,
+    journeeEntiere: rdv.journeeEntiere,
     jour: valeurJour(debut),
-    heure: rdv.journeeEntiere ? '' : valeurHeure(debut),
-    heureFin: rdv.fin ? valeurHeure(new Date(rdv.fin)) : '',
+    heure: rdv.journeeEntiere ? '09:00' : valeurHeure(debut),
+    jourFin: valeurJour(fin),
+    heureFin: rdv.journeeEntiere || !rdv.serieFin ? uneHeureApres(valeurHeure(debut)) : valeurHeure(fin),
+    recurrence: rdv.recurrence,
+    intervalle: rdv.intervalle,
+    recurrenceFin: rdv.recurrenceFin ? valeurJour(new Date(rdv.recurrenceFin)) : '',
     lieu: rdv.lieu ?? '',
     notes: rdv.notes ?? '',
     visibilite: rdv.visibilite
   }
 }
 
-// Sans heure, le rendez-vous dure toute la journée
+// La fin suit le début : même jour au minimum, une heure plus tard par défaut
+watch(() => formulaire.value?.jour, (jour, avant) => {
+  const f = formulaire.value
+  if (!f || !jour) return
+  if (!f.jourFin || f.jourFin < jour || f.jourFin === avant) f.jourFin = jour
+})
+watch(() => formulaire.value?.heure, (heure, avant) => {
+  const f = formulaire.value
+  if (!f || !heure || !avant || f.jourFin !== f.jour) return
+  if (f.heureFin === uneHeureApres(avant) || f.heureFin <= heure) f.heureFin = uneHeureApres(heure)
+})
+
+const uniteIntervalle = computed(() => {
+  const r = RECURRENCES.find((x) => x.valeur === formulaire.value?.recurrence)
+  return r?.unite?.[formulaire.value.intervalle > 1 ? 1 : 0] ?? ''
+})
+
 const enregistrer = () => action(async () => {
   const f = formulaire.value
+  const debut = f.journeeEntiere ? combiner(f.jour) : combiner(f.jour, f.heure)
+  const fin = f.journeeEntiere ? combiner(f.jourFin, '23:59') : combiner(f.jourFin, f.heureFin)
+  if (fin < debut) throw new Error('La fin doit être après le début')
   const corps = {
     titre: f.titre,
     lieu: f.lieu,
     notes: f.notes,
     visibilite: f.visibilite,
-    journeeEntiere: !f.heure,
-    debut: combiner(f.jour, f.heure || '00:00').toISOString(),
-    fin: f.heure && f.heureFin ? combiner(f.jour, f.heureFin).toISOString() : null
+    journeeEntiere: f.journeeEntiere,
+    debut: debut.toISOString(),
+    fin: fin.toISOString(),
+    recurrence: f.recurrence,
+    intervalle: f.intervalle,
+    recurrenceFin: f.recurrence !== 'aucune' && f.recurrenceFin ? combiner(f.recurrenceFin, '23:59').toISOString() : null
   }
   if (f.id) await api('PUT', `${url.value}/rendez-vous/${f.id}`, corps)
   else await api('POST', `${url.value}/rendez-vous`, corps)
@@ -94,7 +139,8 @@ const enregistrer = () => action(async () => {
 })
 
 const supprimer = (rdv) => action(async () => {
-  if (!confirm(`Supprimer « ${rdv.titre} » ?`)) return
+  const serie = rdv.recurrence !== 'aucune' ? ' et toutes ses répétitions' : ''
+  if (!confirm(`Supprimer « ${rdv.titre} »${serie} ?`)) return
   await api('DELETE', `${url.value}/rendez-vous/${rdv.id}`)
   if (formulaire.value?.id === rdv.id) formulaire.value = null
   await charger()
@@ -114,12 +160,27 @@ const supprimer = (rdv) => action(async () => {
       <form v-if="formulaire" class="carte" @submit.prevent="enregistrer">
         <strong>{{ formulaire.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous' }}</strong>
         <label>Quoi <input v-model="formulaire.titre" required maxlength="200" placeholder="Ex. Visite chez le Dr Martin" /></label>
+        <label class="choix"><input v-model="formulaire.journeeEntiere" type="checkbox" /> Journée entière</label>
         <div class="ligne-champs">
-          <label>Jour <input v-model="formulaire.jour" type="date" required /></label>
-          <label>Heure <input v-model="formulaire.heure" type="time" /></label>
-          <label>Fin <input v-model="formulaire.heureFin" type="time" :disabled="!formulaire.heure" /></label>
+          <label>Début <input v-model="formulaire.jour" type="date" required /></label>
+          <label v-if="!formulaire.journeeEntiere">Heure <input v-model="formulaire.heure" type="time" required /></label>
         </div>
-        <p class="aide">Sans heure, le rendez-vous occupe toute la journée.</p>
+        <div class="ligne-champs">
+          <label>Fin <input v-model="formulaire.jourFin" type="date" :min="formulaire.jour" required /></label>
+          <label v-if="!formulaire.journeeEntiere">Heure <input v-model="formulaire.heureFin" type="time" required /></label>
+        </div>
+        <div class="ligne-champs">
+          <label>Répétition
+            <select v-model="formulaire.recurrence">
+              <option v-for="r in RECURRENCES" :key="r.valeur" :value="r.valeur">{{ r.libelle }}</option>
+            </select>
+          </label>
+          <template v-if="formulaire.recurrence !== 'aucune'">
+            <label>Tous les <span class="intervalle"><input v-model.number="formulaire.intervalle" type="number" min="1" max="99" required /> {{ uniteIntervalle }}</span></label>
+            <label>Jusqu'au <input v-model="formulaire.recurrenceFin" type="date" :min="formulaire.jour" /></label>
+          </template>
+        </div>
+        <p v-if="formulaire.recurrence !== 'aucune'" class="aide">Sans date, la répétition continue indéfiniment. Une modification s'applique à toutes les répétitions.</p>
         <label>Lieu <input v-model="formulaire.lieu" maxlength="200" /></label>
         <label>Notes <textarea v-model="formulaire.notes" rows="3" maxlength="2000" /></label>
         <fieldset>
@@ -146,14 +207,14 @@ const supprimer = (rdv) => action(async () => {
           <button class="lien" :class="{ actif: !passes }" @click="passes = false">À venir</button>
           <button class="lien" :class="{ actif: passes }" @click="passes = true">Passés</button>
         </div>
-        <p v-if="!groupes.length" class="aide">{{ passes ? 'Aucun rendez-vous passé.' : 'Aucun rendez-vous à venir.' }}</p>
+        <p v-if="!groupes.length" class="aide">{{ passes ? 'Aucun rendez-vous ces trois derniers mois.' : 'Aucun rendez-vous dans les trois prochains mois.' }}</p>
       </template>
       <Calendrier v-else :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" />
 
       <section v-for="g in groupes" :key="g.cle">
         <h2 class="jour">{{ g.titre }}</h2>
         <p v-if="!g.rendezVous.length" class="aide">Rien de prévu ce jour-là.</p>
-        <div v-for="rdv in g.rendezVous" :key="rdv.id" class="carte rdv">
+        <div v-for="rdv in g.rendezVous" :key="rdv.cle" class="carte rdv">
           <div class="heure">{{ horaire(rdv) }}</div>
           <div v-if="rdv.masque" class="detail">
             <strong class="prive">{{ titreRdv(rdv) }}</strong>
@@ -162,6 +223,7 @@ const supprimer = (rdv) => action(async () => {
           <div v-else class="detail">
             <strong>{{ rdv.titre }}</strong>
             <span v-if="rdv.lieu" class="aide">{{ rdv.lieu }}</span>
+            <span v-if="texteRecurrence(rdv)" class="aide">🔁 {{ texteRecurrence(rdv) }}</span>
             <p v-if="rdv.notes" class="notes">{{ rdv.notes }}</p>
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>
@@ -183,6 +245,8 @@ const supprimer = (rdv) => action(async () => {
 .surtitre { margin: 0; }
 .titre { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ligne-champs { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+.intervalle { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+.intervalle input { width: 70px; }
 @media (max-width: 480px) { .ligne-champs { grid-template-columns: 1fr 1fr; } .ligne-champs label:first-child { grid-column: 1 / -1; } }
 textarea { font: inherit; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; resize: vertical; }
 fieldset { border: 1px solid #ebe8e3; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }

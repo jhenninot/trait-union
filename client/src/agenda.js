@@ -52,9 +52,37 @@ export function nomDuJour(d) {
 
 export const heureCourte = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
 
+const jourCourt = (d) => d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+
 export function horaire(rdv) {
-  if (rdv.journeeEntiere) return 'Toute la journée'
-  return rdv.fin ? `${heureCourte(rdv.debut)} – ${heureCourte(rdv.fin)}` : heureCourte(rdv.debut)
+  const debut = new Date(rdv.debut)
+  const fin = rdv.fin ? new Date(rdv.fin) : null
+  const plusieursJours = fin && valeurJour(fin) !== valeurJour(debut)
+  if (rdv.journeeEntiere) return plusieursJours ? `Du ${jourCourt(debut)} au ${jourCourt(fin)}` : 'Toute la journée'
+  if (plusieursJours) return `Du ${jourCourt(debut)} ${heureCourte(debut)} au ${jourCourt(fin)} ${heureCourte(fin)}`
+  return fin ? `${heureCourte(debut)} – ${heureCourte(fin)}` : heureCourte(debut)
+}
+
+// Répétitions proposées (mêmes valeurs que server/agenda/recurrence.js)
+export const RECURRENCES = [
+  { valeur: 'aucune', libelle: 'Ne se répète pas' },
+  { valeur: 'quotidienne', libelle: 'Tous les jours', unite: ['jour', 'jours'] },
+  { valeur: 'hebdomadaire', libelle: 'Toutes les semaines', unite: ['semaine', 'semaines'] },
+  { valeur: 'mensuelle', libelle: 'Tous les mois', unite: ['mois', 'mois'] },
+  { valeur: 'annuelle', libelle: 'Tous les ans', unite: ['an', 'ans'] }
+]
+
+// « Toutes les 2 semaines, jusqu'au 3 nov. » (vide si le rendez-vous ne se répète pas)
+export function texteRecurrence(rdv) {
+  const r = RECURRENCES.find((x) => x.valeur === rdv.recurrence)
+  if (!r || r.valeur === 'aucune') return ''
+  let texte = r.libelle
+  if (rdv.intervalle > 1) {
+    const feminin = r.valeur === 'hebdomadaire'
+    texte = `${feminin ? 'Toutes les' : 'Tous les'} ${rdv.intervalle} ${r.unite[1]}`
+  }
+  if (rdv.recurrenceFin) texte += `, jusqu'au ${new Date(rdv.recurrenceFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  return texte
 }
 
 // Regroupe des rendez-vous triés par jour : [{ cle, titre, rendezVous: [...] }]
