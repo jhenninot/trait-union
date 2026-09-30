@@ -1,12 +1,22 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
-import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, combiner, horaire, parJour } from '../agenda.js'
+import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
+import Calendrier from './Calendrier.vue'
 
-// « Mon agenda » sur la tablette de la personne accompagnée : ce qui est prévu
-// aujourd'hui en grand, puis les prochains jours, et un ajout très simple.
+// « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
+// ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
+// mois en plus, et un ajout très simple.
 const JOURS_AFFICHES = 60
+const VUES = [
+  { valeur: 'liste', libelle: 'Liste' },
+  { valeur: 'semaine', libelle: 'Semaine' },
+  { valeur: 'mois', libelle: 'Mois' }
+]
+const vue = ref('liste')
+const reference = ref(new Date())
+const jourChoisi = ref(valeurJour(new Date()))
 const liste = ref([])
 const charge = ref(false)
 const erreur = ref('')
@@ -14,14 +24,40 @@ const saisie = ref(null)
 
 async function charger() {
   const aujourdhui = debutDuJour()
-  liste.value = await rendezVousAccompagne(session.cercles, aujourdhui, ajouterJours(aujourdhui, JOURS_AFFICHES))
+  const { debut, fin } = vue.value === 'liste'
+    ? { debut: aujourdhui, fin: ajouterJours(aujourdhui, JOURS_AFFICHES) }
+    : periode(vue.value, reference.value)
+  liste.value = await rendezVousAccompagne(session.cercles, debut, fin)
   charge.value = true
 }
-onMounted(charger)
+watch([vue, reference], charger, { immediate: true })
 
-const cleAujourdhui = () => valeurJour(new Date())
-const aujourdhui = computed(() => liste.value.filter((r) => valeurJour(new Date(r.debut)) <= cleAujourdhui()))
-const prochainsJours = computed(() => parJour(liste.value.filter((r) => valeurJour(new Date(r.debut)) > cleAujourdhui())))
+// En changeant de vue, on revient à aujourd'hui
+function choisirVue(v) {
+  vue.value = v
+  reference.value = new Date()
+  jourChoisi.value = valeurJour(new Date())
+}
+
+function naviguer(sens) {
+  reference.value = decaler(vue.value, reference.value, sens)
+  const { debut, fin } = periode(vue.value, reference.value)
+  const aujourdhui = new Date()
+  const choisi = aujourdhui >= debut && aujourdhui < fin ? aujourdhui : vue.value === 'mois' ? reference.value : debut
+  jourChoisi.value = valeurJour(choisi)
+}
+
+// Sections affichées sous le calendrier (ou la liste) : [{ cle, titre, enAvant, rendezVous }]
+const sections = computed(() => {
+  const cleAujourdhui = valeurJour(new Date())
+  if (vue.value !== 'liste') {
+    const cle = jourChoisi.value
+    return [{ cle, titre: nomDuJour(combiner(cle)), enAvant: true, rendezVous: duJour(liste.value, cle) }]
+  }
+  const aujourdhui = liste.value.filter((r) => valeurJour(new Date(r.debut)) <= cleAujourdhui)
+  const ensuite = parJour(liste.value.filter((r) => valeurJour(new Date(r.debut)) > cleAujourdhui))
+  return [{ cle: cleAujourdhui, titre: 'Aujourd\'hui', enAvant: true, rendezVous: aujourdhui }, ...ensuite]
+})
 
 const QUAND = [
   { valeur: 0, libelle: 'Aujourd\'hui' },
@@ -36,7 +72,11 @@ const QUI = [
 
 function ajouter() {
   erreur.value = ''
-  saisie.value = { titre: '', quand: 0, autreJour: valeurJour(ajouterJours(new Date(), 2)), heure: '', visibilite: 'tous' }
+  // Dans le calendrier, le jour sélectionné est proposé
+  const jour = vue.value === 'liste' ? null : jourChoisi.value
+  const ecart = jour ? Math.round((combiner(jour) - debutDuJour()) / 86_400_000) : 0
+  const quand = ecart === 0 || ecart === 1 ? ecart : 'autre'
+  saisie.value = { titre: '', quand, autreJour: jour ?? valeurJour(ajouterJours(new Date(), 2)), heure: '', visibilite: 'tous' }
 }
 
 async function enregistrer() {
@@ -109,35 +149,33 @@ async function supprimer(rdv) {
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
-      <section class="aujourdhui">
-        <h2>Aujourd'hui</h2>
-        <p v-if="charge && !aujourdhui.length" class="vide">Rien de prévu aujourd'hui.</p>
-        <div v-for="rdv in aujourdhui" :key="rdv.id" class="rdv">
-          <span class="heure">{{ horaire(rdv) }}</span>
-          <span class="titre">{{ rdv.titre }}</span>
-          <span v-if="rdv.lieu" class="lieu">{{ rdv.lieu }}</span>
-          <button v-if="rdv.deMoi" class="effacer" @click="supprimer(rdv)">Effacer</button>
-        </div>
-      </section>
+      <div class="vues" role="tablist">
+        <button v-for="v in VUES" :key="v.valeur" role="tab" :aria-selected="vue === v.valeur" :class="{ actif: vue === v.valeur }" @click="choisirVue(v.valeur)">
+          {{ v.libelle }}
+        </button>
+      </div>
 
-      <section v-if="prochainsJours.length" class="bientot">
-        <h2>Les prochains jours</h2>
-        <div v-for="g in prochainsJours" :key="g.cle" class="jour">
-          <h3>{{ g.titre }}</h3>
-          <div v-for="rdv in g.rendezVous" :key="rdv.id" class="rdv">
+      <Calendrier v-if="vue !== 'liste'" grand :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" />
+
+      <template v-for="(g, i) in sections" :key="g.cle">
+        <h2 v-if="vue === 'liste' && i === 1">Les prochains jours</h2>
+        <section :class="g.enAvant ? 'aujourdhui' : 'jour'">
+          <component :is="g.enAvant ? 'h2' : 'h3'">{{ g.titre }}</component>
+          <p v-if="g.enAvant && charge && !g.rendezVous.length" class="vide">Rien de prévu{{ vue === 'liste' ? ' aujourd\'hui' : ' ce jour-là' }}.</p>
+          <div v-for="rdv in g.rendezVous" :key="rdv.id" class="rdv" :class="{ masque: rdv.masque }">
             <span class="heure">{{ horaire(rdv) }}</span>
-            <span class="titre">{{ rdv.titre }}</span>
+            <span class="titre">{{ titreRdv(rdv) }}</span>
             <span v-if="rdv.lieu" class="lieu">{{ rdv.lieu }}</span>
             <button v-if="rdv.deMoi" class="effacer" @click="supprimer(rdv)">Effacer</button>
           </div>
-        </div>
-      </section>
+        </section>
+      </template>
     </template>
   </main>
 </template>
 
 <style scoped>
-.agenda { max-width: 900px; flex: 1; padding: 24px; overflow-y: auto; }
+.agenda { max-width: 1200px; flex: 1; padding: 24px; overflow-y: auto; }
 h1 { font-size: 2.4rem; margin: 0; }
 h2 { font-size: 1.9rem; color: var(--bleu-nuit); margin: 28px 0 12px; }
 h3 { font-size: 1.5rem; color: var(--bleu-nuit); margin: 20px 0 8px; }
@@ -145,6 +183,10 @@ h3 { font-size: 1.5rem; color: var(--bleu-nuit); margin: 20px 0 8px; }
 button.principal { font-size: 1.6rem; font-weight: 700; padding: 18px 32px; border-radius: 20px; }
 .aujourdhui { background: var(--vert-clair); border-radius: 24px; padding: 4px 20px 20px; margin-top: 20px; }
 .aujourdhui .rdv { font-size: 1.3rem; }
+.vues { display: flex; gap: 10px; margin-top: 16px; }
+.vues button { flex: 1; font-size: 1.4rem; font-weight: 600; padding: 14px; border-radius: 16px; background: #f3f0ea; color: var(--bleu-nuit); }
+.vues button.actif { background: var(--bleu-nuit); color: white; }
+.rdv.masque .titre { color: var(--gris); font-style: italic; font-weight: 600; }
 .vide { font-size: 1.6rem; color: var(--gris); margin: 0; }
 .rdv {
   background: white;

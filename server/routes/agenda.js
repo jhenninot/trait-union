@@ -72,17 +72,23 @@ const colonnes = {
   modifieLe: rendezVous.modifieLe
 }
 
+const estVisible = (req, rdv) => niveauxVisibles(req).includes(rdv.visibilite) || rdv.creeParId === req.utilisateur.id
+
 const presenter = (req) => ({ creeParId, ...rdv }) => ({
   ...rdv,
   deMoi: creeParId === req.utilisateur.id,
   peutModifier: peutModifier(req, { creeParId })
 })
 
-// Liste des rendez-vous visibles, éventuellement entre ?depuis= et ?jusqua= (dates ISO)
+// Un rendez-vous que l'on n'a pas le droit de voir apparaît quand même dans l'agenda,
+// mais sans rien d'autre que ses horaires (« Rendez-vous privé »).
+const masquer = ({ id, debut, fin, journeeEntiere }) => ({ id, debut, fin, journeeEntiere, masque: true })
+
+// Liste des rendez-vous, éventuellement entre ?depuis= et ?jusqua= (dates ISO)
 router.get('/', async (req, res) => {
   const depuis = date(req.query.depuis, 'depuis', { obligatoire: false })
   const jusqua = date(req.query.jusqua, 'jusqua', { obligatoire: false })
-  const conditions = [filtreVisibles(req)]
+  const conditions = [eq(rendezVous.cercleId, req.cercle.id)]
   // Un rendez-vous commencé avant « depuis » mais pas encore fini reste affiché
   if (depuis) conditions.push(or(gte(rendezVous.debut, depuis), gte(rendezVous.fin, depuis)))
   if (jusqua) conditions.push(lt(rendezVous.debut, jusqua))
@@ -91,7 +97,7 @@ router.get('/', async (req, res) => {
     .where(and(...conditions))
     .orderBy(asc(rendezVous.debut))
     .limit(500)
-  res.json(liste.map(presenter(req)))
+  res.json(liste.map((rdv) => (estVisible(req, rdv) ? presenter(req)(rdv) : masquer(rdv))))
 })
 
 router.post('/', async (req, res) => {

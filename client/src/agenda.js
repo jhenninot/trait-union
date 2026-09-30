@@ -80,3 +80,59 @@ export async function rendezVousAccompagne(cercles, depuis, jusqua) {
   ))
   return listes.flat().sort((a, b) => new Date(a.debut) - new Date(b.debut))
 }
+
+// Titre affiché : un rendez-vous que l'on n'a pas le droit de voir reste visible, sans détails
+export const titreRdv = (rdv) => (rdv.masque ? 'Rendez-vous privé' : rdv.titre)
+
+// --- Vues semaine et mois ---
+
+// Lundi de la semaine de `d`
+export function debutSemaine(d) {
+  const jour = debutDuJour(d)
+  return ajouterJours(jour, -((jour.getDay() + 6) % 7))
+}
+
+// Jours affichés par une vue : la semaine, ou les semaines entières qui couvrent le mois
+export function periode(vue, reference) {
+  if (vue === 'semaine') {
+    const debut = debutSemaine(reference)
+    return { debut, fin: ajouterJours(debut, 7) }
+  }
+  const premier = new Date(reference.getFullYear(), reference.getMonth(), 1)
+  const dernier = new Date(reference.getFullYear(), reference.getMonth() + 1, 0)
+  return { debut: debutSemaine(premier), fin: ajouterJours(debutSemaine(dernier), 7) }
+}
+
+// Semaine ou mois suivant (sens = 1) ou précédent (sens = -1)
+export function decaler(vue, reference, sens) {
+  if (vue === 'semaine') return ajouterJours(reference, 7 * sens)
+  return new Date(reference.getFullYear(), reference.getMonth() + sens, 1)
+}
+
+export function titrePeriode(vue, reference) {
+  if (vue === 'mois') {
+    const t = reference.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    return t.charAt(0).toUpperCase() + t.slice(1)
+  }
+  const { debut } = periode('semaine', reference)
+  const fin = ajouterJours(debut, 6)
+  const court = { day: 'numeric', month: 'long' }
+  const memeMois = debut.getMonth() === fin.getMonth()
+  const de = memeMois ? debut.getDate() : debut.toLocaleDateString('fr-FR', court)
+  return `Semaine du ${de} au ${fin.toLocaleDateString('fr-FR', { ...court, year: 'numeric' })}`
+}
+
+export function jours(debut, fin) {
+  const liste = []
+  for (let d = debut; d < fin; d = ajouterJours(d, 1)) liste.push(d)
+  return liste
+}
+
+// Rendez-vous qui occupent le jour `cle` (AAAA-MM-JJ)
+export function duJour(liste, cle) {
+  return liste.filter((rdv) => {
+    const debut = valeurJour(new Date(rdv.debut))
+    const fin = rdv.fin ? valeurJour(new Date(rdv.fin)) : debut
+    return debut <= cle && cle <= fin
+  })
+}

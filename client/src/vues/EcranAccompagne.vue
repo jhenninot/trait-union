@@ -10,7 +10,8 @@ let minuterie
 const programme = ref([])
 const chargerProgramme = async () => {
   const jour = debutDuJour()
-  programme.value = await rendezVousAccompagne(session.cercles, jour, ajouterJours(jour, 1))
+  // Les rendez-vous privés n'apparaissent que dans l'agenda
+  programme.value = (await rendezVousAccompagne(session.cercles, jour, ajouterJours(jour, 1))).filter((r) => !r.masque)
 }
 let minuterieProgramme
 onMounted(() => {
