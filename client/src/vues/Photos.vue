@@ -21,7 +21,10 @@ const legendeEnEdition = ref(null)
 const albums = ref([])
 const compteurs = ref({ total: 0, sansAlbum: 0 })
 const filtre = ref('tous') // 'tous', 'aucun' (sans album) ou l'id d'un album
-const albumEnvoi = ref('') // album où ranger les photos envoyées ('' = sans album)
+const albumEnvoi = ref('') // album où ranger les photos envoyées ('' = sans album, NOUVEL_ALBUM = à créer)
+const NOUVEL_ALBUM = 'nouveau'
+const nomAlbumEnvoi = ref('') // nom de l'album créé au moment de l'envoi
+const erreurAlbum = ref('')
 const nomAlbum = ref(null) // saisie d'un nouvel album ou d'un nouveau nom
 
 const albumCourant = computed(() => albums.value.find((a) => a.id === filtre.value) ?? null)
@@ -113,6 +116,22 @@ onUnmounted(vider)
 
 // Envoi une photo après l'autre (les réductions consomment beaucoup de mémoire sur téléphone)
 async function envoyer() {
+  // Album créé à la volée : d'abord l'album, puis les photos dedans
+  if (albumEnvoi.value === NOUVEL_ALBUM) {
+    const nom = nomAlbumEnvoi.value.trim()
+    erreurAlbum.value = nom ? '' : 'Donnez un nom au nouvel album'
+    if (!nom) return
+    let album
+    try {
+      album = await api('POST', `${url.value}/albums`, { nom })
+    } catch (e) {
+      erreurAlbum.value = e.message
+      return
+    }
+    albums.value.unshift(album)
+    albumEnvoi.value = album.id
+    nomAlbumEnvoi.value = ''
+  }
   envoiEnCours.value = true
   for (const a of aEnvoyer.value.filter((x) => x.etat !== 'fait')) {
     a.etat = 'envoi'
@@ -253,12 +272,21 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           </div>
           <button v-if="!envoiEnCours && a.etat !== 'fait'" class="lien" @click="retirer(i)">Retirer</button>
         </div>
-        <label v-if="albums.length" class="choix-album">Ranger dans l'album
+        <label v-if="actif" class="choix-album">Ranger dans l'album
           <select v-model="albumEnvoi" :disabled="envoiEnCours">
             <option value="">Sans album</option>
             <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
+            <option :value="NOUVEL_ALBUM">＋ Nouvel album…</option>
           </select>
         </label>
+        <input
+          v-if="albumEnvoi === NOUVEL_ALBUM"
+          v-model="nomAlbumEnvoi"
+          maxlength="100"
+          placeholder="Nom du nouvel album (ex. Noël 2025, Vacances à Biarritz)"
+          :disabled="envoiEnCours"
+        />
+        <p v-if="erreurAlbum" class="erreur">{{ erreurAlbum }}</p>
         <p class="aide">Les photos sont réduites avant l'envoi (2 048 pixels au plus) : c'est plus rapide et bien assez pour un écran.</p>
         <div class="actions">
           <button :disabled="envoiEnCours || !restants" @click="envoyer">
@@ -379,7 +407,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .ligne-album { flex-direction: row; flex-wrap: wrap; align-items: center; }
 .ligne-album input { flex: 1; min-width: 200px; }
 .actions-album { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.choix-album { flex-direction: row; align-items: center; gap: 8px; }
+.choix-album { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
 .album-photo { flex-direction: row; justify-content: center; align-items: center; gap: 8px; font-weight: normal; margin: 6px 0; }
 .album-photo select { padding: 4px 8px; }
 .visionneuse {
