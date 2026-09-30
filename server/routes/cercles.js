@@ -6,6 +6,7 @@ import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
 import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
 import * as valider from '../auth/validation.js'
+import { aLesDroits } from '../auth/roles.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -23,7 +24,7 @@ async function chargerCercle(req, res, next) {
   if (!cercle || (!membre && !req.utilisateur.estAdmin)) return res.status(404).json({ erreur: 'Cercle introuvable' })
   req.cercle = cercle
   req.role = membre?.role ?? null
-  req.peutGerer = req.utilisateur.estAdmin || req.role === 'aidant'
+  req.peutGerer = req.utilisateur.estAdmin || aLesDroits(req.role, 'aidant')
   next()
 }
 
@@ -50,11 +51,11 @@ router.get('/', async (req, res) => {
   res.json(tous.map((c) => ({ ...c, role: miens.get(c.id)?.role ?? null, membreId: miens.get(c.id)?.membreId ?? null })))
 })
 
-// Ajoute l'utilisateur connecté au cercle comme aidant
+// Ajoute l'utilisateur connecté au cercle comme aidant (ou promeut un proche en aidant)
 async function ajouterCommeAidant(cercleId, u, tx = db) {
   await tx.insert(membres)
     .values({ cercleId, utilisateurId: u.id, prenom: u.prenom, nom: u.nom, email: u.email, role: 'aidant' })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({ target: [membres.cercleId, membres.utilisateurId], set: { role: 'aidant' } })
 }
 
 router.post('/', exigerAdmin, async (req, res) => {
@@ -93,9 +94,11 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
   })
 })
 
-// Un administrateur qui n'est pas membre rejoint le cercle comme aidant
+// Un administrateur qui n'est pas membre (ou seulement proche) devient aidant du cercle
 router.post('/:cercleId/rejoindre', chargerCercle, exigerAdmin, async (req, res) => {
-  if (req.role) return res.status(409).json({ erreur: 'Vous êtes déjà membre de ce cercle' })
+  if (aLesDroits(req.role, 'aidant') || req.role === 'accompagne') {
+    return res.status(409).json({ erreur: 'Vous êtes déjà membre de ce cercle' })
+  }
   await ajouterCommeAidant(req.cercle.id, req.utilisateur)
   res.status(204).end()
 })

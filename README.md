@@ -22,6 +22,8 @@ PostgreSQL, via l'ORM [Drizzle](https://orm.drizzle.team). Le schéma est décri
 
 ## Comptes et connexion
 
+Un même compte peut appartenir à plusieurs cercles, avec un rôle par cercle (par exemple aidant dans l'un et proche dans l'autre). Les droits sont cumulatifs : un aidant a tous les droits d'un proche, plus la gestion du cercle (`server/auth/roles.js`). Une nouvelle invitation ne rétrograde jamais : un proche invité comme aidant est promu, un aidant invité comme proche reste aidant.
+
 - **Premier lancement** : l'application propose de créer le compte administrateur (seulement tant qu'aucun compte n'existe).
 - **Administrateur** : crée les cercles et voit tous les cercles ; il peut en faire partie comme aidant (case cochée à la création, ou bouton « Rejoindre comme aidant » sur le cercle).
 - **Aidant** (rôle dans un cercle) : invite des aidants et des proches par lien (7 jours, usage unique), ajoute les personnes accompagnées, configure leurs appareils, retire des membres.

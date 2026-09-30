@@ -5,6 +5,7 @@ import { invitations, cercles, membres, utilisateurs } from '../db/schema.js'
 import { empreinte, hacherMotDePasse } from '../auth/securite.js'
 import { ouvrirSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
+import { roleLePlusHaut } from '../auth/roles.js'
 
 const router = Router()
 
@@ -36,7 +37,13 @@ export async function accepterInvitation(invitation, utilisateur, nouveau = null
     await tx.update(invitations).set({ accepteeParId: utilisateur.id }).where(eq(invitations.id, invitation.id))
     const [dejaMembre] = await tx.select().from(membres)
       .where(and(eq(membres.cercleId, invitation.cercleId), eq(membres.utilisateurId, utilisateur.id)))
-    if (!dejaMembre) {
+    if (dejaMembre) {
+      // Déjà membre : on garde le rôle le plus élevé (un proche invité comme aidant est promu)
+      const role = roleLePlusHaut(dejaMembre.role, invitation.role)
+      if (role !== dejaMembre.role && dejaMembre.role !== 'accompagne') {
+        await tx.update(membres).set({ role }).where(eq(membres.id, dejaMembre.id))
+      }
+    } else {
       await tx.insert(membres).values({
         cercleId: invitation.cercleId,
         utilisateurId: utilisateur.id,

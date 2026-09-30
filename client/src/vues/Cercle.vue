@@ -84,8 +84,9 @@ const copier = (texte) => navigator.clipboard?.writeText(texte)
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-if="cercle">
       <h1>{{ cercle.nom }}</h1>
-      <div v-if="!cercle.monRole && session.utilisateur.estAdmin" class="carte ligne">
-        <span>Vous voyez ce cercle en tant qu'administrateur, sans en être membre.</span>
+      <div v-if="(!cercle.monRole || cercle.monRole === 'proche') && session.utilisateur.estAdmin" class="carte ligne">
+        <span v-if="!cercle.monRole">Vous voyez ce cercle en tant qu'administrateur, sans en être membre.</span>
+        <span v-else>Vous êtes proche dans ce cercle.</span>
         <button @click="rejoindre">Rejoindre comme aidant</button>
       </div>
 
