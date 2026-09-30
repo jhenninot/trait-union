@@ -22,6 +22,8 @@ const chargerPhotos = async () => {
 }
 const nouvellesPhotos = computed(() => photos.value?.albums ?? [])
 const nombreNouvelles = computed(() => nouvellesPhotos.value.reduce((n, a) => n + a.nouvelles, 0))
+// Un seul album concerné : on l'ouvre directement ; sinon le choix des albums (avec pastilles)
+const lienPhotos = computed(() => nouvellesPhotos.value.length === 1 ? nouvellesPhotos.value[0].lien : '/photos')
 const recharger = () => {
   chargerProgramme()
   chargerPhotos()
@@ -62,17 +64,14 @@ const moment = () => {
       </span>
       <span v-if="programme.length > 3" class="suite">et {{ programme.length - 3 }} autre{{ programme.length > 4 ? 's' : '' }}…</span>
     </RouterLink>
-    <section v-if="nouvellesPhotos.length" class="photos">
-      <span class="titre-photos">{{ nombreNouvelles > 1 ? 'Nouvelles photos' : 'Nouvelle photo' }}</span>
-      <div class="albums">
-        <RouterLink v-for="a in nouvellesPhotos.slice(0, 3)" :key="a.id" :to="a.lien" class="album">
-          <img v-if="a.couverture" :src="a.couverture" alt="" class="miniature" />
-          <span v-else class="miniature vide">🖼️</span>
-          <span class="nom">{{ a.nom }}</span>
-          <span class="nombre">{{ a.nouvelles }} nouvelle{{ a.nouvelles > 1 ? 's' : '' }}</span>
-        </RouterLink>
-      </div>
-    </section>
+    <RouterLink v-if="nouvellesPhotos.length" :to="lienPhotos" class="photos">
+      <img v-if="nouvellesPhotos[0].couverture" :src="nouvellesPhotos[0].couverture" alt="" class="miniature" />
+      <span v-else class="miniature vide" aria-hidden="true">🖼️</span>
+      <span class="texte-photos">
+        <strong>{{ nombreNouvelles }} nouvelle{{ nombreNouvelles > 1 ? 's' : '' }} photo{{ nombreNouvelles > 1 ? 's' : '' }}</strong>
+        <span class="noms">{{ nouvellesPhotos.map((a) => a.nom).join(', ') }}</span>
+      </span>
+    </RouterLink>
     <RouterLink v-else-if="photos?.total" to="/photos" class="photos calme">
       <span class="emoji" aria-hidden="true">🖼️</span> Pas de nouvelle photo
     </RouterLink>
@@ -119,35 +118,26 @@ const moment = () => {
 }
 .cartes > * { min-width: 0; }
 .cartes .programme { align-self: stretch; justify-content: center; margin-top: 0; }
+/* Nouvelles photos : une seule ligne compacte, pour laisser la place aux autres éléments */
 .photos {
+  align-self: center;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #fdf1e4;
-  border-radius: 24px;
-  padding: 16px 20px;
-  color: var(--bleu-nuit);
-}
-.titre-photos { font-size: 1.6rem; font-weight: 700; color: #c2610c; }
-.albums { display: flex; gap: 14px; justify-content: center; }
-.album {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  width: 190px;
-  padding: 8px;
-  border-radius: 18px;
-  background: white;
-  text-decoration: none;
+  gap: 14px;
+  max-width: 520px;
+  background: #fdf1e4;
+  border-radius: 20px;
+  padding: 10px 20px 10px 10px;
   color: var(--bleu-nuit);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+  text-decoration: none;
+  text-align: left;
 }
-.miniature { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; }
-.miniature.vide { display: flex; align-items: center; justify-content: center; background: #f3f0ea; font-size: 3rem; }
-.album .nom { font-size: 1.35rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.album .nombre { font-size: 1.15rem; font-weight: 700; color: white; background: #c2610c; border-radius: 999px; padding: 2px 12px; }
-.photos.calme { align-self: center; flex-direction: row; align-items: center; font-size: 1.5rem; color: var(--gris); background: #f3f0ea; text-decoration: none; padding: 14px 22px; }
+.miniature { flex: none; width: 72px; height: 54px; object-fit: cover; border-radius: 12px; }
+.miniature.vide { display: flex; align-items: center; justify-content: center; background: #f3f0ea; font-size: 2rem; }
+.texte-photos { display: flex; flex-direction: column; min-width: 0; }
+.texte-photos strong { font-size: 1.5rem; color: #c2610c; }
+.noms { font-size: 1.15rem; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photos.calme { font-size: 1.4rem; color: var(--gris); background: #f3f0ea; padding: 12px 20px; gap: 10px; }
 .ligne-programme strong { color: var(--vert); margin-right: 8px; }
 .suite { color: var(--gris); font-size: 1.3rem; }
 /* Smartphone */
@@ -160,13 +150,10 @@ const moment = () => {
   .programme { align-self: stretch; padding: 14px 16px; font-size: 1.25rem; border-radius: 18px; }
   .ligne-programme strong { display: block; margin: 0; }
   .cartes { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px; }
-  .photos { padding: 12px; border-radius: 18px; }
-  .titre-photos { font-size: 1.3rem; }
-  .albums { gap: 8px; }
-  .album { flex: 1; min-width: 0; width: auto; padding: 6px; border-radius: 14px; }
-  .album:nth-child(n + 3) { display: none; } /* deux albums au plus sur un téléphone */
-  .album .nom { font-size: 1.05rem; }
-  .album .nombre { font-size: 0.95rem; padding: 2px 8px; }
+  .photos { align-self: stretch; max-width: none; padding: 8px 12px 8px 8px; border-radius: 16px; gap: 10px; }
+  .miniature { width: 60px; height: 45px; }
+  .texte-photos strong { font-size: 1.2rem; }
+  .noms { font-size: 1rem; }
   .photos.calme { font-size: 1.15rem; justify-content: center; }
 }
 </style>
