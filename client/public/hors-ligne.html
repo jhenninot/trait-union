@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trait d'union : hors ligne</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+      font-family: system-ui, sans-serif; background: #faf8f5; color: #2b2b2b; font-size: 1.1rem; text-align: center; }
+    main { max-width: 420px; }
+    img { width: 96px; height: 96px; }
+    h1 { color: #23305a; }
+    button { font-size: 1.1rem; padding: 14px 28px; border: 0; border-radius: 10px; background: #2f8f6b; color: white; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/icones/icone-192.png" alt="" />
+    <h1>Pas de connexion</h1>
+    <p>Trait d'union a besoin d'internet. Vérifiez le wifi ou les données mobiles, puis réessayez.</p>
+    <button onclick="location.reload()">Réessayer</button>
+  </main>
+  <script>addEventListener('online', () => location.reload())</script>
+</body>
+</html>

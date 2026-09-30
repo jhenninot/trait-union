@@ -1,0 +1,17 @@
+{
+  "appId": "fr.traitunion.app",
+  "appName": "Trait d'union",
+  "webDir": "www",
+  "appendUserAgent": "TraitUnionAndroid",
+  "backgroundColor": "#faf8f5",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}

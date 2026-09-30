@@ -1,0 +1,87 @@
+name: Application Android
+
+# Construit l'APK (Capacitor) et la publie dans la release « android » :
+# https://github.com/jhenninot/trait-union/releases/download/android/trait-union.apk
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+
+      # Adresse proposée au premier lancement : variable APP_URL du dépôt (facultative)
+      - name: Adresse du serveur par défaut
+        if: vars.APP_URL != ''
+        run: echo "window.TU_SERVEUR_DEFAUT = '${{ vars.APP_URL }}'" > www/config.js
+
+      - run: npx cap sync android
+
+      # Clé de signature privée si les secrets existent, sinon la clé de test du dépôt
+      - name: Clé de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "TU_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "TACHE=assembleRelease" >> "$GITHUB_ENV"
+            echo "SORTIE=release/app-release.apk" >> "$GITHUB_ENV"
+          else
+            echo "TACHE=assembleDebug" >> "$GITHUB_ENV"
+            echo "SORTIE=debug/app-debug.apk" >> "$GITHUB_ENV"
+          fi
+
+      - name: Construction de l'APK
+        working-directory: mobile/android
+        env:
+          TU_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TU_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TU_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew "$TACHE" --no-daemon -PversionCode=${{ github.run_number }} -PversionName=0.1.${{ github.run_number }}
+          cp "app/build/outputs/apk/$SORTIE" "$GITHUB_WORKSPACE/trait-union.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trait-union-apk
+          path: trait-union.apk
+
+      - name: Publication dans la release « android »
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android --yes --cleanup-tag || true
+          gh release create android trait-union.apk \
+            --target "$GITHUB_SHA" \
+            --title "Application Android (version 0.1.${{ github.run_number }})" \
+            --notes "APK construite automatiquement depuis le commit $GITHUB_SHA. Lien permanent : https://github.com/${{ github.repository }}/releases/download/android/trait-union.apk"

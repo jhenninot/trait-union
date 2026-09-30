@@ -100,6 +100,7 @@ const estActif = (chemin) => route.path === chemin
     </template>
 
     <div class="bas-menu">
+      <RouterLink to="/application" class="lien" :class="{ actif: estActif('/application') }"><Icone nom="mobile" /> Application mobile</RouterLink>
       <p class="lien qui"><Icone nom="compte" /> <span>{{ session.utilisateur.prenom }}<span v-if="session.utilisateur.estAdmin"> · admin</span></span></p>
       <button class="lien" @click="seDeconnecter"><Icone nom="deconnexion" /> Se déconnecter</button>
     </div>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Trait d'union</title>
+  <style>
+    :root { --vert: #2f8f6b; --bleu-nuit: #23305a; --gris: #6b6b78; --fond: #faf8f5; --rouge: #b3261e; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, sans-serif; background: var(--fond); color: #2b2b2b; font-size: 1.1rem;
+      padding: 24px 16px;
+    }
+    main { width: 100%; max-width: 420px; text-align: center; }
+    img { width: 96px; height: 96px; }
+    h1 { color: var(--bleu-nuit); margin: 12px 0 4px; }
+    .slogan { color: var(--gris); margin: 0 0 28px; }
+    form, .bloc { text-align: left; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input {
+      width: 100%; font-size: 1.1rem; padding: 12px; border: 1px solid #c9c9d2; border-radius: 10px; background: white;
+    }
+    .aide { color: var(--gris); font-size: 0.95rem; margin: 6px 0 18px; }
+    button {
+      width: 100%; font-size: 1.1rem; padding: 14px; border: 0; border-radius: 10px; margin-top: 10px;
+      background: var(--vert); color: white; font-weight: 600;
+    }
+    button.secondaire { background: white; color: var(--bleu-nuit); border: 1px solid #c9c9d2; }
+    .erreur { color: var(--rouge); margin: 12px 0 0; }
+    .attente { color: var(--gris); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="icone.png" alt="" />
+    <h1>Trait d'union</h1>
+    <p class="slogan">Le lien entre toi et les tiens</p>
+
+    <p id="attente" class="attente">Connexion en cours…</p>
+
+    <div id="injoignable" class="bloc" hidden>
+      <p class="erreur" id="message-injoignable"></p>
+      <button id="reessayer">Réessayer</button>
+      <button id="changer" class="secondaire">Changer d'adresse</button>
+    </div>
+
+    <form id="formulaire" hidden>
+      <label for="adresse">Adresse de votre serveur</label>
+      <input id="adresse" type="url" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false"
+             placeholder="https://trait-union.exemple.fr" required />
+      <p class="aide">C'est l'adresse que vous utilisez dans votre navigateur. Demandez-la à l'aidant qui a installé l'application.</p>
+      <button type="submit">Continuer</button>
+      <p class="erreur" id="erreur" hidden></p>
+    </form>
+  </main>
+
+  <script src="config.js"></script>
+  <script>
+    const CLE = 'tu_serveur'
+    const $ = (id) => document.getElementById(id)
+    const lire = () => { try { return localStorage.getItem(CLE) } catch { return null } }
+    const ecrire = (v) => { try { localStorage.setItem(CLE, v) } catch {} }
+
+    function normaliser(saisie) {
+      let url = saisie.trim()
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+      const u = new URL(url)
+      return u.origin
+    }
+
+    // Vérifie que l'adresse répond comme un serveur Trait d'union (route /api/health).
+    // Les requêtes passent par le client HTTP natif de Capacitor : pas de souci de CORS.
+    async function verifier(origine) {
+      const controle = new AbortController()
+      const minuteur = setTimeout(() => controle.abort(), 10000)
+      try {
+        const res = await fetch(origine + '/api/health', { cache: 'no-store', signal: controle.signal })
+        const corps = await res.json()
+        return typeof corps.status === 'string'
+      } catch {
+        return false
+      } finally {
+        clearTimeout(minuteur)
+      }
+    }
+
+    function afficher(ecran) {
+      $('attente').hidden = ecran !== 'attente'
+      $('injoignable').hidden = ecran !== 'injoignable'
+      $('formulaire').hidden = ecran !== 'formulaire'
+    }
+
+    function formulaire() {
+      $('adresse').value = lire() || window.TU_SERVEUR_DEFAUT || ''
+      $('erreur').hidden = true
+      afficher('formulaire')
+    }
+
+    async function ouvrir(origine) {
+      afficher('attente')
+      if (await verifier(origine)) {
+        location.replace(origine + '/')
+      } else {
+        $('message-injoignable').textContent =
+          `Impossible de joindre ${origine}. Vérifiez la connexion internet, puis réessayez.`
+        afficher('injoignable')
+      }
+    }
+
+    $('reessayer').addEventListener('click', () => ouvrir(lire()))
+    $('changer').addEventListener('click', formulaire)
+    $('formulaire').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      let origine
+      try { origine = normaliser($('adresse').value) } catch {
+        $('erreur').textContent = "Cette adresse n'est pas valide."
+        $('erreur').hidden = false
+        return
+      }
+      afficher('attente')
+      if (await verifier(origine)) {
+        ecrire(origine)
+        location.replace(origine + '/')
+      } else {
+        $('erreur').textContent = `Aucun serveur Trait d'union ne répond à ${origine}.`
+        formulaire()
+        $('adresse').value = origine
+        $('erreur').hidden = false
+      }
+    })
+
+    // ?changer : lien « Changer de serveur » de la page Application mobile
+    const enregistre = lire()
+    if (enregistre && !new URLSearchParams(location.search).has('changer')) ouvrir(enregistre)
+    else formulaire()
+  </script>
+</body>
+</html>

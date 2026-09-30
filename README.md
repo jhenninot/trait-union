@@ -45,6 +45,22 @@ Le bouton « Se connecter avec Google » n'apparaît que si `GOOGLE_CLIENT_ID` e
 
 Les emails partent par l'[API de Brevo](https://developers.brevo.com) (offre gratuite : 300 emails par jour). Tout se règle dans l'application : un administrateur ouvre « Envoi d'emails » dans la partie Administration du menu (`/admin/email`), où les étapes sont rappelées (compte Brevo, expéditeur validé, clé API `xkeysib-…`, IP publique de la box autorisée dans Brevo), vérifie la clé, choisit l'expéditeur, active l'envoi et envoie un email de test. La clé est stockée en base (table `parametres`) et n'est jamais renvoyée au navigateur. Une fois l'envoi activé, un aidant peut saisir l'adresse de la personne qu'il invite pour lui envoyer le lien par email ; le lien reste affiché pour être copié. Les liens des emails utilisent `APP_URL` si elle est définie.
 
+## Application mobile
+
+### PWA (tous les appareils)
+
+L'application web est installable : manifeste `client/public/manifest.webmanifest`, icônes dans `client/public/icones/`, service worker `client/public/sw.js`. Le service worker ne met jamais en cache les données (`/api`) ; il garde seulement les fichiers compilés et une page « Pas de connexion » affichée hors ligne. Après une modification de `sw.js`, changer sa constante `VERSION`. La page **Application mobile** du menu (`/application`) propose l'installation (bouton sur Chrome et Edge, explication pour Safari) et le lien de l'APK. L'installation d'une PWA exige HTTPS (Nginx Proxy Manager).
+
+### Application Android (APK)
+
+Le dossier `mobile/` contient un projet [Capacitor](https://capacitorjs.com) : une page de démarrage locale (`mobile/www/index.html`) demande l'adresse du serveur au premier lancement, vérifie qu'elle répond sur `/api/health`, la mémorise, puis ouvre l'application web de ce serveur. Rien n'est à recompiler quand l'application web évolue : l'APK n'est à reconstruire que si `mobile/` change. Le lien « Changer de serveur » de la page Application mobile ramène à cet écran.
+
+- À chaque push sur `main` qui touche `mobile/`, le workflow `.github/workflows/android.yml` construit l'APK et la publie dans la release `android` : lien permanent https://github.com/jhenninot/trait-union/releases/download/android/trait-union.apk (aussi en artefact du workflow). On peut le relancer à la main depuis l'onglet Actions.
+- Facultatif : une variable de dépôt `APP_URL` (Settings > Secrets and variables > Actions > Variables) pré-remplit l'adresse du serveur au premier lancement.
+- Signature : sans configuration, l'APK est signée avec la clé de test du dépôt (`mobile/android/app/debug.keystore`, publique) ; les nouvelles versions s'installent par-dessus les anciennes. Avant une diffusion plus large, créer une clé privée (`keytool -genkeypair -keystore trait-union.keystore -alias trait-union -keyalg RSA -keysize 2048 -validity 10000`) et ajouter les secrets `ANDROID_KEYSTORE_BASE64` (`base64 -w0 trait-union.keystore`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` et `ANDROID_KEY_PASSWORD` : le workflow construit alors une version release signée avec cette clé (il faudra désinstaller une fois la version de test).
+- La connexion avec Google ne fonctionne pas dans l'application Android (Google refuse les vues web intégrées) : utiliser email et mot de passe, ou la PWA.
+- En local : `cd mobile && npm install && npm run apk` (Android SDK et Java 21 nécessaires). `npm run icones` régénère les icônes et l'écran de démarrage depuis `mobile/assets/`.
+
 ## Déploiement (Docker / Dockge)
 
 - À chaque push sur `main`, GitHub Actions construit l'image et la publie sur `ghcr.io/jhenninot/trait-union:latest` (workflow `.github/workflows/docker.yml`).

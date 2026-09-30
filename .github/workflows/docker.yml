@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    # L'application Android a son propre workflow (android.yml)
+    paths-ignore: ['mobile/**', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:

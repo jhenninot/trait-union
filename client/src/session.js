@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { api } from './api.js'
+import { dansAppliAndroid } from './installation.js'
 
 // État de connexion partagé par toutes les vues
 export const session = reactive({
@@ -15,6 +16,8 @@ export const session = reactive({
 export async function rafraichirSession() {
   const etat = await api('GET', '/auth/etat')
   Object.assign(session, { cercles: [], typeSession: null, email: false }, etat, { charge: true })
+  // Google refuse la connexion dans une vue web intégrée (application Android)
+  if (dansAppliAndroid()) session.google = false
 }
 
 export async function deconnecter() {

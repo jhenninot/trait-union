@@ -1,0 +1,20 @@
+{
+  "name": "trait-union-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Application Android de Trait d'union (Capacitor)",
+  "scripts": {
+    "sync": "cap sync android",
+    "icones": "capacitor-assets generate --android --iconBackgroundColor '#e7f4ee' --splashBackgroundColor '#faf8f5' --splashBackgroundColorDark '#23305a'",
+    "apk": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  }
+}

@@ -10,7 +10,8 @@ const traces = {
   compte: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   deconnexion: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   plus: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
-  fermer: '<path d="M18 6 6 18M6 6l12 12"/>'
+  fermer: '<path d="M18 6 6 18M6 6l12 12"/>',
+  mobile: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/>'
 }
 </script>
 

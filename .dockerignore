@@ -5,3 +5,4 @@ dist
 assets
 *.md
 compose.yaml
+mobile

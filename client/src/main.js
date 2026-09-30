@@ -13,6 +13,8 @@ import AdminEmail from './vues/AdminEmail.vue'
 import AdminCercles from './vues/AdminCercles.vue'
 import Tablettes from './vues/Tablettes.vue'
 import FamilleAccompagne from './vues/FamilleAccompagne.vue'
+import ApplicationMobile from './vues/ApplicationMobile.vue'
+import { preparerInstallation } from './installation.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,6 +23,7 @@ const router = createRouter({
     { path: '/famille', component: FamilleAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
+    { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/connexion', component: Connexion },
@@ -45,4 +48,5 @@ router.beforeEach(async (to) => {
   if (session.typeSession !== 'appareil' && to.meta.seulementAppareil) return '/'
 })
 
+preparerInstallation()
 createApp(App).use(router).mount('#app')
