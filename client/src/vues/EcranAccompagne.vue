@@ -63,7 +63,7 @@ const jour = () => maintenant.value.toLocaleDateString('fr-FR', { weekday: 'long
 const heure = () => maintenant.value.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 const moment = () => {
   const h = maintenant.value.getHours()
-  return h < 12 ? 'C\'est le matin.' : h < 18 ? 'C\'est l\'après-midi.' : 'C\'est le soir.'
+  return h < 6 || h >= 22 ? 'C\'est la nuit.' : h < 12 ? 'C\'est le matin.' : h < 18 ? 'C\'est l\'après-midi.' : 'C\'est le soir.'
 }
 </script>
 

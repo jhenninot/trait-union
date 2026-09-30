@@ -123,7 +123,8 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       return { texte: `Nous sommes ${dateParlee(maintenant)} ${maintenant.getFullYear()}.` }
     case 'journee': {
       const { agenda } = await donneesPersonne(utilisateur, 1)
-      const moment = maintenant.getHours() < 12 ? 'le matin' : maintenant.getHours() < 18 ? 'l\'après-midi' : 'le soir'
+      const h = maintenant.getHours()
+      const moment = h < 6 || h >= 22 ? 'la nuit' : h < 12 ? 'le matin' : h < 18 ? 'l\'après-midi' : 'le soir'
       return {
         texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`,
         lien: '/'

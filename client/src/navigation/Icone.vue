@@ -14,6 +14,7 @@ const traces = {
   fermer: '<path d="M18 6 6 18M6 6l12 12"/>',
   mobile: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/>',
   photo: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  micro: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/>',
   nuage: '<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z"/>'
 }
 </script>
