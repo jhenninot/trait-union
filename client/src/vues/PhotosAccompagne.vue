@@ -9,12 +9,15 @@ import { parler, lectureDisponible } from '../voix.js'
 import { partagerPhoto, partageDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
+import { revenir } from '../historique.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
 // pour passer à la suivante, et un diaporama qui défile tout seul.
 // Glisser le doigt sur la photo passe aussi à la suivante ou à la précédente.
-// /photos?album=<id> ouvre directement un album (?album=tous : toutes les photos), depuis l'accueil.
+// L'album ouvert est dans l'adresse : /photos?album=<id> (?album=tous : toutes les photos), et le
+// plein écran aussi (?plein=1) : le bouton retour revient à l'étape d'avant (plein écran → album
+// → choix de l'album). L'accueil ouvre directement un album : le choix est inséré avant.
 const DELAI_DIAPORAMA = 8000
 const albums = ref([])
 const album = ref(undefined) // undefined : choix de l'album ; null : toutes les photos ; sinon l'album
@@ -27,21 +30,29 @@ let minuterieRechargement
 let arreterRetour
 const route = useRoute()
 const router = useRouter()
-let demande = route.query.album
+// Album de l'adresse ; sans album du tout, on montre directement toutes les photos
+function albumDemande() {
+  const id = route.query.album
+  if (!id) return albums.value.length ? undefined : null
+  return id === 'tous' ? null : (albums.value.find((a) => a.id === id) ?? null)
+}
 
 async function charger() {
   albums.value = await albumsAccompagne(session.cercles)
-  // Sans album, on montre directement toutes les photos
-  if (!albums.value.length && album.value === undefined) album.value = null
-  // Album demandé par l'accueil (une seule fois)
-  if (demande && album.value === undefined) {
-    album.value = demande === 'tous' ? null : albums.value.find((a) => a.id === demande)
-  }
-  demande = null
-  if (album.value) album.value = albums.value.find((a) => a.id === album.value.id) ?? null
+  album.value = albumDemande()
   if (album.value !== undefined) await chargerPhotos()
   charge.value = true
 }
+
+// Changement d'album par l'adresse (bouton d'album, bouton retour)
+watch(() => route.query.album, async () => {
+  if (route.path !== '/photos' || !charge.value) return
+  if (diaporama.value) basculerDiaporama()
+  liste.value = []
+  index.value = 0
+  album.value = albumDemande()
+  if (album.value !== undefined) await chargerPhotos()
+})
 
 async function chargerPhotos() {
   const idActuelle = liste.value[index.value]?.id
@@ -57,19 +68,20 @@ async function chargerPhotos() {
   })
 }
 
-async function ouvrirAlbum(a) {
-  liste.value = []
-  index.value = 0
-  album.value = a
-  await chargerPhotos()
+function ouvrirAlbum(a) {
+  router.push({ path: '/photos', query: { album: a?.id ?? 'tous' } })
 }
 
 function retourAlbums() {
-  if (diaporama.value) basculerDiaporama()
-  album.value = undefined
-  liste.value = []
+  revenir(router, { path: '/photos' })
 }
 onMounted(() => {
+  // Arrivée directe dans un album (depuis l'accueil) : l'étape « choix de l'album » est ajoutée
+  // avant, pour que le bouton retour y mène
+  if (route.query.album && window.history.state?.back !== '/photos') {
+    const albumDirect = route.fullPath
+    router.replace('/photos').then(() => router.push(albumDirect))
+  }
   charger()
   minuterieRechargement = setInterval(charger, 10 * 60_000)
   arreterRetour = auRetour(charger) // nouvelles photos dès qu'on revient sur l'appli
@@ -113,12 +125,11 @@ function basculerDiaporama() {
 }
 
 // Toucher la photo : arrête le diaporama, sinon l'affiche en plein écran (ou revient)
-const { pleinEcran, basculer: basculerPleinEcran, sortir: sortirPleinEcran } = utiliserPleinEcran()
+const { pleinEcran, basculer: basculerPleinEcran } = utiliserPleinEcran()
 function toucherPhoto() {
   if (diaporama.value) basculerDiaporama()
   else basculerPleinEcran()
 }
-watch(() => (album.value === undefined ? 'choix' : album.value?.id ?? 'toutes'), () => sortirPleinEcran())
 
 // Toucher une flèche arrête le diaporama
 function manuel(sens) {

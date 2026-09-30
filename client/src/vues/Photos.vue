@@ -9,20 +9,27 @@ import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
+import { useRoute, useRouter } from 'vue-router'
+import { avecParametres, revenir } from '../historique.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
+// L'album affiché (?album=), la photo ouverte (?photo=) et le plein écran (?plein=1) sont dans
+// l'adresse : le bouton retour revient à l'étape d'avant (plein écran → photo → album → toutes).
+const route = useRoute()
+const router = useRouter()
 const { url, cercle, erreur, action } = utiliserCercle()
 const actif = ref(true) // partage de photos configuré par l'administrateur
 const liste = ref([])
 const suite = ref(false)
 const aEnvoyer = ref([]) // { fichier, apercu, legende, etat: attente | envoi | fait | erreur, message }
 const envoiEnCours = ref(false)
-const ouverte = ref(null) // index de la photo affichée en grand
+const ouverte = ref(null) // index de la photo affichée en grand (suit ?photo=)
 const legendeEnEdition = ref(null)
 const albums = ref([])
 const compteurs = ref({ total: 0, sansAlbum: 0 })
-const filtre = ref('tous') // 'tous', 'aucun' (sans album) ou l'id d'un album
+const filtreDemande = () => route.query.album ?? 'tous'
+const filtre = ref(filtreDemande()) // 'tous', 'aucun' (sans album) ou l'id d'un album (suit ?album=)
 const albumEnvoi = ref('') // album où ranger les photos envoyées ('' = sans album, NOUVEL_ALBUM = à créer)
 const NOUVEL_ALBUM = 'nouveau'
 const nomAlbumEnvoi = ref('') // nom de l'album créé au moment de l'envoi
@@ -48,8 +55,8 @@ const chargerAlbums = () => action(async () => {
 })
 watch(url, () => {
   liste.value = []
-  ouverte.value = null
-  filtre.value = 'tous'
+  filtre.value = filtreDemande()
+  albumEnvoi.value = filtre.value === 'tous' || filtre.value === 'aucun' ? '' : filtre.value
   vider()
   charger()
   chargerAlbums()
@@ -62,14 +69,23 @@ onUnmounted(auRetour(() => {
   chargerAlbums()
 }))
 
+// Toutes les photos → un album : nouvelle étape ; d'un album à l'autre : on remplace ;
+// retour à toutes les photos : comme le bouton retour
 function choisirFiltre(f) {
   if (filtre.value === f) return
-  filtre.value = f
-  albumEnvoi.value = f === 'tous' || f === 'aucun' ? '' : f
+  const cible = avecParametres(route, { album: f === 'tous' ? undefined : f, photo: undefined, plein: undefined })
+  if (f === 'tous') revenir(router, cible)
+  else if (filtre.value === 'tous') router.push(cible)
+  else router.replace(cible)
+}
+watch(() => route.query.album, () => {
+  if (route.path !== `${url.value}/photos` || filtre.value === filtreDemande()) return
+  filtre.value = filtreDemande()
+  albumEnvoi.value = filtre.value === 'tous' || filtre.value === 'aucun' ? '' : filtre.value
   nomAlbum.value = null
   liste.value = []
   charger()
-}
+})
 
 // Création (nomAlbum.id vide) ou renommage d'un album
 const enregistrerAlbum = () => action(async () => {
@@ -155,12 +171,23 @@ async function envoyer() {
 const restants = computed(() => aEnvoyer.value.filter((a) => a.etat !== 'fait').length)
 const photo = computed(() => (ouverte.value == null ? null : liste.value[ouverte.value]))
 const { pleinEcran, entrer: entrerPleinEcran, sortir: sortirPleinEcran } = utiliserPleinEcran()
-watch(photo, (p) => { if (!p) sortirPleinEcran() })
 watch(photo, (p) => p && prechargerVoisines(liste.value, ouverte.value))
 
+// La photo ouverte est celle de l'adresse (?photo=), si elle est dans la liste chargée
+watch([() => route.query.photo, liste], ([id]) => {
+  const i = id ? liste.value.findIndex((p) => p.id === id) : -1
+  if (i !== ouverte.value) legendeEnEdition.value = null
+  ouverte.value = i >= 0 ? i : null
+}, { immediate: true })
+
+// Ouvrir une photo : nouvelle étape ; passer à la suivante : on remplace
 function ouvrir(i) {
-  ouverte.value = i
-  legendeEnEdition.value = null
+  const cible = avecParametres(route, { photo: liste.value[i].id })
+  if (ouverte.value == null) router.push(cible)
+  else router.replace(cible)
+}
+function fermer() {
+  revenir(router, avecParametres(route, { photo: undefined, plein: undefined }))
 }
 function deplacer(sens) {
   const i = ouverte.value + sens
@@ -170,7 +197,7 @@ function touche(e) {
   if (ouverte.value == null || legendeEnEdition.value != null) return
   if (e.key === 'ArrowLeft') deplacer(-1)
   if (e.key === 'ArrowRight') deplacer(1)
-  if (e.key === 'Escape') ouverte.value = null
+  if (e.key === 'Escape' && !pleinEcran.value) fermer()
 }
 window.addEventListener('keydown', touche)
 onUnmounted(() => window.removeEventListener('keydown', touche))
@@ -190,10 +217,13 @@ const changerAlbum = (albumId) => action(async () => {
   chargerAlbums()
 })
 
+// La photo affichée quitte la liste : on montre la suivante (ou la précédente), sinon on ferme
 function retirerDeLaListe() {
-  liste.value.splice(ouverte.value, 1)
-  if (!liste.value.length) ouverte.value = null
-  else if (ouverte.value >= liste.value.length) ouverte.value = liste.value.length - 1
+  const i = ouverte.value
+  const voisine = liste.value[i + 1] ?? liste.value[i - 1]
+  if (voisine) router.replace(avecParametres(route, { photo: voisine.id }))
+  else fermer()
+  liste.value.splice(i, 1)
 }
 
 const supprimer = () => action(async () => {
@@ -320,11 +350,11 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       v-zoom="pleinEcran"
       class="visionneuse"
       :class="{ 'plein-ecran': pleinEcran }"
-      @click.self="pleinEcran ? sortirPleinEcran() : (ouverte = null)"
+      @click.self="pleinEcran ? sortirPleinEcran() : fermer()"
     >
       <button v-if="pleinEcran" class="fermer discret" aria-label="Quitter le plein écran" @click="sortirPleinEcran">✕</button>
       <template v-else>
-        <button class="fermer" aria-label="Fermer" @click="ouverte = null">✕</button>
+        <button class="fermer" aria-label="Fermer" @click="fermer">✕</button>
         <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran">⛶</button>
         <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
       </template>
