@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
-import { balayage as vBalayage } from '../balayage.js'
+import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -127,6 +127,7 @@ async function envoyer() {
 
 const restants = computed(() => aEnvoyer.value.filter((a) => a.etat !== 'fait').length)
 const photo = computed(() => (ouverte.value == null ? null : liste.value[ouverte.value]))
+watch(photo, (p) => p && prechargerVoisines(liste.value, ouverte.value))
 
 function ouvrir(i) {
   ouverte.value = i

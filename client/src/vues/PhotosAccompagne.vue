@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
-import { balayage as vBalayage } from '../balayage.js'
+import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -76,6 +76,7 @@ onUnmounted(() => {
 })
 
 const photo = computed(() => liste.value[index.value])
+watch(photo, () => prechargerVoisines(liste.value, index.value))
 const titre = computed(() => album.value?.nom ?? 'Toutes les photos')
 
 function aller(sens) {
