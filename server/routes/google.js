@@ -5,6 +5,7 @@ import { db } from '../db/index.js'
 import { utilisateurs } from '../db/schema.js'
 import { ouvrirSession } from '../auth/sessions.js'
 import { invitationValide, accepterInvitation } from './invitations.js'
+import { urlApplication } from '../url.js'
 
 // Connexion avec un compte Google (OpenID Connect, flux « code » avec PKCE).
 // Activée seulement si GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET sont définis.
@@ -17,10 +18,7 @@ const COOKIE = 'tu_google'
 const CHEMIN_COOKIE = '/api/auth/google'
 const base64url = (buf) => Buffer.from(buf).toString('base64url')
 
-function urlRetour(req) {
-  const base = process.env.APP_URL?.replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`
-  return `${base}/api/auth/google/retour`
-}
+const urlRetour = (req) => `${urlApplication(req)}/api/auth/google/retour`
 
 function lireCookie(req) {
   for (const morceau of (req.get('cookie') || '').split(';')) {

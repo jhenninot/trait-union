@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, boolean, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, boolean, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
 // côté mobile) et dates utiles à la future synchronisation hors ligne.
@@ -80,4 +80,12 @@ export const invitations = pgTable('invitations', {
   expireLe: timestamp('expire_le', { withTimezone: true }).notNull(),
   accepteeLe: timestamp('acceptee_le', { withTimezone: true }),
   accepteeParId: uuid('acceptee_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+})
+
+// Réglages de l'application modifiables par un administrateur (clé → valeur JSON),
+// par exemple la configuration de l'envoi d'emails (clé « email »).
+export const parametres = pgTable('parametres', {
+  ...commun,
+  cle: text('cle').notNull().unique(),
+  valeur: jsonb('valeur').notNull()
 })

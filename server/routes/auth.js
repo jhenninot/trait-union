@@ -6,6 +6,7 @@ import { hacherMotDePasse, verifierMotDePasse, empreinteFactice, empreinte, limi
 import { ouvrirSession, fermerSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import routesGoogle, { googleActif } from './google.js'
+import { emailActif } from '../email/brevo.js'
 
 const router = Router()
 router.use('/google', routesGoogle)
@@ -30,6 +31,7 @@ router.get('/etat', async (req, res) => {
     google: googleActif,
     utilisateur: profilPublic(req.utilisateur),
     typeSession: req.session.type,
+    email: await emailActif(),
     cercles: await mesCercles(req.utilisateur.id)
   })
 })

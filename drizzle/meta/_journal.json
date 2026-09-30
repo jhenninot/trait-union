@@ -22,6 +22,13 @@
       "when": 1790768263920,
       "tag": "0002_compte_google",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790770329596,
+      "tag": "0003_parametres",
+      "breakpoints": true
     }
   ]
 }

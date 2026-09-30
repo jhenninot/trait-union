@@ -9,12 +9,14 @@ import Appareil from './vues/Appareil.vue'
 import Invitation from './vues/Invitation.vue'
 import Cercle from './vues/Cercle.vue'
 import Confidentialite from './vues/Confidentialite.vue'
+import AdminEmail from './vues/AdminEmail.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Accueil, meta: { connecte: true } },
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },
+    { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/connexion', component: Connexion },
     { path: '/bienvenue', component: Initialisation },
     { path: '/appareil', component: Appareil },
@@ -31,6 +33,7 @@ router.beforeEach(async (to) => {
   }
   if (!session.initialise && to.path !== '/bienvenue') return '/bienvenue'
   if (to.meta.connecte && !session.utilisateur) return '/connexion'
+  if (to.meta.admin && !session.utilisateur.estAdmin) return '/'
   // Un appareil de personne accompagnée reste sur son écran d'accueil
   if (session.typeSession === 'appareil' && to.path !== '/') return '/'
 })

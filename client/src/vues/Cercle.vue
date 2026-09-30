@@ -9,7 +9,8 @@ const router = useRouter()
 const url = `/cercles/${route.params.id}`
 const cercle = ref(null)
 const erreur = ref('')
-const invitation = ref(null) // { role, lien, expireLe }
+const invitation = ref(null) // { role, lien, expireLe, emailEnvoye, erreurEmail }
+const emailInvite = ref('')
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const nouvelAccompagne = ref({ prenom: '', nom: '' })
 const libellesRoles = { accompagne: 'Personne accompagnée', aidant: 'Aidant', proche: 'Proche' }
@@ -37,8 +38,9 @@ async function action(fn) {
 }
 
 const inviter = (role) => action(async () => {
-  const { jeton, expireLe } = await api('POST', `${url}/invitations`, { role })
-  invitation.value = { role, lien: `${location.origin}/invitation/${jeton}`, expireLe }
+  const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url}/invitations`, { role, email: emailInvite.value || undefined })
+  invitation.value = { role, lien: `${location.origin}/invitation/${jeton}`, expireLe, emailEnvoye, erreurEmail }
+  if (emailEnvoye) emailInvite.value = ''
 })
 
 const ajouterAccompagne = () => action(async () => {
@@ -134,12 +136,19 @@ const copier = (texte) => navigator.clipboard?.writeText(texte)
       <div v-if="cercle.peutGerer" class="carte">
         <strong>Inviter quelqu'un</strong>
         <p class="aide">Un aidant gère le cercle (tâches, rendez-vous, médicaments). Un proche peut échanger et envoyer des photos.</p>
+        <label v-if="session.email" class="champ-email">Son adresse email (facultatif)
+          <input v-model="emailInvite" type="email" placeholder="Pour lui envoyer le lien par email" />
+        </label>
         <div class="actions">
           <button class="secondaire" @click="inviter('aidant')">Inviter un aidant</button>
           <button class="secondaire" @click="inviter('proche')">Inviter un proche</button>
         </div>
         <div v-if="invitation" class="encart">
-          <p>Envoyez ce lien à la personne ({{ libellesRoles[invitation.role].toLowerCase() }}) :</p>
+          <p v-if="invitation.emailEnvoye">Invitation envoyée par email à <strong>{{ invitation.emailEnvoye }}</strong>. Vous pouvez aussi lui transmettre ce lien :</p>
+          <template v-else>
+            <p v-if="invitation.erreurEmail" class="erreur">L'email n'a pas pu partir : {{ invitation.erreurEmail }}</p>
+            <p>Envoyez ce lien à la personne ({{ libellesRoles[invitation.role].toLowerCase() }}) :</p>
+          </template>
           <input :value="invitation.lien" readonly @focus="$event.target.select()" />
           <p class="aide">Valable une seule fois, jusqu'au {{ heure(invitation.expireLe) }}.</p>
           <button class="secondaire" @click="copier(invitation.lien)">Copier le lien</button>
@@ -154,5 +163,6 @@ const copier = (texte) => navigator.clipboard?.writeText(texte)
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .encart input { width: 100%; }
+.champ-email { margin-top: 12px; }
 .code { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--bleu-nuit); margin: 8px 0; }
 </style>

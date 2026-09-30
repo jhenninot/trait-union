@@ -5,10 +5,11 @@
 #
 # Variables à définir dans l'onglet « .env » de la pile Dockge (voir .env.example) :
 #   POSTGRES_PASSWORD=un-mot-de-passe-long
-# Facultatif, pour la connexion avec Google (voir README) :
+# Facultatif, pour la connexion avec Google et les liens des emails (voir README) :
 #   APP_URL=https://trait-union.mondomaine.fr
 #   GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 #   GOOGLE_CLIENT_SECRET=...
+# L'envoi d'emails (Brevo) se configure dans l'application, écran d'administration.
 
 services:
   app:

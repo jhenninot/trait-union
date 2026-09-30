@@ -43,6 +43,10 @@ async function creerCercle() {
 
     <template v-if="session.utilisateur.estAdmin">
       <h2>Administration</h2>
+      <RouterLink to="/admin/email" class="carte cercle">
+        <strong>Envoi d'emails (Brevo)</strong>
+        <span class="aide">{{ session.email ? 'Activé' : 'Non configuré' }}</span>
+      </RouterLink>
       <form class="carte" @submit.prevent="creerCercle">
         <label>Nouveau cercle <input v-model="nomCercle" placeholder="Le cercle de Mamie" required /></label>
         <label class="case"><input v-model="rejoindre" type="checkbox" /> J'en fais partie comme aidant</label>

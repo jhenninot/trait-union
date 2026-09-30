@@ -6,6 +6,7 @@ export const session = reactive({
   charge: false,
   initialise: true,
   google: false,
+  email: false, // envoi d'emails configuré par l'administrateur
   utilisateur: null,
   typeSession: null,
   cercles: []
@@ -13,7 +14,7 @@ export const session = reactive({
 
 export async function rafraichirSession() {
   const etat = await api('GET', '/auth/etat')
-  Object.assign(session, { cercles: [], typeSession: null }, etat, { charge: true })
+  Object.assign(session, { cercles: [], typeSession: null, email: false }, etat, { charge: true })
 }
 
 export async function deconnecter() {

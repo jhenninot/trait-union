@@ -7,6 +7,8 @@ import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
 import * as valider from '../auth/validation.js'
 import { aLesDroits } from '../auth/roles.js'
+import { emailActif, envoyerEmail, gabarit } from '../email/brevo.js'
+import { urlApplication } from '../url.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -107,10 +109,35 @@ router.post('/:cercleId/rejoindre', chargerCercle, exigerAdmin, async (req, res)
 router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
   const role = req.body.role
   if (!['aidant', 'proche'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
+  const destinataire = req.body.email ? valider.email(req.body.email) : null
+  if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
   const jeton = nouveauJeton()
   const expireLe = new Date(Date.now() + DUREE_INVITATION)
   await db.insert(invitations).values({ cercleId: req.cercle.id, role, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
-  res.status(201).json({ jeton, role, expireLe })
+  let emailEnvoye = null
+  let erreurEmail = null
+  if (destinataire) {
+    const u = req.utilisateur
+    const { html, texte } = gabarit({
+      titre: `${u.prenom} vous invite à rejoindre « ${req.cercle.nom} »`,
+      paragraphes: [
+        'Bonjour,',
+        `${[u.prenom, u.nom].filter(Boolean).join(' ')} vous invite à rejoindre le cercle « ${req.cercle.nom} » sur Trait d'union, ` +
+          `en tant ${role === 'aidant' ? 'qu\'aidant' : 'que proche'}.`,
+        `Ce lien est personnel et ne sert qu'une fois. Il est valable jusqu'au ${expireLe.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'long' })}.`
+      ],
+      bouton: { texte: 'Rejoindre le cercle', lien: `${urlApplication(req)}/invitation/${jeton}` }
+    })
+    try {
+      await envoyerEmail({ a: { email: destinataire }, sujet: `Invitation à rejoindre « ${req.cercle.nom} » sur Trait d'union`, html, texte })
+      emailEnvoye = destinataire
+    } catch (e) {
+      // L'invitation reste valable : le lien peut encore être copié à la main
+      erreurEmail = e.message
+    }
+  }
+  res.status(201).json({ jeton, role, expireLe, emailEnvoye, erreurEmail })
 })
 
 // Ajoute une personne accompagnée (sans email ni mot de passe)

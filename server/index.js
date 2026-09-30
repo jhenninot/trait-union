@@ -8,6 +8,8 @@ import { ErreurSaisie } from './auth/validation.js'
 import routesAuth from './routes/auth.js'
 import routesCercles from './routes/cercles.js'
 import routesInvitations from './routes/invitations.js'
+import routesAdmin from './routes/admin.js'
+import { ErreurEmail } from './email/brevo.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(__dirname, '..', 'dist')
@@ -32,9 +34,11 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', routesAuth)
 app.use('/api/cercles', routesCercles)
 app.use('/api/invitations', routesInvitations)
+app.use('/api/admin', routesAdmin)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })
+  if (err instanceof ErreurEmail) return res.status(502).json({ erreur: err.message })
   if ((err.cause?.code ?? err.code) === '22P02') return res.status(404).json({ erreur: 'Introuvable' }) // UUID mal formé
   console.error(err)
   res.status(500).json({ erreur: 'Erreur interne' })
