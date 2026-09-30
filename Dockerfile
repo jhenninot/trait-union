@@ -14,6 +14,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server ./server
+COPY drizzle ./drizzle
 COPY --from=build /app/dist ./dist
 
 ARG APP_VERSION=dev

@@ -7,13 +7,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "express": "^5.2.1"
+    "drizzle-orm": "^0.45.3",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.9",
+    "drizzle-kit": "^0.31.11",
     "vite": "^8.3.1",
     "vue": "^3.5.43"
   },

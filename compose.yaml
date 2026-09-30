@@ -2,6 +2,9 @@
 # L'image est construite par GitHub Actions et publiée sur ghcr.io à chaque push sur main.
 # Watchtower ne met à jour que les conteneurs portant le label
 # com.centurylinklabs.watchtower.enable=true (ici, uniquement l'application).
+#
+# Variables à définir dans l'onglet « .env » de la pile Dockge (voir .env.example) :
+#   POSTGRES_PASSWORD=un-mot-de-passe-long
 
 services:
   app:
@@ -12,8 +15,30 @@ services:
       - "3000:3000"
     environment:
       TZ: Europe/Paris
+      DATABASE_URL: postgres://traitunion:${POSTGRES_PASSWORD:?à définir dans le .env}@db:5432/traitunion
+    depends_on:
+      db:
+        condition: service_healthy
     labels:
       - com.centurylinklabs.watchtower.enable=true
+
+  db:
+    # Pas de label Watchtower : une montée de version de Postgres se fait à la main.
+    image: postgres:17-alpine
+    container_name: trait-union-db
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      POSTGRES_USER: traitunion
+      POSTGRES_DB: traitunion
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?à définir dans le .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traitunion -d traitunion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   watchtower:
     # Fork maintenu de containrrr/watchtower (archivé, incompatible avec Docker 29)
@@ -22,10 +47,13 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # Décommenter si le paquet GHCR reste privé (après un `docker login ghcr.io` sur l'hôte)
+      # Décommenter si le paquet GHCR devient privé (après un `docker login ghcr.io` sur l'hôte)
       # - /root/.docker/config.json:/config.json:ro
     environment:
       TZ: Europe/Paris
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_POLL_INTERVAL: "300"
+
+volumes:
+  db-data:
