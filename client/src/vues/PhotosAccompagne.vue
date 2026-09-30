@@ -7,6 +7,7 @@ import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { partagerPhoto, partageDisponible, recues } from '../partage.js'
+import { utiliserPleinEcran } from '../pleinEcran.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -110,6 +111,14 @@ function basculerDiaporama() {
   if (diaporama.value) minuterieDiaporama = setInterval(() => aller(1), DELAI_DIAPORAMA)
 }
 
+// Toucher la photo : arrête le diaporama, sinon l'affiche en plein écran (ou revient)
+const { pleinEcran, basculer: basculerPleinEcran, sortir: sortirPleinEcran } = utiliserPleinEcran()
+function toucherPhoto() {
+  if (diaporama.value) basculerDiaporama()
+  else basculerPleinEcran()
+}
+watch(() => (album.value === undefined ? 'choix' : album.value?.id ?? 'toutes'), () => sortirPleinEcran())
+
 // Toucher une flèche arrête le diaporama
 function manuel(sens) {
   if (diaporama.value) basculerDiaporama()
@@ -142,7 +151,7 @@ function manuel(sens) {
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
         <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
-      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" class="cadre" @click="diaporama && basculerDiaporama()">
+      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>
@@ -180,6 +189,9 @@ function manuel(sens) {
 .cadre { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
 .cadre img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); }
 .plein { background: #111; }
+/* Plein écran : la photo seule sur fond noir, par-dessus la barre de boutons ; toucher pour revenir */
+.cadre.plein-ecran { position: fixed; inset: 0; z-index: 60; background: black; }
+.cadre.plein-ecran img { border-radius: 0; box-shadow: none; }
 .plein .cadre img { border-radius: 0; box-shadow: none; }
 .plein .legende, .plein .envoi { color: white; }
 .legende { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); margin: 4px 0 0; text-align: center; }

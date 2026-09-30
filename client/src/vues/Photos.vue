@@ -7,6 +7,7 @@ import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
+import { utiliserPleinEcran } from '../pleinEcran.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -152,6 +153,8 @@ async function envoyer() {
 
 const restants = computed(() => aEnvoyer.value.filter((a) => a.etat !== 'fait').length)
 const photo = computed(() => (ouverte.value == null ? null : liste.value[ouverte.value]))
+const { pleinEcran, entrer: entrerPleinEcran, sortir: sortirPleinEcran } = utiliserPleinEcran()
+watch(photo, (p) => { if (!p) sortirPleinEcran() })
 watch(photo, (p) => p && prechargerVoisines(liste.value, ouverte.value))
 
 function ouvrir(i) {
@@ -310,12 +313,22 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       </div>
     </template>
 
-    <div v-if="photo" v-balayage="{ suivante: () => deplacer(1), precedente: () => deplacer(-1) }" class="visionneuse" @click.self="ouverte = null">
-      <button class="fermer" aria-label="Fermer" @click="ouverte = null">✕</button>
-      <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
-      <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" />
-      <button v-if="ouverte < liste.length - 1" class="fleche droite" aria-label="Photo suivante" @click="deplacer(1)">›</button>
-      <div class="infos">
+    <div
+      v-if="photo"
+      v-balayage="{ suivante: () => deplacer(1), precedente: () => deplacer(-1) }"
+      class="visionneuse"
+      :class="{ 'plein-ecran': pleinEcran }"
+      @click.self="pleinEcran ? sortirPleinEcran() : (ouverte = null)"
+    >
+      <button v-if="pleinEcran" class="fermer discret" aria-label="Quitter le plein écran" @click="sortirPleinEcran">✕</button>
+      <template v-else>
+        <button class="fermer" aria-label="Fermer" @click="ouverte = null">✕</button>
+        <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran">⛶</button>
+        <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
+      </template>
+      <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" @click="pleinEcran ? sortirPleinEcran() : entrerPleinEcran()" />
+      <button v-if="!pleinEcran && ouverte < liste.length - 1" class="fleche droite" aria-label="Photo suivante" @click="deplacer(1)">›</button>
+      <div v-if="!pleinEcran" class="infos">
         <form v-if="legendeEnEdition != null" class="edition" @submit.prevent="enregistrerLegende">
           <input v-model="legendeEnEdition" maxlength="500" placeholder="Légende" />
           <button>Enregistrer</button>
@@ -424,7 +437,14 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 }
 .visionneuse img { max-width: 100%; max-height: calc(100vh - 190px); object-fit: contain; border-radius: 6px; }
 .fermer, .fleche { position: absolute; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; }
-.fermer { top: 12px; right: 12px; width: 44px; height: 44px; padding: 0; font-size: 1.3rem; }
+.fermer, .agrandir { top: 12px; width: 44px; height: 44px; padding: 0; font-size: 1.3rem; }
+.fermer { right: 12px; }
+.agrandir { position: absolute; left: 12px; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; font-size: 1.5rem; }
+.visionneuse img { cursor: zoom-in; }
+/* Plein écran : la photo seule, aussi grande que possible, dans les deux sens de l'écran */
+.visionneuse.plein-ecran { padding: 0; background: black; gap: 0; }
+.visionneuse.plein-ecran img { max-width: 100vw; max-height: 100vh; max-height: 100dvh; border-radius: 0; cursor: zoom-out; }
+.fermer.discret { opacity: 0.6; z-index: 1; }
 .fleche { top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0; font-size: 2.2rem; line-height: 1; }
 .gauche { left: 12px; }
 .droite { right: 12px; }

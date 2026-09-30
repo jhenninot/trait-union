@@ -13,6 +13,9 @@ import android.webkit.WebView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -36,6 +39,8 @@ import org.json.JSONObject;
 // Même principe pour les photos, window.TraitUnionPartage : partager une photo de l'appli vers
 // une autre application (WhatsApp...), et recevoir celles qu'on partage vers Trait d'union depuis
 // la Galerie ou une autre appli (événement « tu-partage »). Voir client/src/partage.js.
+// Et window.TraitUnionEcran masque les barres d'Android pour voir une photo en plein écran
+// (client/src/pleinEcran.js).
 public class MainActivity extends BridgeActivity {
 
     private TextToSpeech synthese;
@@ -68,6 +73,7 @@ public class MainActivity extends BridgeActivity {
         });
         getBridge().getWebView().addJavascriptInterface(new Voix(), "TraitUnionVoix");
         getBridge().getWebView().addJavascriptInterface(new Partage(), "TraitUnionPartage");
+        getBridge().getWebView().addJavascriptInterface(new Ecran(), "TraitUnionEcran");
         recevoir(getIntent());
     }
 
@@ -143,6 +149,22 @@ public class MainActivity extends BridgeActivity {
     private void envoyer(String evenement, JSONObject detail) {
         WebView vue = getBridge().getWebView();
         vue.post(() -> vue.evaluateJavascript("window.dispatchEvent(new CustomEvent('" + evenement + "', { detail: " + detail + " }))", null));
+    }
+
+    private class Ecran {
+
+        @JavascriptInterface
+        public void pleinEcran(boolean actif) {
+            runOnUiThread(() -> {
+                WindowInsetsControllerCompat barres = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+                if (actif) {
+                    barres.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    barres.hide(WindowInsetsCompat.Type.systemBars());
+                } else {
+                    barres.show(WindowInsetsCompat.Type.systemBars());
+                }
+            });
+        }
     }
 
     private class Partage {
