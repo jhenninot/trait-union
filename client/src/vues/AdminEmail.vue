@@ -52,7 +52,6 @@ const tester = () => action(async () => {
 
 <template>
   <main>
-    <RouterLink to="/">← Accueil</RouterLink>
     <h1>Envoi d'emails</h1>
     <p>Trait d'union envoie ses emails (invitations, et plus tard rappels et notifications) avec
       <a href="https://www.brevo.com/fr/" target="_blank" rel="noopener">Brevo</a>. L'offre gratuite permet 300 emails par jour.</p>

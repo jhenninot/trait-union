@@ -1,23 +1,27 @@
 <script setup>
-import { useRouter } from 'vue-router'
-import { session, deconnecter } from './session.js'
-import logo from './logo.svg'
+import { computed } from 'vue'
+import { session } from './session.js'
+import MenuAidant from './navigation/MenuAidant.vue'
+import BarreAccompagne from './navigation/BarreAccompagne.vue'
 
-const router = useRouter()
-
-async function seDeconnecter() {
-  await deconnecter()
-  router.push('/connexion')
-}
+// Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
+// les aidants, proches et administrateurs (menu complet), et les pages publiques (sans menu).
+const miseEnPage = computed(() => {
+  if (!session.utilisateur) return 'publique'
+  return session.typeSession === 'appareil' ? 'accompagne' : 'aidant'
+})
 </script>
 
 <template>
-  <header v-if="session.utilisateur && session.typeSession !== 'appareil'" class="entete">
-    <RouterLink to="/"><img :src="logo" alt="Trait d'union" class="logo-entete" /></RouterLink>
-    <span class="qui">{{ session.utilisateur.prenom }}<span v-if="session.utilisateur.estAdmin"> · admin</span></span>
-    <button class="lien" @click="seDeconnecter">Se déconnecter</button>
-  </header>
-  <RouterView />
+  <div v-if="miseEnPage === 'accompagne'" class="mise-en-page-accompagne">
+    <RouterView />
+    <BarreAccompagne />
+  </div>
+  <div v-else-if="miseEnPage === 'aidant'" class="mise-en-page-aidant">
+    <MenuAidant />
+    <div class="page"><RouterView /></div>
+  </div>
+  <RouterView v-else />
 </template>
 
 <style>
@@ -43,16 +47,14 @@ main {
   padding: 24px 16px;
 }
 h1 { color: var(--bleu-nuit); }
-.entete {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: white;
-  border-bottom: 1px solid #eee;
+.mise-en-page-aidant { display: flex; min-height: 100vh; }
+.mise-en-page-aidant .page { flex: 1; min-width: 0; }
+.mise-en-page-accompagne { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.mise-en-page-accompagne > main { width: 100%; }
+@media (max-width: 760px) {
+  .mise-en-page-aidant { display: block; }
+  .mise-en-page-aidant .page { padding-bottom: 80px; }
 }
-.logo-entete { height: 36px; display: block; }
-.qui { margin-left: auto; color: var(--gris); }
 .carte {
   background: white;
   border-radius: 12px;

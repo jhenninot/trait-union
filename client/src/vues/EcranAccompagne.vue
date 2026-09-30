@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { session } from '../session.js'
 
-// Écran de la personne accompagnée : très lisible, sans menu ni bouton de déconnexion.
+// Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
 let minuterie
 onMounted(() => { minuterie = setInterval(() => (maintenant.value = new Date()), 30_000) })
@@ -27,7 +27,7 @@ const moment = () => {
 
 <style scoped>
 .accompagne {
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
