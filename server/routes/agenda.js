@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { and, eq, ne, or, gte, lt, inArray, isNull, asc } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
 import { rendezVous, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
-import { RECURRENCES, occurrences } from '../agenda/recurrence.js'
+import { RECURRENCES, occurrences, occurrenceNumero } from '../agenda/recurrence.js'
 
 // Agenda d'un cercle, monté sous /api/cercles/:cercleId/rendez-vous après chargerCercle
 // (req.cercle, req.role, req.peutGerer). Tout membre du cercle peut ajouter un rendez-vous.
@@ -37,7 +38,11 @@ function filtreVisibles(req) {
   )
 }
 
-// La personne qui l'a créé et les aidants peuvent modifier ou supprimer un rendez-vous
+// Règles de modification (validées par Julien le 2026-09-30) :
+// - l'auteur, quel que soit son rôle, modifie ou supprime toujours ses rendez-vous ;
+// - aidants et administrateurs modifient ou suppriment tout ce qu'ils voient ;
+// - proches et auxiliaires : seulement les leurs ;
+// - seul l'auteur change qui peut voir le rendez-vous.
 const peutModifier = (req, rdv) => req.peutGerer || rdv.creeParId === req.utilisateur.id
 
 function date(valeur, champ, { obligatoire = true } = {}) {
@@ -84,6 +89,8 @@ function lireSaisie(req) {
   }
 }
 
+const modificateur = alias(utilisateurs, 'modificateur')
+
 const colonnes = {
   id: rendezVous.id,
   titre: rendezVous.titre,
@@ -99,6 +106,9 @@ const colonnes = {
   recurrenceFin: rendezVous.recurrenceFin,
   creeParId: rendezVous.creeParId,
   creeParPrenom: utilisateurs.prenom,
+  modifieParId: rendezVous.modifieParId,
+  modifieParPrenom: modificateur.prenom,
+  exclusions: rendezVous.exclusions,
   modifieLe: rendezVous.modifieLe
 }
 
@@ -107,9 +117,12 @@ const estVisible = (req, rdv) => niveauxVisibles(req).includes(rdv.visibilite) |
 
 // Une occurrence garde l'identifiant de sa série ; `cle` la distingue des autres
 // et serieDebut / serieFin servent à modifier la série entière.
-const presenter = (req, serie = null) => ({ creeParId, occurrence = 0, ...rdv }) => ({
+const presenter = (req, serie = null) => ({ creeParId, occurrence = 0, exclusions, modifieParId, modifieParPrenom, ...rdv }) => ({
   ...rdv,
   cle: `${rdv.id}:${occurrence}`,
+  occurrence,
+  // « Modifié par … » seulement quand ce n'est pas l'auteur qui a fait la dernière modification
+  modifieParPrenom: modifieParId && modifieParId !== creeParId ? modifieParPrenom : null,
   serieDebut: (serie ?? rdv).debut,
   serieFin: (serie ?? rdv).fin,
   deMoi: creeParId === req.utilisateur.id,
@@ -134,6 +147,7 @@ router.get('/', async (req, res) => {
   if (depuis) series.push(or(isNull(rendezVous.recurrenceFin), gte(rendezVous.recurrenceFin, new Date(depuis - 366 * 86_400_000))))
   const lignes = await db.select(colonnes).from(rendezVous)
     .leftJoin(utilisateurs, eq(rendezVous.creeParId, utilisateurs.id))
+    .leftJoin(modificateur, eq(rendezVous.modifieParId, modificateur.id))
     .where(and(eq(rendezVous.cercleId, req.cercle.id), or(and(...simples), and(...series))))
     .orderBy(asc(rendezVous.debut))
     .limit(1000)
@@ -159,16 +173,64 @@ async function chargerRendezVous(req, res, next) {
   next()
 }
 
+// Pour une série qui se répète, on agit sur une date (« occurrence »), sur cette date
+// et les suivantes (« suivantes ») ou sur toute la série (« serie », par défaut).
+// `occurrence` est le numéro de la répétition concernée (0 = la première).
+function lirePortee(req) {
+  const portee = req.body?.portee ?? req.query.portee ?? 'serie'
+  if (!['occurrence', 'suivantes', 'serie'].includes(portee)) throw new ErreurSaisie('Portée invalide')
+  const numero = Number(req.body?.occurrence ?? req.query.occurrence ?? 0)
+  if (!Number.isInteger(numero) || numero < 0) throw new ErreurSaisie('Date invalide')
+  const occ = occurrenceNumero(req.rdv, numero)
+  if (!occ) throw new ErreurSaisie('Cette date ne fait pas partie du rendez-vous')
+  if (req.rdv.recurrence === 'aucune' || (portee === 'suivantes' && numero === 0)) return { portee: 'serie', numero, occ }
+  return { portee, numero, occ }
+}
+
+// Fin d'une série coupée : 23h59 la veille de la date où elle s'arrête (le formulaire
+// affiche la fin de répétition au jour près)
+const veille = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, 23, 59)
+
+// Le formulaire envoie les dates de la répétition modifiée
 router.put('/:rdvId', chargerRendezVous, async (req, res) => {
-  await db.update(rendezVous).set(lireSaisie(req)).where(eq(rendezVous.id, req.rdv.id))
-  const [rdv] = await db.select(colonnes).from(rendezVous)
-    .leftJoin(utilisateurs, eq(rendezVous.creeParId, utilisateurs.id))
-    .where(eq(rendezVous.id, req.rdv.id))
-  res.json(presenter(req)(rdv))
+  const serie = req.rdv
+  const saisie = lireSaisie(req)
+  if (serie.creeParId !== req.utilisateur.id) {
+    saisie.visibilite = serie.visibilite
+    saisie.auxiliaires = serie.auxiliaires
+  }
+  saisie.modifieParId = req.utilisateur.id
+  const { portee, numero, occ } = lirePortee(req)
+  const copie = { ...saisie, cercleId: serie.cercleId, creeParId: serie.creeParId }
+  await db.transaction(async (tx) => {
+    if (portee === 'serie') {
+      // Déplacer une date déplace toute la série d'autant
+      const debut = new Date(serie.debut.getTime() + (saisie.debut - occ.debut))
+      const fin = saisie.fin ? new Date(debut.getTime() + (saisie.fin - saisie.debut)) : null
+      const memeRythme = saisie.recurrence === serie.recurrence && saisie.intervalle === serie.intervalle && +debut === +serie.debut
+      await tx.update(rendezVous).set({ ...saisie, debut, fin, exclusions: memeRythme ? serie.exclusions : [] })
+        .where(eq(rendezVous.id, serie.id))
+    } else if (portee === 'occurrence') {
+      // La date sort de la série et devient un rendez-vous à part
+      await tx.update(rendezVous).set({ exclusions: [...serie.exclusions, numero] }).where(eq(rendezVous.id, serie.id))
+      await tx.insert(rendezVous).values({ ...copie, recurrence: 'aucune', intervalle: 1, recurrenceFin: null })
+    } else {
+      // La série s'arrête avant cette date ; une nouvelle série prend le relais
+      await tx.update(rendezVous).set({ recurrenceFin: veille(occ.debut) }).where(eq(rendezVous.id, serie.id))
+      await tx.insert(rendezVous).values(copie)
+    }
+  })
+  res.status(204).end()
 })
 
 router.delete('/:rdvId', chargerRendezVous, async (req, res) => {
-  await db.delete(rendezVous).where(eq(rendezVous.id, req.rdv.id))
+  const { portee, numero, occ } = lirePortee(req)
+  if (portee === 'serie') await db.delete(rendezVous).where(eq(rendezVous.id, req.rdv.id))
+  else if (portee === 'occurrence') {
+    await db.update(rendezVous).set({ exclusions: [...req.rdv.exclusions, numero], modifieParId: req.utilisateur.id }).where(eq(rendezVous.id, req.rdv.id))
+  } else {
+    await db.update(rendezVous).set({ recurrenceFin: veille(occ.debut), modifieParId: req.utilisateur.id }).where(eq(rendezVous.id, req.rdv.id))
+  }
   res.status(204).end()
 })
 

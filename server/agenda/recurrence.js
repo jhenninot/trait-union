@@ -45,6 +45,7 @@ export function occurrences(rdv, depuis, jusqua) {
     if (!debut) continue
     if (rdv.recurrenceFin && debut > rdv.recurrenceFin) break
     if (jusqua && debut >= jusqua) break
+    if (rdv.exclusions?.includes(i)) continue // date supprimée ou modifiée à part
     // La fin se décale de la même façon (garde l'heure après un changement d'heure)
     const fin = rdv.fin ? (decaler(rdv.fin, rdv.recurrence, i * rdv.intervalle) ?? new Date(debut.getTime() + duree)) : null
     if (!depuis || (fin ?? debut) >= depuis) liste.push({ ...rdv, debut, fin, occurrence: i })
@@ -52,4 +53,14 @@ export function occurrences(rdv, depuis, jusqua) {
     if (!jusqua && !rdv.recurrenceFin && debut - (depuis ?? rdv.debut) > 366 * JOUR) break
   }
   return liste
+}
+
+// Début et fin de la répétition numéro `i` (null si elle n'existe pas)
+export function occurrenceNumero(rdv, i) {
+  if (rdv.recurrence === 'aucune') return i === 0 ? { debut: rdv.debut, fin: rdv.fin } : null
+  const debut = decaler(rdv.debut, rdv.recurrence, i * rdv.intervalle)
+  if (!debut) return null
+  const duree = rdv.fin ? rdv.fin - rdv.debut : 0
+  const fin = rdv.fin ? (decaler(rdv.fin, rdv.recurrence, i * rdv.intervalle) ?? new Date(debut.getTime() + duree)) : null
+  return { debut, fin }
 }

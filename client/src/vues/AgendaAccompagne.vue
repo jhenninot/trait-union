@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
-import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
+import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, valeurHeure, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import { parler, lectureDisponible } from '../voix.js'
 
@@ -101,6 +101,42 @@ function ajouter() {
   }
 }
 
+// Modifier un de ses rendez-vous : le même formulaire, rempli avec la date choisie
+function modifierRdv(rdv) {
+  erreur.value = ''
+  const debut = new Date(rdv.debut)
+  const fin = rdv.fin ? new Date(rdv.fin) : debut
+  const jour = valeurJour(debut)
+  const ecart = Math.round((combiner(jour) - debutDuJour()) / 86_400_000)
+  const heureFin = valeurHeure(fin)
+  saisie.value = {
+    id: rdv.id,
+    cercleId: rdv.cercleId,
+    occurrence: rdv.occurrence,
+    estSerie: rdv.recurrence !== 'aucune',
+    portee: rdv.recurrence !== 'aucune' ? 'occurrence' : 'serie',
+    visibiliteModifiable: rdv.deMoi,
+    titre: rdv.titre,
+    quand: ecart === 0 || ecart === 1 ? ecart : 'autre',
+    autreJour: jour,
+    plusieursJours: valeurJour(fin) !== jour,
+    jourFin: valeurJour(fin),
+    journeeEntiere: rdv.journeeEntiere,
+    heure: rdv.journeeEntiere ? '10:00' : valeurHeure(debut),
+    heureFin: rdv.journeeEntiere ? '11:00' : heureFin,
+    // Une répétition non proposée ici (ex. tous les ans) est gardée telle quelle
+    recurrence: rdv.recurrence,
+    recurrenceOrigine: rdv.recurrence,
+    intervalle: rdv.intervalle,
+    recurrenceFin: rdv.recurrenceFin,
+    visibilite: rdv.visibilite
+  }
+}
+const PORTEES = [
+  { valeur: 'occurrence', libelle: 'Ce jour-là seulement' },
+  { valeur: 'serie', libelle: 'Toutes les fois' }
+]
+
 // L'heure de fin suit l'heure de début (une heure plus tard)
 watch(() => saisie.value?.heure, (heure) => {
   const s = saisie.value
@@ -123,15 +159,29 @@ async function enregistrer() {
   if (fin <= debut) return (erreur.value = 'L\'heure de fin doit être après l\'heure de début.')
   // Le rendez-vous va dans le cercle de la personne (en général, elle n'en a qu'un)
   const cercle = session.cercles.find((c) => c.role === 'accompagne') ?? session.cercles[0]
+  const corps = {
+    titre: s.titre,
+    visibilite: s.visibilite,
+    journeeEntiere: s.journeeEntiere,
+    debut: debut.toISOString(),
+    fin: fin.toISOString(),
+    recurrence: s.recurrence
+  }
   try {
-    await api('POST', `/cercles/${cercle.id}/rendez-vous`, {
-      titre: s.titre,
-      visibilite: s.visibilite,
-      journeeEntiere: s.journeeEntiere,
-      debut: debut.toISOString(),
-      fin: fin.toISOString(),
-      recurrence: s.recurrence
-    })
+    if (s.id) {
+      // Même répétition qu'avant : on garde son rythme et sa date de fin
+      const garde = s.recurrence === s.recurrenceOrigine
+      await api('PUT', `/cercles/${s.cercleId}/rendez-vous/${s.id}`, {
+        ...corps,
+        recurrence: s.portee === 'occurrence' ? 'aucune' : s.recurrence,
+        intervalle: garde ? s.intervalle : 1,
+        recurrenceFin: garde ? s.recurrenceFin : null,
+        portee: s.portee,
+        occurrence: s.occurrence
+      })
+    } else {
+      await api('POST', `/cercles/${cercle.id}/rendez-vous`, corps)
+    }
     saisie.value = null
     await charger()
   } catch (e) {
@@ -145,10 +195,16 @@ async function ecouterAgenda() {
   parler((await api('POST', '/voix/intention', { intention: 'agenda' })).texte)
 }
 
-async function supprimer(rdv) {
-  const serie = rdv.recurrence !== 'aucune' ? ' (toutes les fois)' : ''
-  if (!confirm(`Effacer « ${rdv.titre} »${serie} ?`)) return
-  await api('DELETE', `/cercles/${rdv.cercleId}/rendez-vous/${rdv.id}`).catch((e) => (erreur.value = e.message))
+// Un rendez-vous qui se répète demande : ce jour-là seulement, ou toutes les fois
+const effacement = ref(null)
+function supprimer(rdv) {
+  if (rdv.recurrence !== 'aucune') return (effacement.value = rdv.cle)
+  if (confirm(`Effacer « ${rdv.titre} » ?`)) effacer(rdv, 'serie')
+}
+async function effacer(rdv, portee) {
+  effacement.value = null
+  await api('DELETE', `/cercles/${rdv.cercleId}/rendez-vous/${rdv.id}?portee=${portee}&occurrence=${rdv.occurrence}`)
+    .catch((e) => (erreur.value = e.message))
   await charger()
 }
 </script>
@@ -156,7 +212,15 @@ async function supprimer(rdv) {
 <template>
   <main class="agenda">
     <form v-if="saisie" class="saisie" @submit.prevent="enregistrer">
-      <h1>Nouveau rendez-vous</h1>
+      <h1>{{ saisie.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous' }}</h1>
+      <template v-if="saisie.estSerie">
+        <p class="question">Ce rendez-vous se répète. Changer :</p>
+        <div class="choix deux">
+          <button v-for="p in PORTEES" :key="p.valeur" type="button" :class="{ choisi: saisie.portee === p.valeur }" @click="saisie.portee = p.valeur">
+            {{ p.libelle }}
+          </button>
+        </div>
+      </template>
       <label class="question">Qu'est-ce qui est prévu ?
         <input v-model="saisie.titre" class="grand" maxlength="200" placeholder="Ex. Coiffeur" />
       </label>
@@ -184,15 +248,15 @@ async function supprimer(rdv) {
         <label>à <input v-model="saisie.heureFin" type="time" class="grand" /></label>
       </div>
 
-      <p class="question">Ça se répète ?</p>
-      <div class="choix quatre">
+      <p v-if="saisie.portee !== 'occurrence'" class="question">Ça se répète ?</p>
+      <div v-if="saisie.portee !== 'occurrence'" class="choix quatre">
         <button v-for="q in REPETITION" :key="q.valeur" type="button" :class="{ choisi: saisie.recurrence === q.valeur }" @click="saisie.recurrence = q.valeur">
           {{ q.libelle }}
         </button>
       </div>
 
-      <p class="question">Qui peut le voir ?</p>
-      <div class="choix">
+      <p v-if="!saisie.id || saisie.visibiliteModifiable" class="question">Qui peut le voir ?</p>
+      <div v-if="!saisie.id || saisie.visibiliteModifiable" class="choix">
         <button v-for="q in QUI" :key="q.valeur" type="button" :class="{ choisi: saisie.visibilite === q.valeur }" @click="saisie.visibilite = q.valeur">
           <span class="emoji" aria-hidden="true">{{ q.emoji }}</span>{{ q.libelle }}
         </button>
@@ -230,7 +294,16 @@ async function supprimer(rdv) {
             <span class="heure">{{ horaire(rdv) }}</span>
             <span class="titre">{{ titreRdv(rdv) }}</span>
             <span v-if="rdv.lieu" class="lieu">{{ rdv.lieu }}</span>
-            <button v-if="rdv.deMoi" class="effacer" @click="supprimer(rdv)">Effacer</button>
+            <span v-if="rdv.peutModifier && effacement !== rdv.cle" class="gestes">
+              <button class="modifier" @click="modifierRdv(rdv)">Modifier</button>
+              <button class="effacer" @click="supprimer(rdv)">Effacer</button>
+            </span>
+            <span v-if="effacement === rdv.cle" class="choix-effacer">
+              Effacer :
+              <button @click="effacer(rdv, 'occurrence')">Ce jour-là</button>
+              <button @click="effacer(rdv, 'serie')">Toutes les fois</button>
+              <button class="retour-petit" @click="effacement = null">Annuler</button>
+            </span>
           </div>
         </section>
       </template>
@@ -268,7 +341,13 @@ button.ecouter { margin-left: auto; background: var(--vert-clair); color: var(--
 .heure { font-size: 1.6em; font-weight: 700; color: var(--vert); }
 .titre { font-size: 1.6em; font-weight: 700; color: var(--bleu-nuit); }
 .lieu { grid-column: 2; color: var(--gris); font-size: 1.2em; }
-.effacer { grid-column: 3; grid-row: 1; background: none; color: var(--rouge); font-size: 1.1rem; }
+.gestes { grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 4px; }
+.gestes button { background: none; font-size: 1.1rem; padding: 6px 10px; }
+.modifier { color: var(--vert); }
+.effacer { color: var(--rouge); }
+.choix-effacer { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 1.1rem; font-weight: 600; color: var(--rouge); }
+.choix-effacer button { background: var(--rouge); font-size: 1.1rem; padding: 10px 14px; border-radius: 12px; }
+.choix-effacer .retour-petit { background: #f3f0ea; color: var(--bleu-nuit); }
 .saisie { gap: 14px; }
 .question { font-size: 1.6rem; font-weight: 700; color: var(--bleu-nuit); margin: 12px 0 0; gap: 10px; }
 .facultatif { font-weight: normal; color: var(--gris); font-size: 1.2rem; }
@@ -325,6 +404,6 @@ input.grand { font-size: 1.7rem; padding: 16px 18px; border-radius: 16px; border
   .rdv { grid-template-columns: 1fr auto; }
   .heure { grid-column: 1; }
   .titre, .lieu { grid-column: 1 / -1; }
-  .effacer { grid-column: 2; }
+  .gestes { grid-column: 2; grid-row: 1; flex-direction: row; }
 }
 </style>

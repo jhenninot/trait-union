@@ -81,18 +81,30 @@ function nouveau() {
   }
 }
 
-// Modifier une occurrence modifie toute la série : le formulaire part de la première
+// Le formulaire part de la date choisie. Pour un rendez-vous répété, on choisit ensuite
+// si la modification vaut pour cette date, cette date et les suivantes, ou toute la série.
+const PORTEES = [
+  { valeur: 'occurrence', libelle: 'Cette date seulement' },
+  { valeur: 'suivantes', libelle: 'Cette date et les suivantes' },
+  { valeur: 'serie', libelle: 'Toute la série' }
+]
 function modifier(rdv) {
-  const debut = new Date(rdv.serieDebut)
-  const fin = rdv.serieFin ? new Date(rdv.serieFin) : debut
+  const debut = new Date(rdv.debut)
+  const fin = rdv.fin ? new Date(rdv.fin) : debut
+  const estSerie = rdv.recurrence !== 'aucune'
   formulaire.value = {
     id: rdv.id,
+    occurrence: rdv.occurrence,
+    estSerie,
+    portee: estSerie ? 'occurrence' : 'serie',
+    // Seul l'auteur change qui peut voir le rendez-vous
+    visibiliteModifiable: rdv.deMoi,
     titre: rdv.titre,
     journeeEntiere: rdv.journeeEntiere,
     jour: valeurJour(debut),
     heure: rdv.journeeEntiere ? '09:00' : valeurHeure(debut),
     jourFin: valeurJour(fin),
-    heureFin: rdv.journeeEntiere || !rdv.serieFin ? uneHeureApres(valeurHeure(debut)) : valeurHeure(fin),
+    heureFin: rdv.journeeEntiere || !rdv.fin ? uneHeureApres(valeurHeure(debut)) : valeurHeure(fin),
     recurrence: rdv.recurrence,
     intervalle: rdv.intervalle,
     recurrenceFin: rdv.recurrenceFin ? valeurJour(new Date(rdv.recurrenceFin)) : '',
@@ -134,9 +146,11 @@ const enregistrer = () => action(async () => {
     journeeEntiere: f.journeeEntiere,
     debut: debut.toISOString(),
     fin: fin.toISOString(),
-    recurrence: f.recurrence,
+    recurrence: f.portee === 'occurrence' ? 'aucune' : f.recurrence,
     intervalle: f.intervalle,
-    recurrenceFin: f.recurrence !== 'aucune' && f.recurrenceFin ? combiner(f.recurrenceFin, '23:59').toISOString() : null
+    recurrenceFin: f.recurrence !== 'aucune' && f.recurrenceFin ? combiner(f.recurrenceFin, '23:59').toISOString() : null,
+    portee: f.portee,
+    occurrence: f.occurrence
   }
   if (f.id) await api('PUT', `${url.value}/rendez-vous/${f.id}`, corps)
   else await api('POST', `${url.value}/rendez-vous`, corps)
@@ -144,10 +158,15 @@ const enregistrer = () => action(async () => {
   await charger()
 })
 
-const supprimer = (rdv) => action(async () => {
-  const serie = rdv.recurrence !== 'aucune' ? ' et toutes ses répétitions' : ''
-  if (!confirm(`Supprimer « ${rdv.titre} »${serie} ?`)) return
-  await api('DELETE', `${url.value}/rendez-vous/${rdv.id}`)
+// Un rendez-vous répété demande quoi supprimer (choix affiché dans sa carte)
+const suppression = ref(null) // clé de la répétition dont on affiche le choix
+function supprimer(rdv) {
+  if (rdv.recurrence !== 'aucune') return (suppression.value = rdv.cle)
+  if (confirm(`Supprimer « ${rdv.titre} » ?`)) confirmerSuppression(rdv, 'serie')
+}
+const confirmerSuppression = (rdv, portee) => action(async () => {
+  await api('DELETE', `${url.value}/rendez-vous/${rdv.id}?portee=${portee}&occurrence=${rdv.occurrence}`)
+  suppression.value = null
   if (formulaire.value?.id === rdv.id) formulaire.value = null
   await charger()
 })
@@ -175,7 +194,13 @@ const supprimer = (rdv) => action(async () => {
           <label>Fin <input v-model="formulaire.jourFin" type="date" :min="formulaire.jour" required /></label>
           <label v-if="!formulaire.journeeEntiere">Heure <input v-model="formulaire.heureFin" type="time" required /></label>
         </div>
-        <div class="ligne-champs">
+        <fieldset v-if="formulaire.estSerie">
+          <legend>Ce rendez-vous se répète. Modifier :</legend>
+          <label v-for="p in PORTEES" :key="p.valeur" class="choix">
+            <input v-model="formulaire.portee" type="radio" :value="p.valeur" /> {{ p.libelle }}
+          </label>
+        </fieldset>
+        <div v-if="formulaire.portee !== 'occurrence'" class="ligne-champs">
           <label>Répétition
             <select v-model="formulaire.recurrence">
               <option v-for="r in RECURRENCES" :key="r.valeur" :value="r.valeur">{{ r.libelle }}</option>
@@ -186,11 +211,12 @@ const supprimer = (rdv) => action(async () => {
             <label>Jusqu'au <input v-model="formulaire.recurrenceFin" type="date" :min="formulaire.jour" /></label>
           </template>
         </div>
-        <p v-if="formulaire.recurrence !== 'aucune'" class="aide">Sans date, la répétition continue indéfiniment. Une modification s'applique à toutes les répétitions.</p>
+        <p v-if="formulaire.portee !== 'occurrence' && formulaire.recurrence !== 'aucune'" class="aide">Sans date, la répétition continue indéfiniment.</p>
         <label>Lieu <input v-model="formulaire.lieu" maxlength="200" /></label>
         <label>Notes <textarea v-model="formulaire.notes" rows="3" maxlength="2000" /></label>
-        <fieldset>
+        <fieldset :disabled="formulaire.id && !formulaire.visibiliteModifiable">
           <legend>Qui peut le voir ?</legend>
+          <p v-if="formulaire.id && !formulaire.visibiliteModifiable" class="aide">Seule la personne qui a créé ce rendez-vous peut changer qui le voit.</p>
           <label v-for="n in niveaux" :key="n.valeur" class="choix">
             <input v-model="formulaire.visibilite" type="radio" :value="n.valeur" /> {{ n.libelle }}
           </label>
@@ -237,9 +263,16 @@ const supprimer = (rdv) => action(async () => {
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>
               <span v-if="rdv.auxiliaires" class="pastille auxiliaire">Auxiliaires</span>
-              Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}
+              Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}<template v-if="rdv.modifieParPrenom">, modifié par {{ rdv.modifieParPrenom }}</template>
             </span>
-            <div v-if="rdv.peutModifier" class="actions">
+            <div v-if="suppression === rdv.cle" class="actions choix-suppression">
+              <span>Supprimer :</span>
+              <button class="danger" @click="confirmerSuppression(rdv, 'occurrence')">Cette date</button>
+              <button class="danger" @click="confirmerSuppression(rdv, 'suivantes')">Cette date et les suivantes</button>
+              <button class="danger" @click="confirmerSuppression(rdv, 'serie')">Toute la série</button>
+              <button class="lien" @click="suppression = null">Annuler</button>
+            </div>
+            <div v-else-if="rdv.peutModifier" class="actions">
               <button class="lien" @click="modifier(rdv)">Modifier</button>
               <button class="danger" @click="supprimer(rdv)">Supprimer</button>
             </div>
@@ -257,6 +290,7 @@ const supprimer = (rdv) => action(async () => {
 .ligne-champs { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
 .intervalle { display: flex; align-items: center; gap: 6px; font-weight: normal; }
 .intervalle input { width: 70px; }
+.choix-suppression { align-items: center; background: #fdf0ee; border-radius: 8px; padding: 6px 10px; }
 @media (max-width: 480px) { .ligne-champs { grid-template-columns: 1fr 1fr; } .ligne-champs label:first-child { grid-column: 1 / -1; } }
 textarea { font: inherit; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; resize: vertical; }
 fieldset { border: 1px solid #ebe8e3; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }

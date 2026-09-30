@@ -123,7 +123,11 @@ export const rendezVous = pgTable('rendez_vous', {
   intervalle: integer('intervalle').notNull().default(1), // tous les N jours, semaines...
   recurrenceFin: timestamp('recurrence_fin', { withTimezone: true }), // dernière répétition possible (incluse)
   // Visible aussi par les auxiliaires de vie, en plus du niveau ci-dessus
-  auxiliaires: boolean('auxiliaires').notNull().default(false)
+  auxiliaires: boolean('auxiliaires').notNull().default(false),
+  // Numéros des répétitions supprimées ou détachées de la série (« cette date seulement »)
+  exclusions: jsonb('exclusions').$type().notNull().default([]),
+  // Dernière personne à l'avoir modifié (affiché « Modifié par … » si ce n'est pas l'auteur)
+  modifieParId: uuid('modifie_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
 }, (t) => [
   index('rendez_vous_cercle_debut_idx').on(t.cercleId, t.debut)
 ])
