@@ -5,6 +5,7 @@ import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
+import { balayage as vBalayage } from '../balayage.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -273,7 +274,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       </div>
     </template>
 
-    <div v-if="photo" class="visionneuse" @click.self="ouverte = null">
+    <div v-if="photo" v-balayage="{ suivante: () => deplacer(1), precedente: () => deplacer(-1) }" class="visionneuse" @click.self="ouverte = null">
       <button class="fermer" aria-label="Fermer" @click="ouverte = null">✕</button>
       <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)">‹</button>
       <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" />

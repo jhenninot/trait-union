@@ -4,10 +4,12 @@ import { useRoute } from 'vue-router'
 import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
+import { balayage as vBalayage } from '../balayage.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
 // pour passer à la suivante, et un diaporama qui défile tout seul.
+// Glisser le doigt sur la photo passe aussi à la suivante ou à la précédente.
 // /photos?album=<id> ouvre directement un album (?album=tous : toutes les photos), depuis l'accueil.
 const DELAI_DIAPORAMA = 8000
 const albums = ref([])
@@ -115,7 +117,7 @@ function manuel(sens) {
         <button class="retour" @click="retourAlbums">◀ Albums</button>
         <span class="titre-album">{{ titre }}</span>
       </div>
-      <div class="cadre" @click="diaporama && basculerDiaporama()">
+      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" class="cadre" @click="diaporama && basculerDiaporama()">
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>
