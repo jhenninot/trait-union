@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, boolean, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
 // côté mobile) et dates utiles à la future synchronisation hors ligne.
@@ -113,4 +113,23 @@ export const rendezVous = pgTable('rendez_vous', {
   visibilite: visibiliteRendezVous('visibilite').notNull().default('tous')
 }, (t) => [
   index('rendez_vous_cercle_debut_idx').on(t.cercleId, t.debut)
+])
+
+// Photos partagées dans un cercle. Les fichiers ne sont pas sur le serveur : ils sont chez
+// l'hébergeur S3 configuré par l'administrateur (server/stockage/s3.js), sous
+// cercles/<cercle>/photos/<photo>/<variante>.jpg. Une photo reste « envoi » tant que le
+// navigateur n'a pas confirmé que ses fichiers sont arrivés.
+export const statutPhoto = pgEnum('statut_photo', ['envoi', 'publiee'])
+
+export const photos = pgTable('photos', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  legende: text('legende'),
+  largeur: integer('largeur').notNull(), // de la version plein écran
+  hauteur: integer('hauteur').notNull(),
+  taille: integer('taille').notNull(), // octets, toutes versions comprises
+  statut: statutPhoto('statut').notNull().default('envoi')
+}, (t) => [
+  index('photos_cercle_cree_idx').on(t.cercleId, t.creeLe)
 ])

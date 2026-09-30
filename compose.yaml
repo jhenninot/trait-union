@@ -9,7 +9,9 @@
 #   APP_URL=https://trait-union.mondomaine.fr
 #   GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 #   GOOGLE_CLIENT_SECRET=...
-# L'envoi d'emails (Brevo) se configure dans l'application, écran d'administration.
+# L'envoi d'emails (Brevo) et le stockage des photos (S3, ex. OVHcloud Object Storage)
+# se configurent dans l'application, écrans d'administration. Les photos ne sont pas
+# stockées sur ce serveur : aucun volume à prévoir pour elles.
 
 services:
   app:

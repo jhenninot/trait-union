@@ -45,6 +45,12 @@ Le bouton « Se connecter avec Google » n'apparaît que si `GOOGLE_CLIENT_ID` e
 
 Les emails partent par l'[API de Brevo](https://developers.brevo.com) (offre gratuite : 300 emails par jour). Tout se règle dans l'application : un administrateur ouvre « Envoi d'emails » dans la partie Administration du menu (`/admin/email`), où les étapes sont rappelées (compte Brevo, expéditeur validé, clé API `xkeysib-…`, IP publique de la box autorisée dans Brevo), vérifie la clé, choisit l'expéditeur, active l'envoi et envoie un email de test. La clé est stockée en base (table `parametres`) et n'est jamais renvoyée au navigateur. Une fois l'envoi activé, un aidant peut saisir l'adresse de la personne qu'il invite pour lui envoyer le lien par email ; le lien reste affiché pour être copié. Les liens des emails utilisent `APP_URL` si elle est définie.
 
+## Photos (stockage S3, facultatif)
+
+Les photos d'un cercle (page **Photos** des aidants et proches, **Mes photos** sur la tablette) ne sont pas stockées sur le serveur de l'application. Le navigateur réduit chaque photo en deux JPEG (miniature de 400 px, version plein écran de 2 048 px, environ 500 Ko), puis les dépose directement chez un hébergeur compatible S3 avec des liens temporaires signés par le serveur (signature AWS v4 faite à la main dans `server/stockage/s3.js`, sans dépendance). Le serveur ne garde que la table `photos` (cercle, auteur, légende, dimensions). Les fichiers sont rangés sous `cercles/<cercle>/photos/<photo>/{miniature,ecran}.jpg` ; les liens d'affichage durent 12 h.
+
+Un administrateur configure l'hébergeur dans « Stockage des photos » (`/admin/photos`) : adresse, région, conteneur, clé d'accès et clé secrète (stockées en base, table `parametres`, clé secrète jamais renvoyée au navigateur). Hébergeur conseillé : OVHcloud Object Storage, classe Standard, Paris 3-AZ (`https://s3.eu-west-par.io.cloud.ovh.net`, région `eu-west-par`), conteneur privé. Le bouton « Vérifier » teste l'accès, l'écriture et la suppression, puis règle le CORS du conteneur pour l'adresse de l'application (`APP_URL`, sinon l'adresse de la page) : à refaire si cette adresse change.
+
 ## Application mobile
 
 ### PWA (tous les appareils)

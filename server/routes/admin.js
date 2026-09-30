@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { exigerAdmin } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { lireConfiguration, enregistrerConfiguration, verifierCompte, envoyerEmail, gabarit } from '../email/brevo.js'
+import * as stockage from '../stockage/s3.js'
+import { urlApplication } from '../url.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -56,6 +58,53 @@ router.post('/email/test', async (req, res) => {
   })
   await envoyerEmail({ a: { email: destinataire }, sujet: 'Trait d\'union : email de test', html, texte }, await lireConfiguration())
   res.json({ destinataire })
+})
+
+// --- Stockage des photos (S3)
+
+// La clé secrète ne repart jamais vers le navigateur
+const stockagePublic = (c) => ({
+  actif: c.actif,
+  endpoint: c.endpoint,
+  region: c.region,
+  bucket: c.bucket,
+  cleAcces: c.cleAcces,
+  cleSecrete: c.cleSecrete ? `…${c.cleSecrete.slice(-4)}` : null,
+  origine: c.origine ?? null
+})
+
+// Saisie du formulaire ; une clé secrète vide garde celle déjà enregistrée
+async function lireSaisieStockage(body) {
+  const actuelle = await stockage.lireConfiguration()
+  const endpoint = valider.texte(body.endpoint, 'adresse', { max: 300 }).replace(/\/$/, '')
+  if (!/^https:\/\/[^\s/]+/.test(endpoint)) throw new valider.ErreurSaisie('L\'adresse doit commencer par https://')
+  return {
+    ...actuelle,
+    actif: Boolean(body.actif),
+    endpoint,
+    region: valider.texte(body.region, 'région', { max: 60 }),
+    bucket: valider.texte(body.bucket, 'conteneur', { max: 63 }),
+    cleAcces: valider.texte(body.cleAcces, 'clé d\'accès', { max: 200 }),
+    cleSecrete: valider.texte(body.cleSecrete, 'clé secrète', { obligatoire: false, max: 200 }) || actuelle.cleSecrete
+  }
+}
+
+router.get('/stockage', async (req, res) => {
+  res.json(stockagePublic(await stockage.lireConfiguration()))
+})
+
+// Vérifie la configuration saisie (accès, écriture, suppression) et autorise l'adresse de
+// l'application à envoyer des photos (CORS). Rien n'est enregistré.
+router.post('/stockage/verifier', async (req, res) => {
+  res.json(await stockage.verifierStockage(await lireSaisieStockage(req.body), urlApplication(req)))
+})
+
+// Enregistre la configuration. Pour l'activer, elle doit passer la vérification.
+router.put('/stockage', async (req, res) => {
+  const config = await lireSaisieStockage(req.body)
+  if (config.actif) Object.assign(config, await stockage.verifierStockage(config, urlApplication(req)))
+  await stockage.enregistrerConfiguration(config)
+  res.json(stockagePublic(config))
 })
 
 export default router

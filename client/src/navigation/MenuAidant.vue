@@ -49,9 +49,9 @@ watch(() => route.params.id, (id) => {
 }, { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
 
-// Changer de cercle garde la même rubrique (Famille, Agenda ou Tablettes)
+// Changer de cercle garde la même rubrique (Famille, Agenda, Photos ou Tablettes)
 function changerCercle(id) {
-  const rubrique = route.path.match(/\/(agenda|tablettes)$/)?.[0] ?? ''
+  const rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -91,6 +91,9 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
         <Icone nom="agenda" /> Agenda
       </RouterLink>
+      <RouterLink :to="`/cercles/${cercle.id}/photos`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }">
+        <Icone nom="photo" /> Photos
+      </RouterLink>
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
         <Icone nom="tablette" /> Tablettes
       </RouterLink>
@@ -100,6 +103,7 @@ const estActif = (chemin) => route.path === chemin
       <p class="titre-section">Administration</p>
       <RouterLink to="/admin/cercles" class="lien" :class="{ actif: estActif('/admin/cercles') }"><Icone nom="cercle" /> Tous les cercles</RouterLink>
       <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
+      <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
     </template>
 
     <div class="bas-menu">
@@ -109,12 +113,12 @@ const estActif = (chemin) => route.path === chemin
     </div>
   </nav>
 
-  <!-- Téléphone : onglets en bas -->
+  <!-- Téléphone : onglets en bas (Tablettes reste accessible par « Plus ») -->
   <nav class="onglets" aria-label="Raccourcis">
     <RouterLink to="/" :class="{ actif: estActif('/') }"><Icone nom="accueil" />Accueil</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/agenda`" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }"><Icone nom="agenda" />Agenda</RouterLink>
-    <RouterLink v-if="cercle && peutGerer" :to="`/cercles/${cercle.id}/tablettes`" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }"><Icone nom="tablette" />Tablettes</RouterLink>
+    <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/photos`" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }"><Icone nom="photo" />Photos</RouterLink>
     <button :class="{ actif: ouvert }" @click="ouvert = !ouvert"><Icone nom="plus" />Plus</button>
   </nav>
 </template>

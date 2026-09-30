@@ -10,6 +10,7 @@ import { aLesDroits } from '../auth/roles.js'
 import { emailActif, envoyerEmail, gabarit } from '../email/brevo.js'
 import { urlApplication } from '../url.js'
 import routesAgenda from './agenda.js'
+import routesPhotos from './photos.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -195,5 +196,6 @@ router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, asyn
 
 // Agenda du cercle (rendez-vous)
 router.use('/:cercleId/rendez-vous', chargerCercle, routesAgenda)
+router.use('/:cercleId/photos', chargerCercle, routesPhotos)
 
 export default router

@@ -1,9 +1,10 @@
 <script setup>
 // Barre de la personne accompagnée : quelques gros boutons, toujours au même endroit.
-// Ajouter ici les prochaines rubriques (photos, messages...) quand elles existeront.
+// Ajouter ici les prochaines rubriques (messages...) quand elles existeront.
 const boutons = [
   { chemin: '/', emoji: '🏠', libelle: 'Accueil' },
   { chemin: '/agenda', emoji: '📅', libelle: 'Mon agenda' },
+  { chemin: '/photos', emoji: '🖼️', libelle: 'Mes photos' },
   { chemin: '/famille', emoji: '👨‍👩‍👧', libelle: 'Ma famille' }
 ]
 </script>

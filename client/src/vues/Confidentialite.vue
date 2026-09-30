@@ -1,7 +1,7 @@
 <template>
   <main class="texte">
     <h1>Politique de confidentialité</h1>
-    <p class="aide">Dernière mise à jour : 30 septembre 2026</p>
+    <p class="aide">Dernière mise à jour : 30 septembre 2026 (photos)</p>
 
     <p>Trait d'union est une application privée qui aide une personne accompagnée (atteinte de la maladie
       d'Alzheimer ou d'une maladie apparentée), ses aidants et sa famille à garder le lien. Elle est
@@ -17,6 +17,7 @@
         Nous n'accédons à aucune autre donnée de votre compte Google (contacts, agenda, fichiers…).</li>
       <li><strong>Cercles</strong> : les cercles auxquels vous appartenez et votre rôle (personne accompagnée, aidant, proche).</li>
       <li><strong>Personne accompagnée</strong> : prénom et nom saisis par un aidant ; elle n'a ni email ni mot de passe.</li>
+      <li><strong>Photos</strong> : les photos envoyées dans un cercle, leur légende, qui les a envoyées et quand.</li>
       <li><strong>Sessions</strong> : date d'expiration de vos connexions et, le cas échéant, le nom donné à l'appareil.</li>
     </ul>
 
@@ -29,6 +30,12 @@
     <h2>Qui voit quoi</h2>
     <p>Les membres d'un cercle voient les prénoms, noms et rôles des autres membres de ce cercle. Les adresses email
       ne sont visibles que des aidants du cercle et de l'administrateur.</p>
+
+    <h2>Stockage des photos</h2>
+    <p>Les photos ne sont pas conservées sur le serveur de l'application : elles sont envoyées directement chez un
+      hébergeur de stockage choisi par l'administrateur (par défaut OVHcloud, en France), dans un espace privé.
+      Elles ne sont affichées qu'aux membres du cercle, par des liens temporaires valables quelques heures.
+      La personne qui a envoyé une photo, ou un aidant du cercle, peut la supprimer à tout moment.</p>
 
     <h2>Conservation et suppression</h2>
     <p>Les données sont conservées tant que votre compte existe. Un aidant peut retirer un membre d'un cercle ;
