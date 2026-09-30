@@ -20,6 +20,16 @@ npm run db:generate  # génère une migration SQL dans drizzle/ après modificat
 
 PostgreSQL, via l'ORM [Drizzle](https://orm.drizzle.team). Le schéma est décrit dans `server/db/schema.js` ; les migrations générées dans `drizzle/` sont appliquées automatiquement au démarrage du serveur. Chaque table a un identifiant UUID et des dates `cree_le` / `modifie_le`, en prévision de la synchronisation avec une future appli mobile (SQLite en local).
 
+## Comptes et connexion
+
+- **Premier lancement** : l'application propose de créer le compte administrateur (seulement tant qu'aucun compte n'existe).
+- **Administrateur** : crée les cercles et voit tous les cercles.
+- **Aidant** (rôle dans un cercle) : invite des aidants et des proches par lien (7 jours, usage unique), ajoute les personnes accompagnées, configure leurs appareils, retire des membres.
+- **Proche** (rôle dans un cercle) : accède au cercle pour échanger ; ne gère pas les membres.
+- **Personne accompagnée** : pas d'email ni de mot de passe. Un aidant génère un code à 6 chiffres (30 minutes, usage unique) à saisir sur l'appareil (page `/appareil`) ; l'appareil reste ensuite connecté un an (durée prolongée à chaque utilisation) et n'affiche qu'un écran d'accueil simple. L'aidant peut déconnecter ses appareils à tout moment.
+
+Aidants, proches et administrateurs se connectent par email et mot de passe (empreinte scrypt). Les sessions sont stockées en base (seule l'empreinte du jeton), transmises par cookie `httpOnly` ou par en-tête `Authorization: Bearer` pour la future appli mobile. Aucun secret supplémentaire n'est nécessaire dans le `.env`.
+
 ## Déploiement (Docker / Dockge)
 
 - À chaque push sur `main`, GitHub Actions construit l'image et la publie sur `ghcr.io/jhenninot/trait-union:latest` (workflow `.github/workflows/docker.yml`).
