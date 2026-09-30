@@ -54,10 +54,11 @@ async function deposer(lien, blob) {
 }
 
 // Prépare, envoie et publie une photo dans un cercle ; renvoie la photo publiée
-export async function envoyerPhoto(cercleId, fichier, legende) {
+export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
   const p = await preparerPhoto(fichier)
   const { id, envois } = await api('POST', `/cercles/${cercleId}/photos`, {
     legende,
+    albumId,
     largeur: p.largeur,
     hauteur: p.hauteur,
     tailles: { miniature: p.miniature.size, ecran: p.ecran.size }
@@ -66,10 +67,21 @@ export async function envoyerPhoto(cercleId, fichier, legende) {
   return api('POST', `/cercles/${cercleId}/photos/${id}/publier`)
 }
 
-// Photos de tous les cercles de la personne accompagnée (en général un seul), les plus récentes d'abord
-export async function photosAccompagne(cercles) {
-  const listes = await Promise.all(cercles.map((c) => api('GET', `/cercles/${c.id}/photos?limite=200`).catch(() => ({ photos: [] }))))
+// Photos de tous les cercles de la personne accompagnée (en général un seul), les plus récentes
+// d'abord. `album` : { cercleId, id } pour un seul album.
+export async function photosAccompagne(cercles, album = null) {
+  const cibles = album ? cercles.filter((c) => c.id === album.cercleId) : cercles
+  const filtre = album ? `&album=${album.id}` : ''
+  const listes = await Promise.all(cibles.map((c) => api('GET', `/cercles/${c.id}/photos?limite=200${filtre}`).catch(() => ({ photos: [] }))))
   return listes.flatMap((l) => l.photos).sort((a, b) => new Date(b.creeLe) - new Date(a.creeLe))
+}
+
+// Albums de tous les cercles de la personne accompagnée, avec le cercle de chacun
+export async function albumsAccompagne(cercles) {
+  const listes = await Promise.all(cercles.map((c) => api('GET', `/cercles/${c.id}/albums`)
+    .then((r) => r.albums.map((a) => ({ ...a, cercleId: c.id })))
+    .catch(() => [])))
+  return listes.flat().filter((a) => a.nombre > 0).sort((a, b) => new Date(b.derniere) - new Date(a.derniere))
 }
 
 export const dateEnvoi = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })

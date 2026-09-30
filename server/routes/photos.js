@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { and, eq, lt, desc } from 'drizzle-orm'
+import { and, eq, lt, desc, isNull } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { photos, utilisateurs } from '../db/schema.js'
+import { photos, albums, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif, lienSigne, infoObjet, supprimerObjet } from '../stockage/s3.js'
@@ -21,7 +21,7 @@ const HEURE = 3600 * 1000
 const FENETRE_AFFICHAGE = 6 * HEURE
 const DUREE_AFFICHAGE = 12 * 3600
 
-const cleObjet = (photo, variante) => `cercles/${photo.cercleId}/photos/${photo.id}/${variante}.jpg`
+export const cleObjet = (photo, variante) => `cercles/${photo.cercleId}/photos/${photo.id}/${variante}.jpg`
 
 // La personne qui l'a envoyée et les aidants peuvent supprimer une photo
 const peutSupprimer = (req, photo) => req.peutGerer || photo.creeParId === req.utilisateur.id
@@ -32,16 +32,22 @@ async function exigerStockage(req, res, next) {
   next()
 }
 
-function presenter(req, photo) {
+// Lien d'affichage d'une version d'une photo (aussi utilisé pour les couvertures d'albums)
+export function lienAffichage(stockage, photo, variante) {
   const date = new Date(Math.floor(Date.now() / FENETRE_AFFICHAGE) * FENETRE_AFFICHAGE)
-  const lien = (variante) => lienSigne(req.stockage, 'GET', cleObjet(photo, variante), {
+  return lienSigne(stockage, 'GET', cleObjet(photo, variante), {
     duree: DUREE_AFFICHAGE,
     date,
     query: { 'response-cache-control': 'private, max-age=43200' }
   })
+}
+
+function presenter(req, photo) {
+  const lien = (variante) => lienAffichage(req.stockage, photo, variante)
   return {
     id: photo.id,
     cercleId: photo.cercleId,
+    albumId: photo.albumId ?? null,
     legende: photo.legende,
     largeur: photo.largeur,
     hauteur: photo.hauteur,
@@ -59,13 +65,24 @@ const colonnes = {
   cercleId: photos.cercleId,
   creeParId: photos.creeParId,
   creeParPrenom: utilisateurs.prenom,
+  albumId: photos.albumId,
   legende: photos.legende,
   largeur: photos.largeur,
   hauteur: photos.hauteur,
   creeLe: photos.creeLe
 }
 
-// Liste des photos publiées, les plus récentes d'abord. ?avant=<date ISO> pour la suite.
+// Album du cercle désigné par `id` (null pour « sans album ») ; lève une erreur s'il n'existe pas
+async function albumDuCercle(req, id) {
+  if (id == null || id === '') return null
+  const [album] = await db.select({ id: albums.id }).from(albums)
+    .where(and(eq(albums.id, String(id)), eq(albums.cercleId, req.cercle.id)))
+  if (!album) throw new ErreurSaisie('Album introuvable')
+  return album.id
+}
+
+// Liste des photos publiées, les plus récentes d'abord. ?avant=<date ISO> pour la suite,
+// ?album=<id> pour un album, ?album=aucun pour les photos sans album.
 router.get('/', async (req, res) => {
   req.stockage = await stockageActif()
   if (!req.stockage) return res.json({ actif: false, photos: [] })
@@ -75,6 +92,8 @@ router.get('/', async (req, res) => {
     if (Number.isNaN(avant.getTime())) throw new ErreurSaisie('Date invalide')
     conditions.push(lt(photos.creeLe, avant))
   }
+  if (req.query.album === 'aucun') conditions.push(isNull(photos.albumId))
+  else if (req.query.album) conditions.push(eq(photos.albumId, await albumDuCercle(req, req.query.album)))
   const limite = Math.min(Number(req.query.limite) || 60, 200)
   const liste = await db.select(colonnes).from(photos)
     .leftJoin(utilisateurs, eq(photos.creeParId, utilisateurs.id))
@@ -101,7 +120,7 @@ async function nettoyerEnvoisAbandonnes(stockage, cercleId) {
 }
 
 // 1re étape d'un envoi : enregistre la photo et renvoie un lien d'envoi par version.
-// Corps : { legende, largeur, hauteur, tailles: { miniature, ecran } } (tailles en octets)
+// Corps : { legende, albumId, largeur, hauteur, tailles: { miniature, ecran } } (tailles en octets)
 router.post('/', exigerStockage, async (req, res) => {
   const tailles = Object.fromEntries(Object.entries(VARIANTES).map(([v, max]) => {
     const taille = Number(req.body.tailles?.[v])
@@ -112,6 +131,7 @@ router.post('/', exigerStockage, async (req, res) => {
   const [photo] = await db.insert(photos).values({
     cercleId: req.cercle.id,
     creeParId: req.utilisateur.id,
+    albumId: await albumDuCercle(req, req.body.albumId),
     legende: valider.texte(req.body.legende, 'légende', { obligatoire: false, max: 500 }),
     largeur: entier(req.body.largeur, 'largeur', 10000),
     hauteur: entier(req.body.hauteur, 'hauteur', 10000),
@@ -149,11 +169,15 @@ router.post('/:photoId/publier', exigerStockage, chargerPhoto, async (req, res) 
   res.json(presenter(req, { ...photo, creeParPrenom: req.utilisateur.prenom }))
 })
 
+// Modifie la légende et/ou l'album (seuls les champs envoyés changent ; albumId null = sans album)
 router.patch('/:photoId', chargerPhoto, async (req, res) => {
   if (!peutSupprimer(req, req.photo)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants peuvent modifier cette photo' })
-  const legende = valider.texte(req.body.legende, 'légende', { obligatoire: false, max: 500 })
-  await db.update(photos).set({ legende }).where(eq(photos.id, req.photo.id))
-  res.json({ id: req.photo.id, legende })
+  const modifs = {}
+  if ('legende' in req.body) modifs.legende = valider.texte(req.body.legende, 'légende', { obligatoire: false, max: 500 })
+  if ('albumId' in req.body) modifs.albumId = await albumDuCercle(req, req.body.albumId)
+  if (Object.keys(modifs).length) await db.update(photos).set(modifs).where(eq(photos.id, req.photo.id))
+  const photo = { ...req.photo, ...modifs }
+  res.json({ id: photo.id, legende: photo.legende, albumId: photo.albumId })
 })
 
 router.delete('/:photoId', exigerStockage, chargerPhoto, async (req, res) => {

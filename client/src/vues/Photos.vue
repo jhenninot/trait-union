@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 
-// Album photos d'un cercle pour les aidants et les proches : envoi de photos (réduites dans le
+// Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
 const { url, cercle, erreur, action } = utiliserCercle()
 const actif = ref(true) // partage de photos configuré par l'administrateur
@@ -15,19 +15,68 @@ const aEnvoyer = ref([]) // { fichier, apercu, legende, etat: attente | envoi | 
 const envoiEnCours = ref(false)
 const ouverte = ref(null) // index de la photo affichée en grand
 const legendeEnEdition = ref(null)
+const albums = ref([])
+const compteurs = ref({ total: 0, sansAlbum: 0 })
+const filtre = ref('tous') // 'tous', 'aucun' (sans album) ou l'id d'un album
+const albumEnvoi = ref('') // album où ranger les photos envoyées ('' = sans album)
+const nomAlbum = ref(null) // saisie d'un nouvel album ou d'un nouveau nom
+
+const albumCourant = computed(() => albums.value.find((a) => a.id === filtre.value) ?? null)
 
 const charger = (avant) => action(async () => {
-  const r = await api('GET', `${url.value}/photos${avant ? `?avant=${encodeURIComponent(avant)}` : ''}`)
+  const params = new URLSearchParams()
+  if (avant) params.set('avant', avant)
+  if (filtre.value !== 'tous') params.set('album', filtre.value)
+  const r = await api('GET', `${url.value}/photos?${params}`)
   actif.value = r.actif
   liste.value = avant ? [...liste.value, ...r.photos] : r.photos
   suite.value = r.suite
 })
+const chargerAlbums = () => action(async () => {
+  const r = await api('GET', `${url.value}/albums`)
+  albums.value = r.albums
+  compteurs.value = { total: r.total, sansAlbum: r.sansAlbum }
+  if (filtre.value !== 'tous' && filtre.value !== 'aucun' && !albumCourant.value) choisirFiltre('tous')
+})
 watch(url, () => {
   liste.value = []
   ouverte.value = null
+  filtre.value = 'tous'
   vider()
   charger()
+  chargerAlbums()
 }, { immediate: true })
+
+function choisirFiltre(f) {
+  if (filtre.value === f) return
+  filtre.value = f
+  albumEnvoi.value = f === 'tous' || f === 'aucun' ? '' : f
+  nomAlbum.value = null
+  liste.value = []
+  charger()
+}
+
+// Création (nomAlbum.id vide) ou renommage d'un album
+const enregistrerAlbum = () => action(async () => {
+  const { id, nom } = nomAlbum.value
+  if (id) {
+    await api('PATCH', `${url.value}/albums/${id}`, { nom })
+  } else {
+    const album = await api('POST', `${url.value}/albums`, { nom })
+    albums.value.unshift(album)
+    choisirFiltre(album.id)
+  }
+  nomAlbum.value = null
+  await chargerAlbums()
+})
+
+const supprimerAlbum = () => action(async () => {
+  const a = albumCourant.value
+  if (!confirm(`Supprimer l'album « ${a.nom} » ? Ses ${a.nombre} photo(s) sont gardées, sans album.`)) return
+  await api('DELETE', `${url.value}/albums/${a.id}`)
+  choisirFiltre('tous')
+  await chargerAlbums()
+})
 
 function choisir(evenement) {
   for (const fichier of evenement.target.files) {
@@ -54,8 +103,8 @@ async function envoyer() {
     a.etat = 'envoi'
     a.message = ''
     try {
-      const photo = await envoyerPhoto(cercle.value.id, a.fichier, a.legende)
-      liste.value.unshift(photo)
+      const photo = await envoyerPhoto(cercle.value.id, a.fichier, a.legende, albumEnvoi.value || null)
+      if (filtre.value === 'tous' || filtre.value === (photo.albumId ?? 'aucun')) liste.value.unshift(photo)
       a.etat = 'fait'
     } catch (e) {
       a.etat = 'erreur'
@@ -64,6 +113,7 @@ async function envoyer() {
   }
   envoiEnCours.value = false
   if (aEnvoyer.value.every((a) => a.etat === 'fait')) vider()
+  chargerAlbums()
 }
 
 const restants = computed(() => aEnvoyer.value.filter((a) => a.etat !== 'fait').length)
@@ -92,12 +142,26 @@ const enregistrerLegende = () => action(async () => {
   legendeEnEdition.value = null
 })
 
-const supprimer = () => action(async () => {
-  if (!confirm('Supprimer cette photo pour tout le cercle ?')) return
-  await api('DELETE', `${url.value}/photos/${photo.value.id}`)
+// Range la photo affichée dans un autre album
+const changerAlbum = (albumId) => action(async () => {
+  const r = await api('PATCH', `${url.value}/photos/${photo.value.id}`, { albumId: albumId || null })
+  photo.value.albumId = r.albumId
+  // Elle ne fait plus partie de l'album affiché
+  if (filtre.value !== 'tous' && filtre.value !== (r.albumId ?? 'aucun')) retirerDeLaListe()
+  chargerAlbums()
+})
+
+function retirerDeLaListe() {
   liste.value.splice(ouverte.value, 1)
   if (!liste.value.length) ouverte.value = null
   else if (ouverte.value >= liste.value.length) ouverte.value = liste.value.length - 1
+}
+
+const supprimer = () => action(async () => {
+  if (!confirm('Supprimer cette photo pour tout le cercle ?')) return
+  await api('DELETE', `${url.value}/photos/${photo.value.id}`)
+  retirerDeLaListe()
+  chargerAlbums()
 })
 
 const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'))
@@ -124,6 +188,42 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <p v-else class="aide">L'administrateur de l'application doit d'abord choisir où les photos sont stockées.</p>
       </div>
 
+      <template v-if="actif">
+        <div class="albums" role="tablist" aria-label="Albums">
+          <button class="carte-album" :class="{ choisi: filtre === 'tous' }" @click="choisirFiltre('tous')">
+            <span class="couverture tous">🖼️</span>
+            <span class="nom">Toutes les photos</span>
+            <span class="aide">{{ compteurs.total }}</span>
+          </button>
+          <button v-for="a in albums" :key="a.id" class="carte-album" :class="{ choisi: filtre === a.id }" @click="choisirFiltre(a.id)">
+            <img v-if="a.couverture" :src="a.couverture" alt="" class="couverture" />
+            <span v-else class="couverture vide">📁</span>
+            <span class="nom">{{ a.nom }}</span>
+            <span class="aide">{{ a.nombre }}</span>
+          </button>
+          <button v-if="albums.length && compteurs.sansAlbum" class="carte-album" :class="{ choisi: filtre === 'aucun' }" @click="choisirFiltre('aucun')">
+            <span class="couverture vide">🗂️</span>
+            <span class="nom">Sans album</span>
+            <span class="aide">{{ compteurs.sansAlbum }}</span>
+          </button>
+          <button class="carte-album nouveau" @click="nomAlbum = { id: null, nom: '' }">
+            <span class="couverture vide">＋</span>
+            <span class="nom">Nouvel album</span>
+          </button>
+        </div>
+
+        <form v-if="nomAlbum" class="carte ligne-album" @submit.prevent="enregistrerAlbum">
+          <input v-model="nomAlbum.nom" required maxlength="100" placeholder="Nom de l'album (ex. Noël 2025, Vacances à Biarritz)" />
+          <button>{{ nomAlbum.id ? 'Renommer' : 'Créer l\'album' }}</button>
+          <button type="button" class="secondaire" @click="nomAlbum = null">Annuler</button>
+        </form>
+        <div v-else-if="albumCourant?.peutModifier" class="actions-album">
+          <strong>{{ albumCourant.nom }}</strong>
+          <button class="lien" @click="nomAlbum = { id: albumCourant.id, nom: albumCourant.nom }">Renommer</button>
+          <button class="danger" @click="supprimerAlbum">Supprimer l'album</button>
+        </div>
+      </template>
+
       <section v-if="aEnvoyer.length" class="carte envoi">
         <strong>{{ aEnvoyer.length > 1 ? `${aEnvoyer.length} photos à envoyer` : '1 photo à envoyer' }}</strong>
         <div v-for="(a, i) in aEnvoyer" :key="a.apercu" class="a-envoyer">
@@ -136,6 +236,12 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           </div>
           <button v-if="!envoiEnCours && a.etat !== 'fait'" class="lien" @click="retirer(i)">Retirer</button>
         </div>
+        <label v-if="albums.length" class="choix-album">Ranger dans l'album
+          <select v-model="albumEnvoi" :disabled="envoiEnCours">
+            <option value="">Sans album</option>
+            <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
+          </select>
+        </label>
         <p class="aide">Les photos sont réduites avant l'envoi (2 048 pixels au plus) : c'est plus rapide et bien assez pour un écran.</p>
         <div class="actions">
           <button :disabled="envoiEnCours || !restants" @click="envoyer">
@@ -146,7 +252,8 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       </section>
 
       <p v-if="actif && !liste.length && !aEnvoyer.length" class="aide">
-        Aucune photo pour l'instant. Les photos envoyées ici apparaissent sur la tablette de la personne accompagnée.
+        <template v-if="albumCourant">Cet album est vide : ajoutez-y des photos avec le bouton « Ajouter des photos ».</template>
+        <template v-else>Aucune photo pour l'instant. Les photos envoyées ici apparaissent sur la tablette de la personne accompagnée.</template>
       </p>
       <div class="grille">
         <button v-for="(p, i) in liste" :key="p.id" class="vignette" @click="ouvrir(i)">
@@ -171,6 +278,12 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </form>
         <p v-else-if="photo.legende" class="legende">{{ photo.legende }}</p>
         <p class="aide">Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}</p>
+        <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
+          <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
+            <option value="">Sans album</option>
+            <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
+          </select>
+        </label>
         <div v-if="photo.peutSupprimer && legendeEnEdition == null" class="actions">
           <button class="lien" @click="legendeEnEdition = photo.legende ?? ''">{{ photo.legende ? 'Modifier la légende' : 'Ajouter une légende' }}</button>
           <button class="danger" @click="supprimer">Supprimer</button>
@@ -205,6 +318,52 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .vignette { padding: 0; background: #ebe8e3; border-radius: 10px; overflow: hidden; aspect-ratio: 1; }
 .vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .plus { text-align: center; margin: 16px 0; }
+.albums { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; margin: 8px 0; }
+.carte-album {
+  flex: none;
+  width: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px;
+  background: white;
+  color: #2b2b2b;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  text-align: left;
+}
+.carte-album.choisi { border-color: var(--vert); }
+.couverture {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: #f3f0ea;
+}
+.carte-album.nouveau .couverture { color: var(--vert); }
+.carte-album .nom {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.carte-album .aide { font-size: 0.8rem; }
+.ligne-album { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.ligne-album input { flex: 1; min-width: 200px; }
+.actions-album { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.choix-album { flex-direction: row; align-items: center; gap: 8px; }
+.album-photo { flex-direction: row; justify-content: center; align-items: center; gap: 8px; font-weight: normal; margin: 6px 0; }
+.album-photo select { padding: 4px 8px; }
 .visionneuse {
   position: fixed;
   inset: 0;
@@ -232,6 +391,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .edition input { min-width: 240px; }
 @media (max-width: 600px) {
   .grille { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .carte-album { width: 104px; }
   .fleche { top: auto; bottom: 16px; transform: none; }
 }
 </style>

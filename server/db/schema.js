@@ -121,15 +121,28 @@ export const rendezVous = pgTable('rendez_vous', {
 // navigateur n'a pas confirmé que ses fichiers sont arrivés.
 export const statutPhoto = pgEnum('statut_photo', ['envoi', 'publiee'])
 
+// Albums d'un cercle. Une photo est rangée dans un album au plus ; supprimer un album
+// garde ses photos (elles passent dans « Sans album »).
+export const albums = pgTable('albums', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  nom: text('nom').notNull()
+}, (t) => [
+  index('albums_cercle_idx').on(t.cercleId)
+])
+
 export const photos = pgTable('photos', {
   ...commun,
   cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
   creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  albumId: uuid('album_id').references(() => albums.id, { onDelete: 'set null' }),
   legende: text('legende'),
   largeur: integer('largeur').notNull(), // de la version plein écran
   hauteur: integer('hauteur').notNull(),
   taille: integer('taille').notNull(), // octets, toutes versions comprises
   statut: statutPhoto('statut').notNull().default('envoi')
 }, (t) => [
-  index('photos_cercle_cree_idx').on(t.cercleId, t.creeLe)
+  index('photos_cercle_cree_idx').on(t.cercleId, t.creeLe),
+  index('photos_album_idx').on(t.albumId)
 ])
