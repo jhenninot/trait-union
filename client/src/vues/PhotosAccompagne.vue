@@ -1,12 +1,12 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
-import { partagerPhoto, partageDisponible } from '../partage.js'
+import { partagerPhoto, partageDisponible, recues } from '../partage.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -24,6 +24,7 @@ let minuterieDiaporama
 let minuterieRechargement
 let arreterRetour
 const route = useRoute()
+const router = useRouter()
 let demande = route.query.album
 
 async function charger() {
@@ -87,6 +88,15 @@ const lirePhoto = () => {
   parler(`${p.legende ? `${p.legende}. ` : ''}Photo envoyée par ${p.creeParPrenom ?? 'la famille'}, le ${dateEnvoi(p.creeLe)}.`)
 }
 watch(photo, () => prechargerVoisines(liste.value, index.value))
+// Photos choisies sur l'appareil : même écran que les photos partagées depuis une autre
+// application (choix de l'album, puis « Envoyer »)
+function ajouter(evenement) {
+  const fichiers = [...evenement.target.files]
+  evenement.target.value = ''
+  if (!fichiers.length) return
+  recues.fichiers = [...recues.fichiers, ...fichiers]
+  router.push('/recevoir')
+}
 const titre = computed(() => album.value?.nom ?? 'Toutes les photos')
 
 function aller(sens) {
@@ -110,7 +120,10 @@ function manuel(sens) {
 <template>
   <main class="photos" :class="{ plein: diaporama }">
     <template v-if="album === undefined">
-      <h1>Mes photos</h1>
+      <div class="entete">
+        <h1>Mes photos</h1>
+        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+      </div>
       <div class="albums">
         <button class="album" @click="ouvrirAlbum(null)">
           <span class="couverture toutes">🖼️</span>
@@ -124,9 +137,10 @@ function manuel(sens) {
       </div>
     </template>
     <template v-else-if="photo">
-      <div v-if="albums.length && !diaporama" class="haut">
-        <button class="retour" @click="retourAlbums">◀ Albums</button>
-        <span class="titre-album">{{ titre }}</span>
+      <div v-if="!diaporama" class="haut">
+        <button v-if="albums.length" class="retour" @click="retourAlbums">◀ Albums</button>
+        <span v-if="albums.length" class="titre-album">{{ titre }}</span>
+        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
       <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" class="cadre" @click="diaporama && basculerDiaporama()">
         <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
@@ -143,8 +157,9 @@ function manuel(sens) {
       </div>
     </template>
     <template v-else-if="charge">
-      <div v-if="albums.length" class="haut">
-        <button class="retour" @click="retourAlbums">◀ Albums</button>
+      <div class="haut">
+        <button v-if="albums.length" class="retour" @click="retourAlbums">◀ Albums</button>
+        <label class="ajouter">📷 Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
       <p class="vide">Pas encore de photo.<br />Votre famille peut vous en envoyer.</p>
     </template>
@@ -173,7 +188,20 @@ function manuel(sens) {
 .commandes button { border-radius: 20px; font-weight: 700; background: #f3f0ea; color: var(--bleu-nuit); }
 .fleche { flex: 1; font-size: 2.6rem; padding: 14px; }
 .diaporama { flex: 1.4; font-size: 1.6rem; padding: 14px; }
-h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0 0 8px; align-self: flex-start; }
+h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0; }
+.entete { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.ajouter {
+  margin-left: auto;
+  font-size: 1.4rem;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 18px;
+  background: var(--vert);
+  color: white;
+  cursor: pointer;
+  flex-direction: row;
+}
+.ajouter input { display: none; }
 .albums {
   width: 100%;
   display: grid;
@@ -216,7 +244,7 @@ h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0 0 8px; align-self: fl
   border-radius: 999px;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
 }
-.haut { width: 100%; display: flex; align-items: center; gap: 16px; }
+.haut { width: 100%; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .retour { font-size: 1.4rem; font-weight: 700; padding: 12px 22px; border-radius: 18px; background: #f3f0ea; color: var(--bleu-nuit); }
 .titre-album { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); }
 .vide { flex: 1; display: flex; align-items: center; text-align: center; font-size: 2rem; color: var(--gris); }
@@ -233,6 +261,7 @@ h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0 0 8px; align-self: fl
   .nouvelles { top: 12px; right: 12px; font-size: 1rem; padding: 4px 10px; }
   .couverture.toutes { font-size: 3rem; }
   .retour { font-size: 1.1rem; padding: 10px 14px; }
+  .ajouter { font-size: 1.1rem; padding: 10px 14px; }
   .titre-album { font-size: 1.2rem; }
 }
 </style>
