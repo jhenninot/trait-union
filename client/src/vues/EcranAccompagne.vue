@@ -59,7 +59,7 @@ const moment = () => {
     <div class="cartes">
     <RouterLink v-if="programme.length" to="/agenda" class="programme">
       <span class="titre-programme">Aujourd'hui</span>
-      <span v-for="rdv in programme.slice(0, 3)" :key="rdv.id" class="ligne-programme">
+      <span v-for="rdv in programme.slice(0, 3)" :key="rdv.cle" class="ligne-programme">
         <strong>{{ horaire(rdv) }}</strong> {{ rdv.titre }}
       </span>
       <span v-if="programme.length > 3" class="suite">et {{ programme.length - 3 }} autre{{ programme.length > 4 ? 's' : '' }}…</span>

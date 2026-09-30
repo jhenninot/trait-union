@@ -101,7 +101,13 @@ export const visibiliteRendezVous = pgEnum('visibilite_rendez_vous', [
   'accompagne_aidants' // personne accompagnée et aidants
 ])
 
-// Rendez-vous de l'agenda d'un cercle
+// Répétition d'un rendez-vous : les occurrences sont calculées à la lecture
+// (server/agenda/recurrence.js), seule la première est stockée.
+export const recurrenceRendezVous = pgEnum('recurrence_rendez_vous', ['aucune', 'quotidienne', 'hebdomadaire', 'mensuelle', 'annuelle'])
+
+// Rendez-vous de l'agenda d'un cercle. Il peut durer plusieurs jours (fin un autre
+// jour) ; pour une journée entière, debut est minuit du premier jour et fin 23h59
+// du dernier.
 export const rendezVous = pgTable('rendez_vous', {
   ...commun,
   cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
@@ -113,6 +119,9 @@ export const rendezVous = pgTable('rendez_vous', {
   fin: timestamp('fin', { withTimezone: true }),
   journeeEntiere: boolean('journee_entiere').notNull().default(false),
   visibilite: visibiliteRendezVous('visibilite').notNull().default('tous'),
+  recurrence: recurrenceRendezVous('recurrence').notNull().default('aucune'),
+  intervalle: integer('intervalle').notNull().default(1), // tous les N jours, semaines...
+  recurrenceFin: timestamp('recurrence_fin', { withTimezone: true }), // dernière répétition possible (incluse)
   // Visible aussi par les auxiliaires de vie, en plus du niveau ci-dessus
   auxiliaires: boolean('auxiliaires').notNull().default(false)
 }, (t) => [

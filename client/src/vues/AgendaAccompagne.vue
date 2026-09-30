@@ -8,7 +8,7 @@ import Calendrier from './Calendrier.vue'
 // « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
 // ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
 // mois en plus, et un ajout très simple.
-const JOURS_AFFICHES = 60
+const JOURS_AFFICHES = 30
 const VUES = [
   { valeur: 'liste', libelle: 'Liste' },
   { valeur: 'semaine', libelle: 'Semaine' },
@@ -64,6 +64,16 @@ const QUAND = [
   { valeur: 1, libelle: 'Demain' },
   { valeur: 'autre', libelle: 'Un autre jour' }
 ]
+const HORAIRE = [
+  { valeur: true, libelle: 'Toute la journée' },
+  { valeur: false, libelle: 'À une heure précise' }
+]
+const REPETITION = [
+  { valeur: 'aucune', libelle: 'Une seule fois' },
+  { valeur: 'quotidienne', libelle: 'Chaque jour' },
+  { valeur: 'hebdomadaire', libelle: 'Chaque semaine' },
+  { valeur: 'mensuelle', libelle: 'Chaque mois' }
+]
 const QUI = [
   { valeur: 'tous', emoji: '👨‍👩‍👧', libelle: 'Toute ma famille' },
   { valeur: 'accompagne_aidants', emoji: '🤝', libelle: 'Moi et mes aidants' },
@@ -76,8 +86,21 @@ function ajouter() {
   const jour = vue.value === 'liste' ? null : jourChoisi.value
   const ecart = jour ? Math.round((combiner(jour) - debutDuJour()) / 86_400_000) : 0
   const quand = ecart === 0 || ecart === 1 ? ecart : 'autre'
-  saisie.value = { titre: '', quand, autreJour: jour ?? valeurJour(ajouterJours(new Date(), 2)), heure: '', visibilite: 'tous' }
+  saisie.value = {
+    titre: '', quand, autreJour: jour ?? valeurJour(ajouterJours(new Date(), 2)),
+    plusieursJours: false, jourFin: '',
+    journeeEntiere: false, heure: '10:00', heureFin: '11:00',
+    recurrence: 'aucune', visibilite: 'tous'
+  }
 }
+
+// L'heure de fin suit l'heure de début (une heure plus tard)
+watch(() => saisie.value?.heure, (heure) => {
+  const s = saisie.value
+  if (!s || !heure) return
+  const [h, m] = heure.split(':').map(Number)
+  if (!s.heureFin || s.heureFin <= heure) s.heureFin = h >= 23 ? '23:59' : `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+})
 
 async function enregistrer() {
   const s = saisie.value
@@ -85,14 +108,22 @@ async function enregistrer() {
   if (!s.titre.trim()) return (erreur.value = 'Écrivez ce qui est prévu.')
   const jour = s.quand === 'autre' ? s.autreJour : valeurJour(ajouterJours(new Date(), s.quand))
   if (!jour) return (erreur.value = 'Choisissez le jour.')
+  const jourFin = s.plusieursJours && s.jourFin ? s.jourFin : jour
+  if (jourFin < jour) return (erreur.value = 'Le dernier jour doit être après le premier.')
+  if (!s.journeeEntiere && (!s.heure || !s.heureFin)) return (erreur.value = 'Choisissez les heures.')
+  const debut = s.journeeEntiere ? combiner(jour) : combiner(jour, s.heure)
+  const fin = s.journeeEntiere ? combiner(jourFin, '23:59') : combiner(jourFin, s.heureFin)
+  if (fin <= debut) return (erreur.value = 'L\'heure de fin doit être après l\'heure de début.')
   // Le rendez-vous va dans le cercle de la personne (en général, elle n'en a qu'un)
   const cercle = session.cercles.find((c) => c.role === 'accompagne') ?? session.cercles[0]
   try {
     await api('POST', `/cercles/${cercle.id}/rendez-vous`, {
       titre: s.titre,
       visibilite: s.visibilite,
-      journeeEntiere: !s.heure,
-      debut: combiner(jour, s.heure || '00:00').toISOString()
+      journeeEntiere: s.journeeEntiere,
+      debut: debut.toISOString(),
+      fin: fin.toISOString(),
+      recurrence: s.recurrence
     })
     saisie.value = null
     await charger()
@@ -102,7 +133,8 @@ async function enregistrer() {
 }
 
 async function supprimer(rdv) {
-  if (!confirm(`Effacer « ${rdv.titre} » ?`)) return
+  const serie = rdv.recurrence !== 'aucune' ? ' (toutes les fois)' : ''
+  if (!confirm(`Effacer « ${rdv.titre} »${serie} ?`)) return
   await api('DELETE', `/cercles/${rdv.cercleId}/rendez-vous/${rdv.id}`).catch((e) => (erreur.value = e.message))
   await charger()
 }
@@ -123,10 +155,28 @@ async function supprimer(rdv) {
         </button>
       </div>
       <input v-if="saisie.quand === 'autre'" v-model="saisie.autreJour" type="date" class="grand" aria-label="Jour" />
-
-      <label class="question">À quelle heure ? <span class="facultatif">(facultatif)</span>
-        <input v-model="saisie.heure" type="time" class="grand" />
+      <button v-if="!saisie.plusieursJours" type="button" class="lien-simple" @click="saisie.plusieursJours = true">+ Sur plusieurs jours</button>
+      <label v-else class="question">Jusqu'à quel jour ?
+        <input v-model="saisie.jourFin" type="date" class="grand" />
       </label>
+
+      <p class="question">À quelle heure ?</p>
+      <div class="choix deux">
+        <button v-for="q in HORAIRE" :key="q.libelle" type="button" :class="{ choisi: saisie.journeeEntiere === q.valeur }" @click="saisie.journeeEntiere = q.valeur">
+          {{ q.libelle }}
+        </button>
+      </div>
+      <div v-if="!saisie.journeeEntiere" class="heures">
+        <label>De <input v-model="saisie.heure" type="time" class="grand" /></label>
+        <label>à <input v-model="saisie.heureFin" type="time" class="grand" /></label>
+      </div>
+
+      <p class="question">Ça se répète ?</p>
+      <div class="choix quatre">
+        <button v-for="q in REPETITION" :key="q.valeur" type="button" :class="{ choisi: saisie.recurrence === q.valeur }" @click="saisie.recurrence = q.valeur">
+          {{ q.libelle }}
+        </button>
+      </div>
 
       <p class="question">Qui peut le voir ?</p>
       <div class="choix">
@@ -162,7 +212,7 @@ async function supprimer(rdv) {
         <section :class="g.enAvant ? 'aujourdhui' : 'jour'">
           <component :is="g.enAvant ? 'h2' : 'h3'">{{ g.titre }}</component>
           <p v-if="g.enAvant && charge && !g.rendezVous.length" class="vide">Rien de prévu{{ vue === 'liste' ? ' aujourd\'hui' : ' ce jour-là' }}.</p>
-          <div v-for="rdv in g.rendezVous" :key="rdv.id" class="rdv" :class="{ masque: rdv.masque }">
+          <div v-for="rdv in g.rendezVous" :key="rdv.cle" class="rdv" :class="{ masque: rdv.masque }">
             <span class="heure">{{ horaire(rdv) }}</span>
             <span class="titre">{{ titreRdv(rdv) }}</span>
             <span v-if="rdv.lieu" class="lieu">{{ rdv.lieu }}</span>
@@ -225,6 +275,12 @@ input.grand { font-size: 1.7rem; padding: 16px 18px; border-radius: 16px; border
 }
 .choix button.choisi { background: var(--vert); color: white; }
 .emoji { font-size: 2rem; }
+.choix.deux { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choix.quatre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.heures { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.heures label { font-size: 1.4rem; font-weight: 600; color: var(--bleu-nuit); min-width: 0; }
+.heures input { width: 100%; min-width: 0; }
+.lien-simple { align-self: flex-start; background: none; color: var(--vert); font-size: 1.3rem; font-weight: 600; padding: 4px 0; }
 .boutons { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
 .retour { font-weight: 700; font-size: 1.5rem; padding: 18px 32px; border-radius: 20px; background: #f3f0ea; color: var(--bleu-nuit); }
 .erreur { font-size: 1.4rem; }
@@ -243,6 +299,9 @@ input.grand { font-size: 1.7rem; padding: 16px 18px; border-radius: 16px; border
   .question { font-size: 1.3rem; }
   input.grand { font-size: 1.4rem; padding: 12px 14px; }
   .choix { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .choix.quatre { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .heures label { font-size: 1.15rem; }
+  .lien-simple { font-size: 1.1rem; }
   .choix button { font-size: 1.05rem; padding: 14px 4px; border-radius: 16px; }
   .emoji { font-size: 1.7rem; }
   .retour { font-size: 1.2rem; padding: 14px 18px; }

@@ -1,6 +1,6 @@
 {
-  "id": "49e13e1e-8d54-4112-90b3-21b00c44debe",
-  "prevId": "0a9e5307-85a2-4e40-9021-542e5c1e39e2",
+  "id": "127179da-cd96-4202-b4a9-8fabde164f81",
+  "prevId": "49e13e1e-8d54-4112-90b3-21b00c44debe",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -939,6 +939,13 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "auxiliaires": {
+          "name": "auxiliaires",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -1212,7 +1219,8 @@
       "values": [
         "accompagne",
         "aidant",
-        "proche"
+        "proche",
+        "auxiliaire"
       ]
     },
     "public.statut_photo": {

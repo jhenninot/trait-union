@@ -54,7 +54,9 @@ const listeJours = computed(() => {
 })
 const MAX_MOIS = 3 // rendez-vous affichés par case dans la vue mois
 const entetes = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
+// Heure affichée seulement le premier jour d'un rendez-vous (un rendez-vous sur
+// plusieurs jours apparaît aussi les jours suivants, sans heure)
+const heure = (rdv, cle) => (rdv.journeeEntiere || valeurJour(new Date(rdv.debut)) !== cle ? '' : heureCourte(rdv.debut))
 </script>
 
 <template>
@@ -75,8 +77,8 @@ const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
             @click="emit('choisirJour', j.cle)"
           >
             <span class="numero">{{ j.numero }}</span>
-            <span v-for="rdv in j.rendezVous.slice(0, MAX_MOIS)" :key="rdv.id" class="puce" :class="{ masque: rdv.masque }">
-              <span class="texte">{{ heure(rdv) }} {{ titreRdv(rdv) }}</span>
+            <span v-for="rdv in j.rendezVous.slice(0, MAX_MOIS)" :key="rdv.cle" class="puce" :class="{ masque: rdv.masque }">
+              <span class="texte">{{ heure(rdv, j.cle) }} {{ titreRdv(rdv) }}</span>
             </span>
             <span v-if="j.rendezVous.length > MAX_MOIS" class="plus">+{{ j.rendezVous.length - MAX_MOIS }}</span>
           </button>
@@ -90,8 +92,8 @@ const heure = (rdv) => (rdv.journeeEntiere ? '' : heureCourte(rdv.debut))
           >
             <span class="nom-jour">{{ j.nom }} <strong>{{ j.numero }}</strong></span>
             <span v-if="!j.rendezVous.length" class="rien">—</span>
-            <span v-for="rdv in j.rendezVous" :key="rdv.id" class="bloc" :class="{ masque: rdv.masque }">
-              <strong v-if="heure(rdv)">{{ heure(rdv) }}</strong>
+            <span v-for="rdv in j.rendezVous" :key="rdv.cle" class="bloc" :class="{ masque: rdv.masque }">
+              <strong v-if="heure(rdv, j.cle)">{{ heure(rdv, j.cle) }}</strong>
               {{ titreRdv(rdv) }}
             </span>
           </button>
