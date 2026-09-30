@@ -4,6 +4,8 @@ import { session } from '../session.js'
 import { rendezVousAccompagne, debutDuJour, ajouterJours, horaire } from '../agenda.js'
 import { nouveautesPhotos } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
+import { api } from '../api.js'
+import { parler, lectureDisponible } from '../voix.js'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
@@ -42,6 +44,19 @@ onUnmounted(() => {
   arreterRetour?.()
 })
 
+// « Écouter » : la date, l'heure et le programme du jour lus à voix haute (texte préparé par
+// le serveur, le même que donnera Alexa)
+const lecture = lectureDisponible()
+const lecteurOccupe = ref(false)
+async function ecouterJournee() {
+  lecteurOccupe.value = true
+  try {
+    parler((await api('GET', '/voix/journee')).texte)
+  } finally {
+    lecteurOccupe.value = false
+  }
+}
+
 const jour = () => maintenant.value.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const heure = () => maintenant.value.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 const moment = () => {
@@ -56,6 +71,9 @@ const moment = () => {
     <p class="jour">Nous sommes {{ jour() }}</p>
     <p class="heure">{{ heure() }}</p>
     <p class="moment">{{ moment() }}</p>
+    <button v-if="lecture" class="ecouter" :disabled="lecteurOccupe" @click="ecouterJournee">
+      <span aria-hidden="true">🔊</span> Écouter ma journée
+    </button>
     <div class="cartes">
     <RouterLink v-if="programme.length" to="/agenda" class="programme">
       <span class="titre-programme">Aujourd'hui</span>
@@ -138,6 +156,16 @@ const moment = () => {
 .texte-photos strong { font-size: 1.5rem; color: #c2610c; }
 .noms { font-size: 1.15rem; color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .photos.calme { font-size: 1.4rem; color: var(--gris); background: #f3f0ea; padding: 12px 20px; gap: 10px; }
+.ecouter {
+  align-self: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  background: var(--vert-clair);
+  color: var(--vert);
+}
 .ligne-programme strong { color: var(--vert); margin-right: 8px; }
 .suite { color: var(--gris); font-size: 1.3rem; }
 /* Smartphone */
@@ -147,6 +175,7 @@ const moment = () => {
   .jour { font-size: 1.5rem; }
   .heure { font-size: 3.4rem; }
   .moment { font-size: 1.3rem; margin: 0 0 8px; }
+  .ecouter { font-size: 1.25rem; padding: 12px 20px; margin-bottom: 12px; }
   .programme { align-self: stretch; padding: 14px 16px; font-size: 1.25rem; border-radius: 18px; }
   .ligne-programme strong { display: block; margin: 0; }
   .cartes { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px; }

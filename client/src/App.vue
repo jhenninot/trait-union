@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { session } from './session.js'
 import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
+import AssistantVoix from './vues/AssistantVoix.vue'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
 // les aidants, proches et administrateurs (menu complet), et les pages publiques (sans menu).
@@ -16,6 +17,7 @@ const miseEnPage = computed(() => {
   <div v-if="miseEnPage === 'accompagne'" class="mise-en-page-accompagne">
     <RouterView />
     <BarreAccompagne />
+    <AssistantVoix />
   </div>
   <div v-else-if="miseEnPage === 'aidant'" class="mise-en-page-aidant">
     <MenuAidant />

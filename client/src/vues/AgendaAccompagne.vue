@@ -4,6 +4,7 @@ import { api } from '../api.js'
 import { session } from '../session.js'
 import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, combiner, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
+import { parler, lectureDisponible } from '../voix.js'
 
 // « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
 // ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
@@ -132,6 +133,12 @@ async function enregistrer() {
   }
 }
 
+// Les prochains rendez-vous lus à voix haute (phrase préparée par le serveur)
+const lecture = lectureDisponible()
+async function ecouterAgenda() {
+  parler((await api('POST', '/voix/intention', { intention: 'agenda' })).texte)
+}
+
 async function supprimer(rdv) {
   const serie = rdv.recurrence !== 'aucune' ? ' (toutes les fois)' : ''
   if (!confirm(`Effacer « ${rdv.titre} »${serie} ?`)) return
@@ -195,6 +202,7 @@ async function supprimer(rdv) {
     <template v-else>
       <div class="entete">
         <h1>Mon agenda</h1>
+        <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><span aria-hidden="true">🔊</span><span class="texte-ecouter"> Écouter</span></button>
         <button class="principal" @click="ajouter">+ Ajouter</button>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
@@ -231,6 +239,7 @@ h2 { font-size: 1.9rem; color: var(--bleu-nuit); margin: 28px 0 12px; }
 h3 { font-size: 1.5rem; color: var(--bleu-nuit); margin: 20px 0 8px; }
 .entete { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 button.principal { font-size: 1.6rem; font-weight: 700; padding: 18px 32px; border-radius: 20px; }
+button.ecouter { margin-left: auto; background: var(--vert-clair); color: var(--vert); }
 .aujourdhui { background: var(--vert-clair); border-radius: 24px; padding: 4px 20px 20px; margin-top: 20px; }
 .aujourdhui .rdv { font-size: 1.3rem; }
 .vues { display: flex; gap: 10px; margin-top: 16px; }
@@ -291,6 +300,8 @@ input.grand { font-size: 1.7rem; padding: 16px 18px; border-radius: 16px; border
   h3 { font-size: 1.25rem; }
   .entete { gap: 8px; }
   button.principal { font-size: 1.2rem; padding: 12px 18px; white-space: nowrap; }
+  .texte-ecouter { display: none; }
+  button.ecouter { padding: 12px 14px; }
   .boutons button { flex: 1; }
   .vues { gap: 6px; margin-top: 12px; }
   .vues button { font-size: 1.1rem; padding: 12px 4px; }

@@ -5,6 +5,7 @@ import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
+import { parler, lectureDisponible } from '../voix.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -76,6 +77,13 @@ onUnmounted(() => {
 })
 
 const photo = computed(() => liste.value[index.value])
+
+// Légende et auteur lus à voix haute
+const lecture = lectureDisponible()
+const lirePhoto = () => {
+  const p = photo.value
+  parler(`${p.legende ? `${p.legende}. ` : ''}Photo envoyée par ${p.creeParPrenom ?? 'la famille'}, le ${dateEnvoi(p.creeLe)}.`)
+}
 watch(photo, () => prechargerVoisines(liste.value, index.value))
 const titre = computed(() => album.value?.nom ?? 'Toutes les photos')
 
@@ -127,6 +135,7 @@ function manuel(sens) {
       <div v-else class="commandes">
         <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)">◀</button>
         <button class="diaporama" @click="basculerDiaporama">▶ Diaporama</button>
+        <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto">🔊</button>
         <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)">▶</button>
       </div>
     </template>

@@ -37,6 +37,11 @@
       Elles ne sont affichées qu'aux membres du cercle, par des liens temporaires valables quelques heures.
       La personne qui a envoyé une photo, ou un aidant du cercle, peut la supprimer à tout moment.</p>
 
+    <h2>Commandes vocales</h2>
+    <p>Le bouton « Parler » utilise la reconnaissance vocale de l'appareil (celle d'Android ou du navigateur,
+      souvent fournie par Google), qui transforme la voix en texte. Trait d'union ne reçoit que ce texte, pour
+      trouver la page à ouvrir ou la réponse à lire, et ne le conserve pas. La lecture à voix haute se fait sur l'appareil.</p>
+
     <h2>Conservation et suppression</h2>
     <p>Les données sont conservées tant que votre compte existe. Un aidant peut retirer un membre d'un cercle ;
       pour supprimer votre compte, demandez-le à l'administrateur de l'application ou à l'aidant qui vous a invité.</p>
