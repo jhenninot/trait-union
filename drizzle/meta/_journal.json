@@ -50,6 +50,13 @@
       "when": 1790780478624,
       "tag": "0006_albums_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790783094063,
+      "tag": "0007_albums_vus",
+      "breakpoints": true
     }
   ]
 }

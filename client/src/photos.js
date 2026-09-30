@@ -85,3 +85,30 @@ export async function albumsAccompagne(cercles) {
 }
 
 export const dateEnvoi = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+
+// Albums où des photos sont arrivées depuis la dernière visite de la personne accompagnée,
+// pour son écran d'accueil (les plus récents d'abord). `total` : nombre de photos visibles.
+export async function nouveautesPhotos(cercles) {
+  const reponses = await Promise.all(cercles.map((c) => api('GET', `/cercles/${c.id}/albums`)
+    .then((r) => ({ ...r, cercleId: c.id }))
+    .catch(() => null)))
+  const listes = reponses.filter(Boolean)
+  const avecAlbums = listes.some((r) => r.albums.some((a) => a.nombre > 0))
+  const albums = listes.flatMap((r) => [
+    ...r.albums.filter((a) => a.nouvelles > 0).map((a) => ({ ...a, cercleId: r.cercleId, lien: `/photos?album=${a.id}` })),
+    // Photos sans album : on ouvre toutes les photos
+    ...(r.sansAlbumNouvelles > 0
+      ? [{ id: `aucun-${r.cercleId}`, nom: avecAlbums ? 'Autres photos' : 'Mes photos', nouvelles: r.sansAlbumNouvelles, couverture: r.sansAlbumCouverture, derniere: r.sansAlbumDerniere, lien: '/photos?album=tous' }]
+      : [])
+  ])
+  return {
+    albums: albums.sort((a, b) => new Date(b.derniere) - new Date(a.derniere)),
+    total: listes.reduce((n, r) => n + r.total, 0)
+  }
+}
+
+// La personne connectée vient de regarder un album (null : toutes les photos)
+export function marquerVu(cercles, album) {
+  const cibles = album ? cercles.filter((c) => c.id === album.cercleId) : cercles
+  return Promise.all(cibles.map((c) => api('POST', `/cercles/${c.id}/albums/vus`, { album: album ? album.id : 'tous' }).catch(() => {})))
+}

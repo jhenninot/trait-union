@@ -1,12 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { session } from '../session.js'
-import { photosAccompagne, albumsAccompagne, dateEnvoi } from '../photos.js'
+import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
 // pour passer à la suivante, et un diaporama qui défile tout seul.
+// /photos?album=<id> ouvre directement un album (?album=tous : toutes les photos), depuis l'accueil.
 const DELAI_DIAPORAMA = 8000
 const albums = ref([])
 const album = ref(undefined) // undefined : choix de l'album ; null : toutes les photos ; sinon l'album
@@ -17,11 +19,18 @@ const diaporama = ref(false)
 let minuterieDiaporama
 let minuterieRechargement
 let arreterRetour
+const route = useRoute()
+let demande = route.query.album
 
 async function charger() {
   albums.value = await albumsAccompagne(session.cercles)
   // Sans album, on montre directement toutes les photos
   if (!albums.value.length && album.value === undefined) album.value = null
+  // Album demandé par l'accueil (une seule fois)
+  if (demande && album.value === undefined) {
+    album.value = demande === 'tous' ? null : albums.value.find((a) => a.id === demande)
+  }
+  demande = null
   if (album.value) album.value = albums.value.find((a) => a.id === album.value.id) ?? null
   if (album.value !== undefined) await chargerPhotos()
   charge.value = true
@@ -33,6 +42,12 @@ async function chargerPhotos() {
   // Rester sur la même photo quand de nouvelles arrivent
   const i = liste.value.findIndex((p) => p.id === idActuelle)
   index.value = i >= 0 ? i : 0
+  // Les photos de l'album sont vues : elles ne sont plus « nouvelles » sur l'accueil
+  const a = album.value
+  marquerVu(session.cercles, a).then(() => {
+    if (a) a.nouvelles = 0
+    else albums.value.forEach((x) => (x.nouvelles = 0))
+  })
 }
 
 async function ouvrirAlbum(a) {
@@ -91,6 +106,7 @@ function manuel(sens) {
         <button v-for="a in albums" :key="a.id" class="album" @click="ouvrirAlbum(a)">
           <img v-if="a.couverture" :src="a.couverture" alt="" class="couverture" />
           <span class="nom">{{ a.nom }}</span>
+          <span v-if="a.nouvelles" class="nouvelles">{{ a.nouvelles }} nouvelle{{ a.nouvelles > 1 ? 's' : '' }}</span>
         </button>
       </div>
     </template>
@@ -171,7 +187,20 @@ h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0 0 8px; align-self: fl
   justify-content: center;
 }
 .couverture.toutes { background: var(--vert-clair); font-size: 5rem; }
+.album { position: relative; }
 .album .nom { font-size: 1.7rem; font-weight: 700; }
+.nouvelles {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #c2610c;
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+}
 .haut { width: 100%; display: flex; align-items: center; gap: 16px; }
 .retour { font-size: 1.4rem; font-weight: 700; padding: 12px 22px; border-radius: 18px; background: #f3f0ea; color: var(--bleu-nuit); }
 .titre-album { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); }
@@ -186,6 +215,7 @@ h1 { font-size: 2.4rem; color: var(--bleu-nuit); margin: 0 0 8px; align-self: fl
   .albums { grid-template-columns: 1fr 1fr; gap: 10px; }
   .album { padding: 8px; border-radius: 16px; gap: 6px; }
   .album .nom { font-size: 1.15rem; }
+  .nouvelles { top: 12px; right: 12px; font-size: 1rem; padding: 4px 10px; }
   .couverture.toutes { font-size: 3rem; }
   .retour { font-size: 1.1rem; padding: 10px 14px; }
   .titre-album { font-size: 1.2rem; }

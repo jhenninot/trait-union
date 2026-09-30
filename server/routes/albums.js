@@ -1,8 +1,9 @@
 import { Router } from 'express'
-import { and, eq, desc, count, max } from 'drizzle-orm'
+import { and, eq, or, gt, ne, isNull, desc, count, max, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { albums, photos } from '../db/schema.js'
+import { albums, photos, albumsVus } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
+import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif } from '../stockage/s3.js'
 import { lienAffichage } from './photos.js'
 
@@ -14,25 +15,43 @@ const router = Router()
 const peutModifier = (req, album) => req.peutGerer || album.creeParId === req.utilisateur.id
 
 // Albums avec leur nombre de photos et leur couverture (la photo la plus récente),
-// plus le nombre total de photos et de photos sans album
+// plus le nombre total de photos et de photos sans album. `nouvelles` : photos arrivées depuis
+// la dernière fois que la personne connectée a regardé l'album (toutes si jamais regardé).
 router.get('/', async (req, res) => {
   const stockage = await stockageActif()
   const publiees = and(eq(photos.cercleId, req.cercle.id), eq(photos.statut, 'publiee'))
-  const [liste, comptes, couvertures] = await Promise.all([
+  const [liste, comptes, couvertures, nonVues] = await Promise.all([
     db.select().from(albums).where(eq(albums.cercleId, req.cercle.id)),
     db.select({ albumId: photos.albumId, nombre: count(), derniere: max(photos.creeLe) }).from(photos).where(publiees).groupBy(photos.albumId),
     db.selectDistinctOn([photos.albumId], { id: photos.id, cercleId: photos.cercleId, albumId: photos.albumId })
-      .from(photos).where(publiees).orderBy(photos.albumId, desc(photos.creeLe))
+      .from(photos).where(publiees).orderBy(photos.albumId, desc(photos.creeLe)),
+    db.select({ albumId: photos.albumId, nombre: count() }).from(photos)
+      .leftJoin(albumsVus, and(
+        eq(albumsVus.utilisateurId, req.utilisateur.id),
+        eq(albumsVus.cercleId, photos.cercleId),
+        sql`${albumsVus.albumId} is not distinct from ${photos.albumId}`
+      ))
+      .where(and(
+        publiees,
+        or(isNull(albumsVus.vuLe), gt(photos.creeLe, albumsVus.vuLe)),
+        or(isNull(photos.creeParId), ne(photos.creeParId, req.utilisateur.id)) // pas ses propres photos
+      ))
+      .groupBy(photos.albumId)
   ])
   const compte = new Map(comptes.map((c) => [c.albumId, c]))
   const couverture = new Map(couvertures.map((p) => [p.albumId, p]))
+  const nouvelles = new Map(nonVues.map((c) => [c.albumId, c.nombre]))
+  const lienCouverture = (albumId) => {
+    const photo = couverture.get(albumId)
+    return stockage && photo ? lienAffichage(stockage, photo, 'miniature') : null
+  }
   const presenter = (album) => {
-    const photo = couverture.get(album.id)
     return {
       id: album.id,
       nom: album.nom,
       nombre: compte.get(album.id)?.nombre ?? 0,
-      couverture: stockage && photo ? lienAffichage(stockage, photo, 'miniature') : null,
+      nouvelles: nouvelles.get(album.id) ?? 0,
+      couverture: lienCouverture(album.id),
       peutModifier: peutModifier(req, album),
       derniere: compte.get(album.id)?.derniere ?? album.creeLe
     }
@@ -41,8 +60,35 @@ router.get('/', async (req, res) => {
     // Les albums où une photo vient d'arriver d'abord
     albums: liste.map(presenter).sort((a, b) => new Date(b.derniere) - new Date(a.derniere)),
     total: comptes.reduce((n, c) => n + c.nombre, 0),
-    sansAlbum: compte.get(null)?.nombre ?? 0
+    sansAlbum: compte.get(null)?.nombre ?? 0,
+    sansAlbumNouvelles: nouvelles.get(null) ?? 0,
+    sansAlbumCouverture: lienCouverture(null),
+    sansAlbumDerniere: compte.get(null)?.derniere ?? null
   })
+})
+
+// La personne connectée vient de regarder des photos. Corps : { album: <id> | 'aucun' | 'tous' }
+// ('aucun' : les photos sans album ; 'tous' : toutes les photos du cercle, donc tous les albums).
+router.post('/vus', async (req, res) => {
+  const choix = String(req.body.album ?? '')
+  let ids
+  if (choix === 'tous') {
+    const liste = await db.select({ id: albums.id }).from(albums).where(eq(albums.cercleId, req.cercle.id))
+    ids = [null, ...liste.map((a) => a.id)]
+  } else if (choix === 'aucun') {
+    ids = [null]
+  } else {
+    const [album] = choix
+      ? await db.select({ id: albums.id }).from(albums).where(and(eq(albums.id, choix), eq(albums.cercleId, req.cercle.id)))
+      : []
+    if (!album) throw new ErreurSaisie('Album introuvable')
+    ids = [album.id]
+  }
+  const vuLe = new Date()
+  await db.insert(albumsVus)
+    .values(ids.map((albumId) => ({ utilisateurId: req.utilisateur.id, cercleId: req.cercle.id, albumId, vuLe })))
+    .onConflictDoUpdate({ target: [albumsVus.utilisateurId, albumsVus.cercleId, albumsVus.albumId], set: { vuLe } })
+  res.status(204).end()
 })
 
 router.post('/', async (req, res) => {

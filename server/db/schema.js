@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
 // côté mobile) et dates utiles à la future synchronisation hors ligne.
@@ -145,4 +145,17 @@ export const photos = pgTable('photos', {
 }, (t) => [
   index('photos_cercle_cree_idx').on(t.cercleId, t.creeLe),
   index('photos_album_idx').on(t.albumId)
+])
+
+// Dernière fois qu'une personne a regardé un album (album_id null : les photos sans album).
+// Sert à montrer sur l'accueil de la personne accompagnée les albums qui ont des photos
+// arrivées depuis. Suivi par compte : tous les appareils de la personne le partagent.
+export const albumsVus = pgTable('albums_vus', {
+  ...commun,
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  albumId: uuid('album_id').references(() => albums.id, { onDelete: 'cascade' }),
+  vuLe: timestamp('vu_le', { withTimezone: true }).notNull().defaultNow()
+}, (t) => [
+  unique('albums_vus_unique').on(t.utilisateurId, t.cercleId, t.albumId).nullsNotDistinct()
 ])
