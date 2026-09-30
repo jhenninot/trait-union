@@ -49,9 +49,9 @@ watch(() => route.params.id, (id) => {
 }, { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
 
-// Changer de cercle garde la même rubrique (Famille ou Tablettes)
+// Changer de cercle garde la même rubrique (Famille, Agenda ou Tablettes)
 function changerCercle(id) {
-  const rubrique = route.path.endsWith('/tablettes') ? '/tablettes' : ''
+  const rubrique = route.path.match(/\/(agenda|tablettes)$/)?.[0] ?? ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -88,6 +88,9 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink :to="`/cercles/${cercle.id}`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}`) }">
         <Icone nom="famille" /> Famille et aidants
       </RouterLink>
+      <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
+        <Icone nom="agenda" /> Agenda
+      </RouterLink>
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
         <Icone nom="tablette" /> Tablettes
       </RouterLink>
@@ -110,6 +113,7 @@ const estActif = (chemin) => route.path === chemin
   <nav class="onglets" aria-label="Raccourcis">
     <RouterLink to="/" :class="{ actif: estActif('/') }"><Icone nom="accueil" />Accueil</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
+    <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/agenda`" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }"><Icone nom="agenda" />Agenda</RouterLink>
     <RouterLink v-if="cercle && peutGerer" :to="`/cercles/${cercle.id}/tablettes`" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }"><Icone nom="tablette" />Tablettes</RouterLink>
     <button :class="{ actif: ouvert }" @click="ouvert = !ouvert"><Icone nom="plus" />Plus</button>
   </nav>

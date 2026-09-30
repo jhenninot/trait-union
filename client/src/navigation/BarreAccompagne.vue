@@ -3,6 +3,7 @@
 // Ajouter ici les prochaines rubriques (photos, messages...) quand elles existeront.
 const boutons = [
   { chemin: '/', emoji: '🏠', libelle: 'Accueil' },
+  { chemin: '/agenda', emoji: '📅', libelle: 'Mon agenda' },
   { chemin: '/famille', emoji: '👨‍👩‍👧', libelle: 'Ma famille' }
 ]
 </script>

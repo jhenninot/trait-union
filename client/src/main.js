@@ -14,6 +14,8 @@ import AdminCercles from './vues/AdminCercles.vue'
 import Tablettes from './vues/Tablettes.vue'
 import FamilleAccompagne from './vues/FamilleAccompagne.vue'
 import ApplicationMobile from './vues/ApplicationMobile.vue'
+import Agenda from './vues/Agenda.vue'
+import AgendaAccompagne from './vues/AgendaAccompagne.vue'
 import { preparerInstallation } from './installation.js'
 
 const router = createRouter({
@@ -21,7 +23,9 @@ const router = createRouter({
   routes: [
     { path: '/', component: Accueil, meta: { connecte: true, appareil: true } },
     { path: '/famille', component: FamilleAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
+    { path: '/agenda', component: AgendaAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },
+    { path: '/cercles/:id/agenda', component: Agenda, meta: { connecte: true } },
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },

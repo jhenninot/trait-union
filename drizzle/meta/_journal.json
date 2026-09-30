@@ -29,6 +29,13 @@
       "when": 1790770329596,
       "tag": "0003_parametres",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790776947167,
+      "tag": "0004_agenda",
+      "breakpoints": true
     }
   ]
 }

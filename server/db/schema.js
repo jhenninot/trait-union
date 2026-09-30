@@ -89,3 +89,28 @@ export const parametres = pgTable('parametres', {
   cle: text('cle').notNull().unique(),
   valeur: jsonb('valeur').notNull()
 })
+
+// Qui peut voir un rendez-vous de l'agenda (choisi par la personne qui le crée,
+// qui le voit toujours). Règles appliquées dans server/routes/agenda.js.
+export const visibiliteRendezVous = pgEnum('visibilite_rendez_vous', [
+  'tous', // tout le cercle
+  'aidants', // aidants uniquement
+  'accompagne', // personne accompagnée uniquement
+  'accompagne_aidants' // personne accompagnée et aidants
+])
+
+// Rendez-vous de l'agenda d'un cercle
+export const rendezVous = pgTable('rendez_vous', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  titre: text('titre').notNull(),
+  lieu: text('lieu'),
+  notes: text('notes'),
+  debut: timestamp('debut', { withTimezone: true }).notNull(),
+  fin: timestamp('fin', { withTimezone: true }),
+  journeeEntiere: boolean('journee_entiere').notNull().default(false),
+  visibilite: visibiliteRendezVous('visibilite').notNull().default('tous')
+}, (t) => [
+  index('rendez_vous_cercle_debut_idx').on(t.cercleId, t.debut)
+])
