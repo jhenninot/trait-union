@@ -54,6 +54,7 @@ const MODULES = [
   { cle: 'albums', table: sql`albums` },
   { cle: 'arbre', table: sql`personnes` },
   { cle: 'invitations', table: sql`invitations` },
+  { cle: 'messages', table: sql`messages`, filtre: sql`publie` },
   { cle: 'voix', canal: 'voix' },
   { cle: 'alertes', canal: 'alertes' }
 ]

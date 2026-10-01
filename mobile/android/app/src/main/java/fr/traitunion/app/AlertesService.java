@@ -44,6 +44,9 @@ public class AlertesService extends FirebaseMessagingService {
         NotificationChannel photos = new NotificationChannel("photos", "Nouvelles photos", NotificationManager.IMPORTANCE_DEFAULT);
         photos.setDescription("Quand quelqu'un ajoute des photos");
         gestionnaire.createNotificationChannel(photos);
+        NotificationChannel messages = new NotificationChannel("messages", "Nouveaux messages", NotificationManager.IMPORTANCE_HIGH);
+        messages.setDescription("Les messages reçus dans la messagerie");
+        gestionnaire.createNotificationChannel(messages);
         gestionnaire.createNotificationChannel(new NotificationChannel("autres", "Autres alertes", NotificationManager.IMPORTANCE_DEFAULT));
     }
 
@@ -55,7 +58,8 @@ public class AlertesService extends FirebaseMessagingService {
         String titre = d.containsKey("titre") ? d.get("titre") : "Trait d'union";
         String corps = d.containsKey("corps") ? d.get("corps") : "";
         String categorie = d.containsKey("categorie") ? d.get("categorie") : "";
-        String canal = "rendezVous".equals(categorie) ? "rendez_vous" : "photos".equals(categorie) ? "photos" : "autres";
+        String canal = "rendezVous".equals(categorie) ? "rendez_vous" : "photos".equals(categorie) ? "photos"
+            : "messages".equals(categorie) ? "messages" : "autres";
         creerCanaux(this);
 
         Intent ouvrir = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);

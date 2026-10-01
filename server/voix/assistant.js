@@ -6,6 +6,7 @@ import { mesCercles } from '../routes/auth.js'
 import { filtreNiveaux } from '../routes/agenda.js'
 import { estAnniversaire, age } from '../anniversaires.js'
 import { chargerArbre, phrase as phraseArbre } from '../arbre.js'
+import { messagesAccompagne } from '../routes/messagerie.js'
 
 // Assistant vocal de la personne accompagnée, sans IA : on cherche des mots-clés dans ce
 // qu'elle a dit (reconnaissance vocale du téléphone ou du navigateur) et on répond par une
@@ -15,7 +16,7 @@ import { chargerArbre, phrase as phraseArbre } from '../arbre.js'
 // Alexa reconnaît elle-même l'intention (JourneeIntent, HeureIntent…) et n'aura qu'à appeler
 // repondre(utilisateur, intention, parametres) pour obtenir la phrase à dire.
 
-export const INTENTIONS = ['journee', 'demain', 'heure', 'date', 'agenda', 'photos', 'famille', 'personne', 'qui', 'accueil', 'merci', 'inconnue']
+export const INTENTIONS = ['journee', 'demain', 'heure', 'date', 'agenda', 'photos', 'famille', 'personne', 'qui', 'messages', 'accueil', 'merci', 'inconnue']
 
 const JOURS_AGENDA = 60
 
@@ -35,6 +36,7 @@ const MOTS_CLES = [
   ['demain', ['demain']],
   ['date', ['quel jour', 'quelle date', 'la date', 'on est quel', 'sommes nous', 'quel mois', 'quelle annee', 'on est le']],
   ['journee', ['aujourd hui', 'ma journee', 'la journee', 'programme', 'qu est ce que je fais', 'je fais quoi', 'prevu', 'faire quoi']],
+  ['messages', ['message', 'courrier', 'qui m a ecrit', 'm a ecrit', 'lis mes', 'nouvelles de']],
   ['photos', ['photo', 'image', 'album', 'souvenir']],
   ['agenda', ['agenda', 'rendez vous', 'rdv', 'calendrier', 'semaine', 'quand']],
   ['famille', ['famille', 'enfant', 'fils', 'fille', 'petit', 'proche', 'qui sont', 'mari', 'femme', 'frere', 'soeur']],
@@ -151,6 +153,7 @@ const CHOIX = [
   { libelle: 'Ma journée', icone: 'soleil', intention: 'journee' },
   { libelle: 'Mes photos', icone: 'photo', lien: '/photos' },
   { libelle: 'Ma famille', icone: 'famille', lien: '/famille' },
+  { libelle: 'Mes messages', icone: 'message', lien: '/messages' },
   { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda' }
 ]
 
@@ -202,6 +205,20 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       const p = famille.find((m) => normaliser(m.prenom) === cle && m.phrase) ?? famille.find((m) => normaliser(m.prenom) === cle)
       if (!p) return { texte: 'Je ne connais pas cette personne. Voici votre famille.', lien: '/famille' }
       return { texte: p.phrase ?? `${p.prenom} fait partie de votre entourage.`, lien: '/famille' }
+    }
+    case 'messages': {
+      // Les nouveaux messages écrits (au plus trois), sinon le dernier reçu
+      const { messages } = await messagesAccompagne(utilisateur)
+      const nouveaux = messages.filter((m) => m.nouveau)
+      const aLire = (nouveaux.length ? nouveaux : messages.slice(0, 1)).slice(0, 3)
+      if (!aLire.length) return { texte: 'Vous n\'avez pas de message pour le moment. Voici vos messages.', lien: '/messages' }
+      const phrases = aLire.map((m) => m.type === 'photo' ? `${m.auteur.prenom} vous a envoyé une photo${m.texte ? ` : ${m.texte}` : ''}.`
+        : m.type === 'vocal' ? `${m.auteur.prenom} vous a envoyé un message vocal.`
+          : `${m.auteur.prenom} vous a écrit : ${m.texte}`)
+      const debut = nouveaux.length
+        ? `Vous avez ${nouveaux.length === 1 ? 'un nouveau message' : `${nouveaux.length} nouveaux messages`}. `
+        : 'Pas de nouveau message. Le dernier : '
+      return { texte: `${debut}${phrases.join(' ')}`, lien: '/messages' }
     }
     case 'accueil':
       return { texte: 'Je vous ramène à l\'accueil.', lien: '/' }

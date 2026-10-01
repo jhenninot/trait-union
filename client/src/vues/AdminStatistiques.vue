@@ -98,6 +98,7 @@ const MODULES = [
   { cle: 'albums', nom: 'Albums créés', icone: 'albums' },
   { cle: 'arbre', nom: 'Personnes ajoutées à l\'arbre', icone: 'arbre' },
   { cle: 'invitations', nom: 'Invitations envoyées', icone: 'email' },
+  { cle: 'messages', nom: 'Messages envoyés', icone: 'message' },
   { cle: 'voix', nom: 'Commandes vocales', icone: 'micro' },
   { cle: 'alertes', nom: 'Alertes reçues', icone: 'cloche', sansCercle: true }
 ]

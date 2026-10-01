@@ -13,6 +13,7 @@ import routesVoix from './routes/voix.js'
 import routesProfil from './routes/profil.js'
 import routesAlertes from './routes/alertes.js'
 import routesPresentation from './routes/presentation.js'
+import routesMessagerie from './routes/messagerie.js'
 import { ErreurAlertes } from './alertes/envoi.js'
 import { demarrerAlertes } from './alertes/planificateur.js'
 import { derniereApk, versionApk, APK_URL } from './application.js'
@@ -59,6 +60,7 @@ app.use('/api/voix', routesVoix)
 app.use('/api/profil', routesProfil)
 app.use('/api/alertes', routesAlertes)
 app.use('/api/presentation', routesPresentation)
+app.use('/api/messagerie', routesMessagerie)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })

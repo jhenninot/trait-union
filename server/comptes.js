@@ -3,6 +3,7 @@ import { db } from './db/index.js'
 import { utilisateurs, membres, cercles, sessions, personnes, photos, rendezVous } from './db/schema.js'
 import { ErreurSaisie } from './auth/validation.js'
 import { changerAvatar, liensAvatars } from './avatars.js'
+import { supprimerFichiersDe } from './messagerie/conservation.js'
 
 // Gestion des comptes par l'administrateur : liste de tous les utilisateurs et suppression.
 
@@ -102,11 +103,13 @@ export async function apercuSuppression(id, admin) {
 // (sans auteur), et sa fiche dans l'arbre généalogique, qui devient une personne sans compte
 // avec les prénom, nom et coordonnées du compte. Partent : ses sessions, appareils d'alertes,
 // codes de connexion, son appartenance aux cercles, les rendez-vous réservés à lui seul
-// (personne accompagnée) et sa photo de profil chez l'hébergeur.
+// (personne accompagnée), ses messages (avec leurs photos et vocaux) et sa photo de profil chez
+// l'hébergeur.
 export async function supprimerCompte(id, admin) {
   const compte = await lireCompte(id)
   if (!compte) return false
   await verifierSuppression(compte, admin)
+  await supprimerFichiersDe(id).catch((e) => console.error('Suppression des fichiers des messages :', e.message))
   await db.transaction(async (tx) => {
     const fiches = await tx.select().from(personnes).where(eq(personnes.utilisateurId, id))
     for (const p of fiches) {

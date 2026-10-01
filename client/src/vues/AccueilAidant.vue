@@ -10,6 +10,7 @@ import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAler
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import { etatUtilisation } from '../utilisation.js'
+import { etatMessagerie, quandCourt } from '../messagerie.js'
 
 // Accueil des aidants, proches et auxiliaires de vie : tableau de bord du cercle courant
 // (celui choisi dans le menu). Ce que chacun voit suit ses droits : une auxiliaire n'a ni
@@ -35,6 +36,21 @@ const utilisationAides = ref([]) // utilisation de l'application par chaque pers
 // Personnes de l'arbre généalogique sans compte (un jeune enfant…) : pour leurs anniversaires
 const sansCompte = ref([])
 const autres = ref([]) // résumé de mes autres cercles
+// Conversations du cercle où des messages m'attendent (rechargées quand le nombre change)
+const conversationsNonLues = ref([])
+async function chargerMessages(id) {
+  if (!cercle.value?.monRole) return (conversationsNonLues.value = [])
+  const { conversations } = await api('GET', `/messagerie/cercles/${id}`)
+  if (id === cercleId.value) conversationsNonLues.value = conversations.filter((c) => c.nonLus > 0)
+}
+watch(() => etatMessagerie.parCercle[cercleId.value], () => cercle.value && chargerMessages(cercleId.value).catch(() => {}))
+// « Les aidants (Claire, 18:29) » ; une conversation privée porte déjà le prénom de l'autre : « Jeanne, 18:29 »
+const resumeNonLu = (c) => {
+  if (!c.dernier) return c.titre
+  const quand = quandCourt(c.dernier.le)
+  return c.type === 'privee' ? `${c.titre}, ${quand}` : `${c.titre} (${c.dernier.auteurPrenom}, ${quand})`
+}
+const totalNonLus = computed(() => conversationsNonLues.value.reduce((n, c) => n + c.nonLus, 0))
 
 const peutGerer = computed(() => Boolean(cercle.value?.peutGerer))
 const suisAuxiliaire = computed(() => !peutGerer.value && estAuxiliaire(cercle.value?.monRole))
@@ -106,7 +122,8 @@ async function charger() {
       auxiliaire ? null : api('GET', `/cercles/${id}/albums/accompagnes`).then((l) => (vuesAccompagnes.value = l)).catch(() => {}),
       c.peutGerer ? api('GET', `/cercles/${id}/utilisation`).then((l) => (utilisationAides.value = l)).catch(() => {}) : null,
       auxiliaire ? null : api('GET', `/cercles/${id}/arbre`).then((a) => (sansCompte.value = a.personnes.filter((p) => !p.compte && !p.decede))).catch(() => {}),
-      chargerAutres(id)
+      chargerAutres(id),
+      chargerMessages(id).catch(() => {})
     ])
   } catch (e) {
     erreur.value = e.message
@@ -256,6 +273,15 @@ const aujourdhui = (() => {
         </div>
       </section>
 
+      <RouterLink v-if="totalNonLus" :to="`${base}/messages?c=${conversationsNonLues[0].id}`" class="messages-non-lus">
+        <Icone nom="message" />
+        <div class="grandit">
+          <strong>{{ totalNonLus }} message{{ totalNonLus > 1 ? 's' : '' }} non lu{{ totalNonLus > 1 ? 's' : '' }}</strong>
+          <p class="aide">{{ conversationsNonLues.map(resumeNonLu).join(' · ') }}</p>
+        </div>
+        <span class="voir">Lire <Icone nom="suivant" class="en-ligne" /></span>
+      </RouterLink>
+
       <!-- Deux colonnes sur grand écran ; sur téléphone, une seule dans l'ordre de ordreTelephone -->
       <div class="grille">
         <div v-for="(colonne, i) in colonnes" :key="i" class="colonne">
@@ -372,6 +398,8 @@ const aujourdhui = (() => {
 h1 { margin: 0 0 20px; font-size: 2.1rem; }
 .grille { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .carte { margin: 0 0 16px; }
+.messages-non-lus { display: flex; align-items: center; gap: 12px; background: #e8ebf5; color: var(--bleu-nuit); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; text-decoration: none; }
+.messages-non-lus .aide { margin: 2px 0 0; }
 .bloc h2 { font-size: 1.1rem; color: var(--bleu-nuit); margin: 0; display: flex; align-items: center; gap: 10px; }
 .titre-bloc { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
 .voir { font-size: 0.9rem; white-space: nowrap; text-decoration: none; }

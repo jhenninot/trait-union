@@ -29,11 +29,15 @@ import AdminPresentation from './vues/AdminPresentation.vue'
 import AdminUtilisateurs from './vues/AdminUtilisateurs.vue'
 import AdminStatistiques from './vues/AdminStatistiques.vue'
 import Presentation from './vues/Presentation.vue'
+import Messages from './vues/Messages.vue'
+import MessagesAccompagne from './vues/MessagesAccompagne.vue'
+import AdminMessagerie from './vues/AdminMessagerie.vue'
 import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
 import { surveillerPartages } from './partage.js'
 import { rafraichirAlertes } from './alertes.js'
 import { suivreUtilisation } from './utilisation.js'
+import { demarrerMessagerie, arreterMessagerie } from './messagerie.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,6 +49,8 @@ const router = createRouter({
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },
     { path: '/cercles/:id/agenda', component: Agenda, meta: { connecte: true } },
     { path: '/cercles/:id/photos', component: Photos, meta: { connecte: true } },
+    { path: '/cercles/:id/messages', component: Messages, meta: { connecte: true } },
+    { path: '/messages', component: MessagesAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/arbre', component: Arbre, meta: { connecte: true } },
     { path: '/mon-arbre', component: ArbreAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
@@ -58,6 +64,7 @@ const router = createRouter({
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
     { path: '/admin/alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },
+    { path: '/admin/messagerie', component: AdminMessagerie, meta: { connecte: true, admin: true } },
     { path: '/admin/presentation', component: AdminPresentation, meta: { connecte: true, admin: true } },
     { path: '/connexion', component: Connexion },
     { path: '/bienvenue', component: Initialisation },
@@ -89,4 +96,6 @@ surveillerPartages(router)
 suivreUtilisation(router)
 // Abonnement aux alertes renvoyé au serveur à chaque connexion (il suit la session)
 watch(() => session.utilisateur?.id, (id) => id && rafraichirAlertes())
+// Messages non lus et temps réel de la messagerie, tant qu'une personne est connectée
+watch(() => session.utilisateur?.id, (id) => (id ? demarrerMessagerie() : arreterMessagerie()), { immediate: true })
 createApp(App).use(router).mount('#app')

@@ -29,6 +29,9 @@ export const utilisateurs = pgTable('utilisateurs', {
   adresse: text('adresse'),
   // Catégories d'alertes reçues sur les appareils où elles sont activées (server/alertes/)
   alertes: jsonb('alertes').$type().notNull().default({ rendezVous: true, photos: true, anniversaires: true }),
+  // Messagerie d'une personne accompagnée, réglée par ses aidants (server/messagerie/droits.js) :
+  // { prive: 'tous' | 'aidants' | 'personne', reponses: [...], lectureAuto, vocal }
+  messagerie: jsonb('messagerie').$type(),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })
 })
 
@@ -317,4 +320,59 @@ export const utilisationJour = pgTable('utilisation_jour', {
   derniereLe: timestamp('derniere_le', { withTimezone: true }).notNull().defaultNow()
 }, (t) => [
   unique('utilisation_jour_unique').on(t.utilisateurId, t.jour)
+])
+
+// Messagerie d'un cercle (server/messagerie/). Chaque cercle a d'office trois conversations de groupe :
+// « famille » (tout le cercle sauf les auxiliaires), « aidants » (aidants seulement) et « liaison »
+// (cahier de liaison des aidants et auxiliaires) ; plus des conversations « privee » à deux
+// (personne_a < personne_b). Qui y a accès : server/messagerie/droits.js.
+export const typeConversation = pgEnum('type_conversation', ['famille', 'aidants', 'liaison', 'privee'])
+
+export const conversations = pgTable('conversations', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  type: typeConversation('type').notNull(),
+  personneA: uuid('personne_a').references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  personneB: uuid('personne_b').references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  dernierMessageLe: timestamp('dernier_message_le', { withTimezone: true })
+}, (t) => [
+  unique('conversations_unique').on(t.cercleId, t.type, t.personneA, t.personneB).nullsNotDistinct()
+])
+
+// texte : message écrit ; rapide : réponse toute faite (« Je t'embrasse ») ; photo et vocal : fichier
+// chez l'hébergeur S3 (cercles/<cercle>/messages/<message>/...), envoyé directement par le navigateur.
+export const typeMessage = pgEnum('type_message', ['texte', 'rapide', 'photo', 'vocal'])
+
+export const messages = pgTable('messages', {
+  ...commun,
+  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  // Supprimer un compte supprime ses messages (et leurs fichiers, server/comptes.js)
+  auteurId: uuid('auteur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  type: typeMessage('type').notNull().default('texte'),
+  texte: text('texte'),
+  // Cahier de liaison : personne accompagnée concernée par la note (null : tout le monde)
+  accompagneId: uuid('accompagne_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  // Photo : { largeur, hauteur } ; vocal : { duree (secondes), mime, extension }
+  fichier: jsonb('fichier'),
+  // Faux tant que le navigateur n'a pas confirmé l'arrivée du fichier chez l'hébergeur
+  publie: boolean('publie').notNull().default(true),
+  // Message retiré par son auteur ou par un aidant : le texte et le fichier sont effacés
+  retireLe: timestamp('retire_le', { withTimezone: true }),
+  retireParId: uuid('retire_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+}, (t) => [
+  index('messages_conversation_cree_idx').on(t.conversationId, t.creeLe),
+  index('messages_cercle_cree_idx').on(t.cercleId, t.creeLe)
+])
+
+// Où chacun en est de sa lecture d'une conversation (accusés de lecture, messages non lus) et
+// conversation mise en sourdine (pas d'alerte)
+export const lectures = pgTable('lectures', {
+  ...commun,
+  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  luJusquA: timestamp('lu_jusqu_a', { withTimezone: true }),
+  muet: boolean('muet').notNull().default(false)
+}, (t) => [
+  unique('lectures_unique').on(t.conversationId, t.utilisateurId)
 ])

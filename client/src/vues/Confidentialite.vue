@@ -1,7 +1,7 @@
 <template>
   <main class="texte">
     <h1>Politique de confidentialité</h1>
-    <p class="aide">Dernière mise à jour : 30 septembre 2026 (photos)</p>
+    <p class="aide">Dernière mise à jour : 1er octobre 2026 (messagerie)</p>
 
     <p>Trait d'union est une application privée qui aide une personne accompagnée (atteinte de la maladie
       d'Alzheimer ou d'une maladie apparentée), ses aidants et sa famille à garder le lien. Elle est
@@ -18,6 +18,8 @@
       <li><strong>Cercles</strong> : les cercles auxquels vous appartenez et votre rôle (personne accompagnée, aidant, proche).</li>
       <li><strong>Personne accompagnée</strong> : prénom et nom saisis par un aidant ; elle n'a ni email ni mot de passe.</li>
       <li><strong>Photos</strong> : les photos envoyées dans un cercle, leur légende, qui les a envoyées et quand.</li>
+      <li><strong>Messages</strong> : les messages écrits, réponses toutes faites, photos et messages vocaux envoyés
+        dans la messagerie, qui les a envoyés, quand, et jusqu'où chacun a lu une conversation (accusés de lecture).</li>
       <li><strong>Sessions</strong> : date d'expiration de vos connexions et, le cas échéant, le nom donné à l'appareil.</li>
     </ul>
 
@@ -30,6 +32,15 @@
     <h2>Qui voit quoi</h2>
     <p>Les membres d'un cercle voient les prénoms, noms et rôles des autres membres de ce cercle. Les adresses email
       ne sont visibles que des aidants du cercle et de l'administrateur.</p>
+
+    <h2>Messagerie</h2>
+    <p>« Toute la famille » est visible par tout le cercle, sauf les auxiliaires de vie ; « Les aidants » par les aidants
+      seulement ; le cahier de liaison par les aidants et les auxiliaires de vie. Une conversation privée n'est visible
+      que des deux personnes concernées : les aidants ne lisent pas les conversations privées d'une personne accompagnée,
+      mais ils choisissent qui peut lui écrire. Personne d'extérieur au cercle ne peut écrire à un membre. Un aidant peut
+      retirer un message d'une conversation de groupe ; chacun peut effacer les siens. Les photos et messages vocaux sont
+      rangés comme les photos (paragraphe suivant). Les messages sont effacés automatiquement après une durée choisie
+      par l'administrateur (12 mois par défaut, 6 mois pour le cahier de liaison), et avec le compte de leur auteur.</p>
 
     <h2>Stockage des photos</h2>
     <p>Les photos ne sont pas conservées sur le serveur de l'application : elles sont envoyées directement chez un

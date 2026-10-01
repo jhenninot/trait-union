@@ -18,6 +18,8 @@ import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { preferences, lirePreferences } from './alertes.js'
 import { derniereApkConnue } from '../application.js'
 import { resumeUtilisation } from '../utilisation.js'
+import { reglages as reglagesMessagerie, REPONSES_DEFAUT } from '../messagerie/droits.js'
+import { supprimerFichiersDe } from '../messagerie/conservation.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -87,7 +89,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -125,7 +127,7 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, avatar, alertes, dateNaissance, adresse, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, alertes, messagerie, dateNaissance, adresse, ...m }) => ({
       ...m,
       lien: liens.get(utilisateurId) ?? m.lien,
       lienCalcule: liens.has(utilisateurId),
@@ -142,7 +144,9 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId)?.n ?? 0) : undefined,
       appareilsAMettreAJour: m.role === 'accompagne' && req.peutGerer ? (parUtilisateur.get(utilisateurId)?.anciens ?? 0) : undefined,
       // Les aidants choisissent les alertes des personnes accompagnées
-      alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined
+      alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined,
+      // Les aidants règlent la messagerie des personnes accompagnées
+      messagerie: req.peutGerer && m.role === 'accompagne' ? reglagesMessagerie(messagerie) : undefined
     }))
   })
 })
@@ -257,6 +261,19 @@ router.put('/:cercleId/membres/:membreId/alertes', chargerCercle, exigerGestion,
   res.json(alertes)
 })
 
+// Messagerie d'une personne accompagnée : qui peut lui écrire en privé, réponses toutes faites,
+// lecture à voix haute des nouveaux messages, photos et messages vocaux.
+// Corps : { prive: 'tous' | 'aidants' | 'personne', reponses: [...], lectureAuto, vocal }
+router.put('/:cercleId/membres/:membreId/messagerie', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const prive = ['tous', 'aidants', 'personne'].includes(req.body.prive) ? req.body.prive : 'tous'
+  const reponses = Array.isArray(req.body.reponses)
+    ? [...new Set(req.body.reponses.map((r) => valider.texte(r, 'réponse', { obligatoire: false, max: 40 })).filter(Boolean))].slice(0, 12)
+    : REPONSES_DEFAUT
+  const messagerie = { prive, reponses, lectureAuto: Boolean(req.body.lectureAuto), vocal: req.body.vocal !== false }
+  await db.update(utilisateurs).set({ messagerie }).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  res.json(reglagesMessagerie(messagerie))
+})
+
 // Lien d'un membre avec la personne accompagnée (fils, petite-fille...) : chacun règle le sien,
 // les aidants celui de tous. Corps : { lien } (null pour l'effacer)
 router.put('/:cercleId/membres/:membreId/lien', chargerCercle, async (req, res) => {
@@ -302,6 +319,7 @@ router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, asyn
   if (membre.role === 'accompagne' && membre.utilisateurId) {
     const [{ n }] = await db.select({ n: count() }).from(membres).where(eq(membres.utilisateurId, membre.utilisateurId))
     if (n === 0) {
+      await supprimerFichiersDe(membre.utilisateurId).catch(() => {})
       const [u] = await db.delete(utilisateurs).where(eq(utilisateurs.id, membre.utilisateurId)).returning()
       // Sa photo de profil éventuelle est supprimée chez l'hébergeur
       if (u?.avatar) await changerAvatar(u, null).catch(() => {})

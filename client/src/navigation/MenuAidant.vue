@@ -5,6 +5,7 @@ import { api } from '../api.js'
 import { session, deconnecter } from '../session.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
 import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
+import { etatMessagerie } from '../messagerie.js'
 import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
@@ -43,6 +44,9 @@ const cercle = computed(() => choix.value.find((c) => c.id === cercleId.value) ?
 const peutGerer = computed(() => session.utilisateur.estAdmin || aLesDroits(cercle.value?.role, 'aidant'))
 // Les auxiliaires de vie n'ont pas accès aux photos ni à l'arbre généalogique
 const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value?.role))
+// La messagerie est réservée aux membres du cercle (pas à un administrateur qui n'en fait pas partie)
+const voitMessages = computed(() => Boolean(cercle.value?.role))
+const nonLus = computed(() => etatMessagerie.parCercle[cercleId.value] ?? 0)
 
 watch(() => route.params.id, (id) => id && memoriserCercle(id), { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
@@ -50,7 +54,7 @@ watch(() => route.fullPath, () => (ouvert.value = false))
 // Changer de cercle garde la même rubrique (Accueil, Famille, Arbre, Agenda, Photos ou Personnes accompagnées)
 function changerCercle(id) {
   if (route.path === '/') return memoriserCercle(id)
-  let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre)$/)?.[0] ?? ''
+  let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre|messages)$/)?.[0] ?? ''
   const cible = choix.value.find((c) => c.id === id)
   if ((rubrique === '/photos' || rubrique === '/arbre') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
   router.push(`/cercles/${id}${rubrique}`)
@@ -86,6 +90,9 @@ const estActif = (chemin) => route.path === chemin
 
     <RouterLink to="/" class="lien" :class="{ actif: estActif('/') }"><Icone nom="accueil" /> Accueil</RouterLink>
     <template v-if="cercle">
+      <RouterLink v-if="voitMessages" :to="`/cercles/${cercle.id}/messages`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/messages`) }">
+        <Icone nom="message" /> Messages<span v-if="nonLus" class="badge">{{ nonLus }}</span>
+      </RouterLink>
       <RouterLink :to="`/cercles/${cercle.id}`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}`) }">
         <Icone nom="famille" /> Famille et aidants
       </RouterLink>
@@ -111,6 +118,7 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
       <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
       <RouterLink to="/admin/alertes" class="lien" :class="{ actif: estActif('/admin/alertes') }"><Icone nom="cloche" /> Alertes</RouterLink>
+      <RouterLink to="/admin/messagerie" class="lien" :class="{ actif: estActif('/admin/messagerie') }"><Icone nom="message" /> Messagerie</RouterLink>
       <RouterLink to="/admin/presentation" class="lien" :class="{ actif: estActif('/admin/presentation') }"><Icone nom="oeil" /> Page de présentation</RouterLink>
     </template>
 
@@ -128,7 +136,10 @@ const estActif = (chemin) => route.path === chemin
   <!-- Téléphone : onglets en bas (Personnes accompagnées reste accessible par « Plus ») -->
   <nav class="onglets" aria-label="Raccourcis">
     <RouterLink to="/" :class="{ actif: estActif('/') }"><Icone nom="accueil" />Accueil</RouterLink>
-    <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
+    <RouterLink v-if="cercle && voitMessages" :to="`/cercles/${cercle.id}/messages`" :class="{ actif: estActif(`/cercles/${cercle.id}/messages`) }">
+      <span class="pictogramme"><Icone nom="message" /><span v-if="nonLus" class="badge">{{ nonLus }}</span></span>Messages
+    </RouterLink>
+    <RouterLink v-else-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/agenda`" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }"><Icone nom="agenda" />Agenda</RouterLink>
     <RouterLink v-if="cercle && voitPhotos" :to="`/cercles/${cercle.id}/photos`" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }"><Icone nom="photo" />Photos</RouterLink>
     <button :class="{ actif: ouvert }" @click="ouvert = !ouvert"><Icone nom="plus" />Plus</button>
@@ -187,6 +198,7 @@ const estActif = (chemin) => route.path === chemin
   margin: 18px 12px 4px;
 }
 .bas-menu { margin-top: auto; border-top: 1px solid #ebe8e3; padding-top: 10px; }
+.badge { margin-left: auto; background: var(--rouge); color: white; border-radius: 999px; font-size: 0.75rem; font-weight: 700; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; }
 .entete-mobile, .onglets, .voile { display: none; }
 
 @media (max-width: 760px) {
@@ -242,6 +254,8 @@ const estActif = (chemin) => route.path === chemin
     background: none;
   }
   .onglets .icone { width: 24px; height: 24px; }
+  .pictogramme { position: relative; display: inline-flex; }
+  .pictogramme .badge { position: absolute; top: -6px; right: -12px; min-width: 17px; height: 17px; font-size: 0.68rem; padding: 0 4px; }
   .onglets .actif { color: var(--vert); font-weight: 600; }
 }
 </style>

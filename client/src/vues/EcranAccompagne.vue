@@ -11,6 +11,7 @@ import Avatar from './Avatar.vue'
 import { estAnniversaire, age, ans } from '../coordonnees.js'
 import { chargerFamille } from '../famille.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
+import { ecouterMessagerie } from '../messagerie.js'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
@@ -40,6 +41,17 @@ const chargerAnniversaires = async () => {
   const { personnes } = await chargerFamille()
   fetes.value = personnes.filter((p) => !p.decede && estAnniversaire(p.dateNaissance))
 }
+// Messages pas encore lus : le plus récent s'affiche en grand (« Julien vous a écrit »)
+const messagesNonLus = ref([])
+const chargerMessages = async () => {
+  const { messages } = await api('GET', '/messagerie/accompagne').catch(() => ({ messages: [] }))
+  messagesNonLus.value = messages.filter((m) => m.nouveau)
+}
+const dernierMessage = computed(() => messagesNonLus.value[0] ?? null)
+function ecouterMessage(m) {
+  const quoi = m.type === 'photo' ? 'vous a envoyé une photo.' : m.type === 'vocal' ? 'vous a envoyé un message vocal.' : 'vous a écrit.'
+  parler(`${m.auteur.prenom} ${quoi} ${m.type === 'vocal' ? 'Touchez « Lire » pour l\'écouter.' : m.texte ?? ''}`)
+}
 const monAnniversaire = computed(() => estAnniversaire(session.utilisateur.dateNaissance, maintenant.value))
 
 // Proposer les alertes sur cet appareil, si les aidants en ont laissé au moins une catégorie
@@ -68,13 +80,16 @@ function refuser() {
 chargerAlertes()
 
 const recharger = () => {
+  chargerMessages()
   chargerProgramme()
   chargerPhotos()
   chargerAnniversaires()
 }
 let minuterieProgramme
 let arreterRetour
+let arreterMessagerie
 onMounted(() => {
+  arreterMessagerie = ecouterMessagerie((type) => type === 'message' && chargerMessages())
   minuterie = setInterval(() => (maintenant.value = new Date()), 30_000)
   recharger()
   minuterieProgramme = setInterval(recharger, 5 * 60_000)
@@ -84,6 +99,7 @@ onUnmounted(() => {
   clearInterval(minuterie)
   clearInterval(minuterieProgramme)
   arreterRetour?.()
+  arreterMessagerie?.()
 })
 
 // « Écouter » : la date, l'heure et le programme du jour lus à voix haute (texte préparé par
@@ -116,6 +132,17 @@ const moment = () => {
     <button v-if="lecture" class="ecouter" :disabled="lecteurOccupe" @click="ecouterJournee">
       <Icone nom="son" class="en-ligne" /> Écouter ma journée
     </button>
+    <div v-if="dernierMessage" class="pave-message">
+      <Avatar :src="dernierMessage.auteur.avatar" :prenom="dernierMessage.auteur.prenom" :taille="80" />
+      <div class="texte-message">
+        <strong>{{ dernierMessage.auteur.prenom }} vous a écrit<template v-if="messagesNonLus.length > 1"> (et {{ messagesNonLus.length - 1 }} autre{{ messagesNonLus.length > 2 ? 's' : '' }})</template></strong>
+        <span class="extrait">{{ dernierMessage.type === 'photo' ? (dernierMessage.texte || 'Une photo') : dernierMessage.type === 'vocal' ? 'Un message vocal' : dernierMessage.texte }}</span>
+      </div>
+      <div class="boutons-message">
+        <button v-if="lecture" class="secondaire" @click="ecouterMessage(dernierMessage)"><Icone nom="son" class="en-ligne" /> Écouter</button>
+        <RouterLink to="/messages" class="bouton-lire"><Icone nom="message" class="en-ligne" /> Lire</RouterLink>
+      </div>
+    </div>
     <div class="cartes">
     <RouterLink v-if="monAnniversaire || fetes.length" to="/famille" class="anniversaires">
       <span class="titre-anniversaires"><Icone nom="gateau" class="em" />
@@ -263,8 +290,35 @@ const moment = () => {
 .alertes .non { background: none; color: var(--gris); font-size: 1.1rem; text-decoration: underline; }
 .alertes .erreur { flex-basis: 100%; font-size: 1.1rem; }
 .alertes.fait { font-size: 1.3rem; color: var(--vert); background: var(--vert-clair); margin: 0; }
+/* Nouveau message */
+.pave-message {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 1000px;
+  background: white;
+  border: 3px solid var(--vert);
+  border-radius: 24px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.texte-message { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.texte-message strong { font-size: 1.7rem; color: var(--bleu-nuit); }
+.extrait { font-size: 1.4rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.boutons-message { display: flex; gap: 12px; }
+.boutons-message button, .bouton-lire { font-size: 1.5rem; font-weight: 700; padding: 16px 26px; border-radius: 16px; display: inline-flex; align-items: center; gap: 10px; }
+.bouton-lire { background: var(--vert); color: white; text-decoration: none; }
 /* Smartphone */
 @media (max-width: 600px) {
+  .pave-message { flex-wrap: wrap; gap: 10px 12px; padding: 12px; border-radius: 18px; margin-bottom: 12px; }
+  .pave-message :deep(.avatar) { width: 56px !important; height: 56px !important; }
+  .texte-message strong { font-size: 1.25rem; }
+  .extrait { font-size: 1.1rem; }
+  .boutons-message { flex-basis: 100%; }
+  .boutons-message > * { flex: 1; justify-content: center; font-size: 1.15rem; padding: 12px; }
   .accompagne { padding: 16px 12px; }
   .bonjour { font-size: 2.2rem; }
   .jour { font-size: 1.5rem; }

@@ -8,6 +8,7 @@ import * as alertes from '../alertes/envoi.js'
 import * as presentation from '../presentation/config.js'
 import { listerComptes, apercuSuppression, supprimerCompte } from '../comptes.js'
 import { statistiques } from '../statistiques.js'
+import { lireConservation, enregistrerConservation, DUREES_POSSIBLES } from '../messagerie/conservation.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -143,6 +144,24 @@ router.put('/alertes', async (req, res) => {
   if (config.actif) await alertes.verifierFirebase(config.compte)
   await alertes.enregistrerFirebase(config)
   res.json(firebasePublic(config))
+})
+
+// --- Messagerie : durée de conservation des messages (server/messagerie/conservation.js)
+
+router.get('/messagerie', async (req, res) => {
+  res.json({ ...await lireConservation(), durees: DUREES_POSSIBLES })
+})
+
+// Corps : { mois, moisLiaison } (en mois, parmi DUREES_POSSIBLES)
+router.put('/messagerie', async (req, res) => {
+  const lire = (v, champ) => {
+    const n = Number(v)
+    if (!DUREES_POSSIBLES.includes(n)) throw new valider.ErreurSaisie(`Durée invalide pour ${champ}`)
+    return n
+  }
+  const valeur = { mois: lire(req.body.mois, 'les messages'), moisLiaison: lire(req.body.moisLiaison, 'le cahier de liaison') }
+  await enregistrerConservation(valeur)
+  res.json({ ...valeur, durees: DUREES_POSSIBLES })
 })
 
 // --- Page de présentation (/decouvrir/<clé>, voir server/routes/presentation.js)

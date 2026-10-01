@@ -10,6 +10,7 @@ import { envoyerAlerte, envoyerAux } from './envoi.js'
 import { derniereApk } from '../application.js'
 import { joursFetes, age } from '../anniversaires.js'
 import { chargerArbre, parente } from '../arbre.js'
+import { purgerMessages } from '../messagerie/conservation.js'
 
 // Tâche de fond lancée au démarrage du serveur : chaque minute, elle envoie
 // - les rappels de rendez-vous dont l'heure est arrivée ;
@@ -293,6 +294,15 @@ async function annoncerApplication(maintenant) {
   }, { duree: 7 * 86_400, urgent: false })
 }
 
+// Messages trop anciens effacés (durée de conservation), une fois par heure
+let dernierePurge = 0
+async function purger(maintenant) {
+  if (maintenant - dernierePurge < 60 * MINUTE) return
+  dernierePurge = maintenant.getTime()
+  const n = await purgerMessages(maintenant)
+  if (n) console.log(`Messagerie : ${n} message${n > 1 ? 's' : ''} effacé${n > 1 ? 's' : ''} (durée de conservation)`)
+}
+
 let enCours = false
 async function tour() {
   if (enCours) return
@@ -312,6 +322,11 @@ async function tour() {
     await envoyerAnniversaires(maintenant)
   } catch (e) {
     console.error('Alertes d\'anniversaire :', e)
+  }
+  try {
+    await purger(maintenant)
+  } catch (e) {
+    console.error('Conservation des messages :', e)
   }
   try {
     await annoncerApplication(maintenant)
