@@ -49,7 +49,8 @@ const chargerMessages = async () => {
 }
 const dernierMessage = computed(() => messagesNonLus.value[0] ?? null)
 function ecouterMessage(m) {
-  const quoi = m.type === 'photo' ? 'vous a envoyé une photo.' : m.type === 'vocal' ? 'vous a envoyé un message vocal.' : 'vous a écrit.'
+  const quoi = m.type === 'photo' ? 'vous a envoyé une photo.' : m.type === 'vocal' ? 'vous a envoyé un message vocal.'
+    : m.type === 'sondage' ? 'cherche une date pour :' : 'vous a écrit.'
   parler(`${m.auteur.prenom} ${quoi} ${m.type === 'vocal' ? 'Touchez « Lire » pour l\'écouter.' : m.texte ?? ''}`)
 }
 const monAnniversaire = computed(() => estAnniversaire(session.utilisateur.dateNaissance, maintenant.value))
@@ -135,7 +136,7 @@ const moment = () => {
     <div v-if="dernierMessage" class="pave-message">
       <Avatar :src="dernierMessage.auteur.avatar" :prenom="dernierMessage.auteur.prenom" :taille="80" />
       <div class="texte-message">
-        <strong>{{ dernierMessage.auteur.prenom }} vous a écrit<template v-if="messagesNonLus.length > 1"> (et {{ messagesNonLus.length - 1 }} autre{{ messagesNonLus.length > 2 ? 's' : '' }})</template></strong>
+        <strong>{{ dernierMessage.auteur.prenom }} {{ dernierMessage.type === 'sondage' ? 'cherche une date' : 'vous a écrit' }}<template v-if="messagesNonLus.length > 1"> (et {{ messagesNonLus.length - 1 }} autre{{ messagesNonLus.length > 2 ? 's' : '' }})</template></strong>
         <span class="extrait">{{ dernierMessage.type === 'photo' ? (dernierMessage.texte || 'Une photo') : dernierMessage.type === 'vocal' ? 'Un message vocal' : dernierMessage.texte }}</span>
       </div>
       <div class="boutons-message">

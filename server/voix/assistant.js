@@ -214,6 +214,7 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       if (!aLire.length) return { texte: 'Vous n\'avez pas de message pour le moment. Voici vos messages.', lien: '/messages' }
       const phrases = aLire.map((m) => m.type === 'photo' ? `${m.auteur.prenom} vous a envoyé une photo${m.texte ? ` : ${m.texte}` : ''}.`
         : m.type === 'vocal' ? `${m.auteur.prenom} vous a envoyé un message vocal.`
+          : m.type === 'sondage' ? `${m.auteur.prenom} cherche une date pour : ${m.texte}. Dites-lui quels jours vous pouvez venir dans vos messages.`
           : `${m.auteur.prenom} vous a écrit : ${m.texte}`)
       const debut = nouveaux.length
         ? `Vous avez ${nouveaux.length === 1 ? 'un nouveau message' : `${nouveaux.length} nouveaux messages`}. `

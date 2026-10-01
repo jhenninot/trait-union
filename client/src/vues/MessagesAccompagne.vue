@@ -12,6 +12,8 @@ import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
 import { motDecede } from '../coordonnees.js'
+import { RouterLink } from 'vue-router'
+import { REPONSES, jourLong, momentTexte, repondreSondage } from '../sondages.js'
 
 // « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
 // conversations (« Toute la famille » et les privées) avec une pastille de messages non lus ;
@@ -19,7 +21,7 @@ import { motDecede } from '../coordonnees.js'
 // bouton « Écrire » : réponses toutes faites d'un geste, message vocal ou photo.
 const donnees = ref(null) // { conversations, contacts, reglages, fichiers }
 const erreur = ref('')
-const ecran = ref('liste') // liste | contacts | fil | repondre | vocal | envoye
+const ecran = ref('liste') // liste | contacts | fil | repondre | vocal | envoye | sondage | repondu
 const fil = ref(null) // { conversation, messages }
 const zoneFil = ref(null)
 const cible = ref(null) // { titre, prenom, avatar, lien, famille, conversationId, cercleId, utilisateurId }
@@ -155,8 +157,8 @@ function ecouter(m) {
     return
   }
   const qui = m.deMoi ? 'Vous avez' : `${m.auteur.prenom} a`
-  const debut = m.type === 'photo' ? `${qui} envoyé une photo.` : `${qui} écrit.`
-  parler(`${debut} ${m.texte ?? ''}`)
+  if (m.sondage) parler(texteSondage(m))
+  else parler(`${m.type === 'photo' ? `${qui} envoyé une photo.` : `${qui} écrit.`} ${m.texte ?? ''}`)
   audio.value = { id: m.id, element: null }
   setTimeout(() => audio.value?.id === m.id && !audio.value.element && (audio.value = null), 8000)
 }
@@ -164,6 +166,43 @@ function arreterAudio() {
   audio.value?.element?.pause()
   audio.value = null
   arreterParole()
+}
+
+// --- Sondage de dates : Oui / Peut-être / Non pour chaque jour, sur un seul écran
+
+const sondage = ref(null) // { id, titre, lieu, moment, heure, dates, reponses }
+const enClair = (s) => [s.lieu, momentTexte(s)].filter(Boolean).join(', ')
+function texteSondage(m) {
+  const s = m.sondage
+  if (!s.ouvert) return `C'est décidé : ${s.titre}, ${jourLong(s.dateRetenue)}, ${momentTexte(s)}.`
+  return `${m.deMoi ? 'Vous cherchez' : `${m.auteur.prenom} cherche`} une date pour : ${s.titre}. ${enClair(s)}. Quels jours pouvez-vous venir ? Touchez « Choisir mes jours ».`
+}
+const aRepondu = (s) => Object.keys(s.mesReponses ?? {}).length > 0
+function choisirJours(m) {
+  arreterAudio()
+  sondage.value = { ...m.sondage, reponses: { ...m.sondage.mesReponses } }
+  erreur.value = ''
+  ecran.value = 'sondage'
+}
+const choisir = (date, valeur) => (sondage.value.reponses = { ...sondage.value.reponses, [date]: valeur })
+async function envoyerJours() {
+  if (envoi.value) return
+  envoi.value = true
+  erreur.value = ''
+  try {
+    await repondreSondage(sondage.value.id, sondage.value.reponses)
+    ecran.value = 'repondu'
+    retourFil = setTimeout(retourSondage, 2500)
+  } catch (e) {
+    erreur.value = e.message
+  } finally {
+    envoi.value = false
+  }
+}
+function retourSondage() {
+  clearTimeout(retourFil)
+  sondage.value = null
+  ouvrir(fil.value.conversation.id)
 }
 
 // --- Écrire (dans la conversation ouverte)
@@ -316,7 +355,20 @@ async function terminerVocal() {
               <p class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</p>
               <img v-if="b.photo" :src="b.photo.ecran" alt="Photo" class="photo" @load="apresImage" @click="enGrand = b.photo" />
               <p v-if="b.vocal" class="vocal-msg"><Icone nom="micro" class="en-ligne" /> Message vocal · {{ duree(b.vocal.duree) }}</p>
-              <p v-if="b.texte" class="texte"><TexteMessage :texte="b.texte" /></p>
+              <div v-if="b.sondage" class="sondage-aide">
+                <p class="etiquette-sondage"><Icone :nom="b.sondage.ouvert ? 'sondage' : 'coche'" class="en-ligne" /> {{ b.sondage.ouvert ? 'On cherche une date' : 'C\'est décidé' }}</p>
+                <p class="titre-sondage">{{ b.sondage.titre }}</p>
+                <template v-if="b.sondage.ouvert">
+                  <p class="sous-sondage">{{ enClair(b.sondage) }}. Quels jours pouvez-vous venir ?</p>
+                  <p v-if="aRepondu(b.sondage)" class="deja"><Icone nom="coche" class="en-ligne" /> Vous avez répondu</p>
+                  <button v-if="b.sondage.peutRepondre" class="choisir-jours" @click="choisirJours(b)"><Icone nom="agenda" class="en-ligne" /> {{ aRepondu(b.sondage) ? 'Changer mes réponses' : 'Choisir mes jours' }}</button>
+                </template>
+                <template v-else>
+                  <p class="sous-sondage">{{ jourLong(b.sondage.dateRetenue) }}, {{ momentTexte(b.sondage) }}{{ b.sondage.lieu ? `, ${b.sondage.lieu}` : '' }}.</p>
+                  <RouterLink to="/agenda" class="choisir-jours secondaire-lien"><Icone nom="agenda" class="en-ligne" /> Voir dans mon agenda</RouterLink>
+                </template>
+              </div>
+              <p v-else-if="b.texte" class="texte"><TexteMessage :texte="b.texte" /></p>
               <ApercuLien v-if="b.lien" :lien="b.lien" grand @charge="apresImage" />
               <div class="pied-bulle">
                 <button v-if="b.vocal || lecture" class="ecouter" :aria-label="audio?.id === b.id ? 'Arrêter' : 'Écouter'" @click="audio?.id === b.id ? arreterAudio() : ecouter(b)">
@@ -390,6 +442,37 @@ async function terminerVocal() {
         <button class="tres-gros annuler" :disabled="envoi" @click="annulerVocal"><Icone nom="effacer" /><span>Effacer</span></button>
         <button class="tres-gros" :disabled="envoi" @click="terminerVocal"><Icone nom="envoyer" /><span>{{ envoi ? 'Envoi…' : 'Envoyer' }}</span></button>
       </div>
+    </div>
+
+    <!-- Sondage de dates : tous les jours sur un écran, Oui / Peut-être / Non -->
+    <div v-else-if="ecran === 'sondage' && sondage" class="ecran-sondage">
+      <div class="tete-fil">
+        <button class="secondaire retour" @click="retourSondage"><Icone nom="precedent" class="en-ligne" /> Retour</button>
+        <div class="grandit">
+          <p class="qui">Quels jours pouvez-vous venir ?</p>
+          <p class="lien-msg">{{ sondage.titre }}, {{ enClair(sondage) }}</p>
+        </div>
+      </div>
+      <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      <div class="jours">
+        <div v-for="d in sondage.dates" :key="d" class="ligne-jour">
+          <p class="nom-jour">{{ jourLong(d) }}<small>{{ momentTexte(sondage) }}</small></p>
+          <div class="trois" role="radiogroup" :aria-label="jourLong(d)">
+            <button v-for="r in REPONSES" :key="r.valeur" type="button" role="radio" class="choix-jour" :class="[r.valeur, { on: sondage.reponses[d] === r.valeur }]"
+              :aria-checked="sondage.reponses[d] === r.valeur" @click="choisir(d, r.valeur)">
+              <Icone :nom="r.icone" class="en-ligne" /> {{ r.libelle }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <button class="repondre" :disabled="envoi || !Object.keys(sondage.reponses).length" @click="envoyerJours"><Icone nom="coche" class="en-ligne" /> {{ envoi ? 'Envoi…' : 'C\'est bon' }}</button>
+    </div>
+
+    <div v-else-if="ecran === 'repondu'" class="envoye">
+      <span class="coche"><Icone nom="coche" /></span>
+      <p class="qui grand">Merci, votre réponse est partie</p>
+      <p class="petit-gris">Toute la famille va la voir.</p>
+      <button class="secondaire grand-bouton" @click="retourSondage">Revenir à la conversation</button>
     </div>
 
     <!-- Message parti -->
@@ -490,8 +573,34 @@ h1 { font-size: 2.4rem; margin: 0; }
 .erreur { font-size: 1.3rem; }
 .plein-ecran { position: fixed; inset: 0; z-index: 200; background: rgb(0 0 0 / 0.92); display: grid; place-items: center; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* Sondage de dates */
+.sondage-aide { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.etiquette-sondage { color: var(--vert); font-weight: 700; font-size: 1.15rem; }
+.titre-sondage { font-size: 1.6rem; font-weight: 700; color: var(--bleu-nuit); }
+.sous-sondage { font-size: 1.3rem; color: #4a4a55; }
+.deja { color: var(--vert); font-weight: 600; font-size: 1.15rem; }
+.choisir-jours { margin-top: 6px; font-size: 1.5rem; font-weight: 700; padding: 18px 22px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.secondaire-lien { background: var(--vert-clair); color: var(--vert); }
+.ecran-sondage { display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; }
+.jours { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; flex: 1; }
+.ligne-jour { display: flex; align-items: center; gap: 16px; background: white; border-radius: 20px; padding: 14px 18px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+.nom-jour { flex: 1; margin: 0; font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); display: flex; flex-direction: column; }
+.nom-jour small { font-size: 1.05rem; font-weight: 400; color: var(--gris); }
+.trois { display: grid; grid-template-columns: repeat(3, minmax(0, 180px)); gap: 10px; }
+.choix-jour { background: #f2efe9; color: var(--bleu-nuit); font-size: 1.3rem; font-weight: 700; padding: 16px 8px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 3px solid transparent; white-space: nowrap; }
+.choix-jour .icone { width: 1.5rem; height: 1.5rem; }
+.choix-jour.oui.on { background: var(--vert); color: white; }
+.choix-jour.peut_etre.on { background: #b7791f; color: white; }
+.choix-jour.non.on { background: var(--bleu-nuit); color: white; }
 /* Smartphone */
 @media (max-width: 600px) {
+  .titre-sondage { font-size: 1.3rem; }
+  .sous-sondage { font-size: 1.1rem; }
+  .choisir-jours { font-size: 1.2rem; padding: 14px; }
+  .ligne-jour { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+  .nom-jour { font-size: 1.35rem; }
+  .trois { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .choix-jour { font-size: 1.05rem; padding: 10px 4px; gap: 4px; flex-direction: column; }
   .formulaire-clavier { flex-direction: column; }
   .formulaire-clavier textarea { font-size: 1.3rem; padding: 12px; }
   .formulaire-clavier button { font-size: 1.3rem; padding: 12px; }

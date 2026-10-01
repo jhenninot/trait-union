@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, sql, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { conversations, messages, lectures } from '../db/schema.js'
+import { conversations, messages, lectures, sondages, sondageReponses, rendezVous } from '../db/schema.js'
 import { exigerConnexion } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
@@ -13,6 +13,7 @@ import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peu
 import { ouvrirFlux, signaler } from '../messagerie/flux.js'
 import { programmerAlertes, apercu } from '../messagerie/alertes.js'
 import { premierLien, apercuDe, imageDe } from '../messagerie/liens.js'
+import { lireSondage, nettoyerReponses, sondagesDesMessages, chargerSondage, presenterSondage, relancerSondage, jourEnClair, momentEnClair, dateValide } from '../messagerie/sondages.js'
 import { VARIANTES_PHOTO, VOCAL_MAX, DUREE_VOCAL_MAX, FORMATS_VOCAL, DUREE_ENVOI, clePhoto, cleVocal, clesFichiers, lienLecture, supprimerFichiers } from '../messagerie/fichiers.js'
 
 // Messagerie : conversations de groupe du cercle, conversations privées, cahier de liaison
@@ -146,7 +147,7 @@ async function chargerMessage(req, res, next) {
 
 // --- Présentation des messages
 
-function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, lus }) {
+function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil }) {
   const auteur = liste.find((x) => x.utilisateurId === m.auteurId)
   const base = {
     id: m.id,
@@ -170,6 +171,8 @@ function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, l
     message.photo = { miniature: lienLecture(stockage, clePhoto(m, 'miniature')), ecran: lienLecture(stockage, clePhoto(m, 'ecran')), largeur: m.fichier?.largeur, hauteur: m.fichier?.hauteur }
   }
   if (m.type === 'vocal' && stockage) message.vocal = { lien: lienLecture(stockage, cleVocal(m)), duree: m.fichier?.duree ?? 0 }
+  const sondage = m.type === 'sondage' ? sondagesFil?.get(m.id) : null
+  if (sondage) message.sondage = presenterSondage(sondage, { moi, repondants: participants(conversation, liste), lienAvatar })
   // Accusés de lecture, sur ses propres messages
   if (message.deMoi && lus) {
     message.vuPar = lus.filter((l) => l.utilisateurId !== m.auteurId && l.luJusquA >= m.creeLe).map((l) => l.prenom)
@@ -284,8 +287,11 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     conditions.push(sql`${messages.creeLe} < ${avant.toISOString()}::timestamptz`)
   }
   const lignes = await db.select().from(messages).where(and(...conditions)).orderBy(sql`${messages.creeLe} desc`).limit(PAR_PAGE)
-  const [lienAvatar, stockage, lus, etat] = await Promise.all([liensAvatars(), stockageActif(), lecteurs(conversation, liste), etatsLecture([conversation.id], moi.utilisateurId)])
-  const contexte = { conversation, moi, liste, lienAvatar, stockage, lus }
+  const [lienAvatar, stockage, lus, etat, sondagesFil] = await Promise.all([
+    liensAvatars(), stockageActif(), lecteurs(conversation, liste), etatsLecture([conversation.id], moi.utilisateurId),
+    sondagesDesMessages(lignes.filter((m) => m.type === 'sondage').map((m) => m.id))
+  ])
+  const contexte = { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil }
   res.json({
     conversation: presenterConversation(conversation, { moi, liste, lienAvatar, etat: etat.get(conversation.id) }),
     messages: lignes.reverse().map((m) => presenterMessage(m, contexte)),
@@ -293,6 +299,8 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     accompagnes: conversation.type === 'liaison' ? liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)) : [],
     fichiers: Boolean(stockage),
     peutModerer: conversation.type !== 'privee' && moi.role === 'aidant',
+    // Sondage de dates : dans « Toute la famille », lancé par un aidant ou un proche
+    peutSonder: conversation.type === 'famille' && ['aidant', 'proche'].includes(moi.role),
     monRole: moi.role,
     // Réglages de la personne accompagnée connectée (réponses toutes faites, vocal)
     reglages: moi.role === 'accompagne' ? reglages(moi.messagerie) : undefined
@@ -422,6 +430,144 @@ router.put('/conversations/:id/muet', chargerConversation, async (req, res) => {
   res.json({ muet })
 })
 
+// --- Sondages de dates (server/messagerie/sondages.js)
+
+// Les pages ouvertes de la conversation se rafraîchissent (sans auteurId : pas de lecture à voix
+// haute ni de défilement chez la personne accompagnée)
+const rafraichir = (conversation, liste) =>
+  signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id })
+
+// Charge req.sondage ({ sondage, reponses }) et sa conversation (refus si la personne n'y a pas accès)
+async function chargerLeSondage(req, res, next) {
+  const s = await chargerSondage(req.params.sondageId)
+  if (!s) return res.status(404).json({ erreur: 'Sondage introuvable' })
+  const [m] = await db.select({ retireLe: messages.retireLe }).from(messages).where(eq(messages.id, s.sondage.messageId))
+  if (!m || m.retireLe) return res.status(404).json({ erreur: 'Ce sondage a été retiré' })
+  req.sondage = s
+  req.params.id = s.sondage.conversationId
+  chargerConversation(req, res, next)
+}
+
+const peutGererSondage = (req) => req.sondage.sondage.creeParId === req.moi.utilisateurId || req.moi.role === 'aidant'
+
+async function detailSondage(req) {
+  const s = await chargerSondage(req.sondage.sondage.id)
+  return presenterSondage(s, { moi: req.moi, repondants: participants(req.conversation, req.liste), lienAvatar: await liensAvatars(), detail: true })
+}
+
+// Lance un sondage dans « Toute la famille ». Corps : { titre, lieu, moment, heure, dates, dateLimite }
+router.post('/conversations/:id/sondages', chargerConversation, async (req, res) => {
+  const { conversation, moi, liste } = req
+  if (conversation.type !== 'famille' || !['aidant', 'proche'].includes(moi.role) || !peutEcrire(conversation, moi, liste)) {
+    return res.status(403).json({ erreur: 'Seuls les aidants et les proches lancent un sondage, dans « Toute la famille »' })
+  }
+  const saisie = lireSondage(req.body)
+  const { message, sondage } = await db.transaction(async (tx) => {
+    const [message] = await tx.insert(messages).values({
+      conversationId: conversation.id, cercleId: conversation.cercleId, auteurId: moi.utilisateurId, type: 'sondage', texte: saisie.titre
+    }).returning()
+    const [sondage] = await tx.insert(sondages).values({ ...saisie, cercleId: conversation.cercleId, conversationId: conversation.id, messageId: message.id, creeParId: moi.utilisateurId }).returning()
+    await tx.update(messages).set({ fichier: { sondageId: sondage.id } }).where(eq(messages.id, message.id))
+    return { message, sondage }
+  })
+  await annoncer(req, message)
+  res.status(201).json({ id: sondage.id, messageId: message.id })
+})
+
+// Détail : une ligne par personne (tableau des réponses)
+router.get('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
+  res.json(await detailSondage(req))
+})
+
+// Modifie le sondage (titre, lieu, moment, dates, date limite) tant qu'il est ouvert. Les réponses
+// aux dates retirées disparaissent.
+router.put('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
+  const { sondage, reponses } = req.sondage
+  if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants modifient ce sondage' })
+  if (sondage.dateRetenue) return res.status(400).json({ erreur: 'Ce sondage est clos' })
+  const saisie = lireSondage(req.body)
+  await db.transaction(async (tx) => {
+    await tx.update(sondages).set(saisie).where(eq(sondages.id, sondage.id))
+    await tx.update(messages).set({ texte: saisie.titre }).where(eq(messages.id, sondage.messageId))
+    for (const r of reponses) {
+      await tx.update(sondageReponses).set({ reponses: nettoyerReponses(r.reponses, saisie.dates) }).where(eq(sondageReponses.id, r.id))
+    }
+  })
+  rafraichir(req.conversation, req.liste)
+  res.json(await detailSondage(req))
+})
+
+// Enregistre ses réponses, ou celles d'une personne accompagnée (aidant).
+// Corps : { reponses: { 'AAAA-MM-JJ': 'oui' | 'peut_etre' | 'non' }, commentaire, pour }
+router.put('/sondages/:sondageId/reponses', chargerLeSondage, async (req, res) => {
+  const { conversation, moi, liste } = req
+  const { sondage } = req.sondage
+  if (sondage.dateRetenue) return res.status(400).json({ erreur: 'Ce sondage est clos : la date a été retenue' })
+  const repondants = participants(conversation, liste)
+  const pour = req.body.pour && req.body.pour !== moi.utilisateurId ? repondants.find((m) => m.utilisateurId === req.body.pour) : moi
+  if (!pour || !repondants.some((m) => m.utilisateurId === pour.utilisateurId)) return res.status(403).json({ erreur: 'Vous ne pouvez pas répondre à ce sondage' })
+  if (pour !== moi && !(moi.role === 'aidant' && pour.role === 'accompagne')) {
+    return res.status(403).json({ erreur: 'Seuls les aidants peuvent répondre à la place de quelqu\'un, et seulement d\'une personne accompagnée' })
+  }
+  const valeurs = {
+    reponses: nettoyerReponses(req.body.reponses, sondage.dates),
+    commentaire: valider.texte(req.body.commentaire, 'commentaire', { obligatoire: false, max: 300 }),
+    reponduParId: moi.utilisateurId
+  }
+  await db.insert(sondageReponses).values({ sondageId: sondage.id, utilisateurId: pour.utilisateurId, ...valeurs })
+    .onConflictDoUpdate({ target: [sondageReponses.sondageId, sondageReponses.utilisateurId], set: { ...valeurs, modifieLe: new Date() } })
+  rafraichir(conversation, liste)
+  res.json(await detailSondage(req))
+})
+
+const RELANCE_CALME = 60 * 60_000
+router.post('/sondages/:sondageId/relancer', chargerLeSondage, async (req, res) => {
+  const { sondage } = req.sondage
+  if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants relancent ce sondage' })
+  if (sondage.dateRetenue) return res.status(400).json({ erreur: 'Ce sondage est clos' })
+  if (sondage.relanceLe && Date.now() - sondage.relanceLe.getTime() < RELANCE_CALME) {
+    return res.status(429).json({ erreur: 'Une relance est déjà partie il y a moins d\'une heure' })
+  }
+  await db.update(sondages).set({ relanceLe: new Date() }).where(eq(sondages.id, sondage.id))
+  const prenoms = await relancerSondage(sondage, req.conversation, req.liste, { auteur: req.moi })
+  res.json({ relances: prenoms })
+})
+
+// Retient une date : crée le rendez-vous (visible de tous), clôt le sondage et prévient la famille.
+// Corps : { date, debut, fin (ISO), journeeEntiere, titre, lieu, rappel (minutes ou null) }
+router.post('/sondages/:sondageId/retenir', chargerLeSondage, async (req, res) => {
+  const { conversation, moi } = req
+  const { sondage } = req.sondage
+  if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants retiennent une date' })
+  if (sondage.dateRetenue) return res.status(400).json({ erreur: 'Une date a déjà été retenue' })
+  const b = req.body
+  if (!dateValide(b.date) || !sondage.dates.includes(b.date)) throw new ErreurSaisie('Cette date ne fait pas partie du sondage')
+  const debut = new Date(b.debut)
+  const fin = new Date(b.fin)
+  if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) throw new ErreurSaisie('Horaires invalides')
+  if (fin < debut) throw new ErreurSaisie('La fin doit être après le début')
+  const rappel = b.rappel == null || b.rappel === '' ? null : Number(b.rappel)
+  if (rappel != null && (!Number.isInteger(rappel) || rappel < 0 || rappel > 7 * 1440)) throw new ErreurSaisie('Délai d\'alerte invalide')
+  const titre = valider.texte(b.titre, 'titre', { max: 200 })
+  const lieu = valider.texte(b.lieu, 'lieu', { obligatoire: false })
+  const texte = `C'est décidé : ${titre}, ${jourEnClair(b.date)}${momentEnClair(sondage) ? ` ${momentEnClair(sondage)}` : ''}${lieu ? `, ${lieu}` : ''}. C'est noté dans l'agenda.`
+  const message = await db.transaction(async (tx) => {
+    const [rdv] = await tx.insert(rendezVous).values({
+      cercleId: conversation.cercleId, creeParId: moi.utilisateurId, titre, lieu, debut, fin,
+      journeeEntiere: Boolean(b.journeeEntiere), visibilite: 'tous', rappel,
+      notes: 'Date choisie par un sondage dans « Toute la famille ».'
+    }).returning()
+    // Une seule clôture, même si deux personnes valident en même temps
+    const [clos] = await tx.update(sondages).set({ dateRetenue: b.date, rendezVousId: rdv.id, closParId: moi.utilisateurId })
+      .where(and(eq(sondages.id, sondage.id), sql`${sondages.dateRetenue} is null`)).returning()
+    if (!clos) throw new ErreurSaisie('Une date a déjà été retenue')
+    const [m] = await tx.insert(messages).values({ conversationId: conversation.id, cercleId: conversation.cercleId, auteurId: moi.utilisateurId, type: 'texte', texte }).returning()
+    return m
+  })
+  await annoncer(req, message)
+  res.json(await detailSondage(req))
+})
+
 // --- Personne accompagnée : tous les messages qui lui sont adressés, sur de grandes cartes
 
 // Messages des autres dans « Toute la famille » et ses conversations privées, tous cercles confondus
@@ -447,10 +593,11 @@ export async function messagesAccompagne(utilisateur, { avecLesMiens = false } =
       ...(avecLesMiens ? [] : [sql`${messages.auteurId} <> ${moi.utilisateurId}`]),
       sql`${messages.creeLe} > ${new Date(Date.now() - 30 * JOUR).toISOString()}::timestamptz`
     )).orderBy(sql`${messages.creeLe} desc`).limit(40)
+    const sondagesFil = await sondagesDesMessages(lignes.filter((m) => m.type === 'sondage').map((m) => m.id))
     for (const m of lignes) {
       const conversation = convs.find((x) => x.id === m.conversationId)
       const auteur = liste.find((x) => x.utilisateurId === m.auteurId)
-      const p = presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage })
+      const p = presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, sondagesFil })
       const lu = etats.get(conversation.id)?.luJusquA
       // Répondre : dans la même conversation, comme un groupe WhatsApp (la réponse à un message de
       // « Toute la famille » va à toute la famille, celle à un message privé reste privée)

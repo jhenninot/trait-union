@@ -169,6 +169,13 @@
       "when": 1790884785673,
       "tag": "0023_deces",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790888735627,
+      "tag": "0024_sondages",
+      "breakpoints": true
     }
   ]
 }

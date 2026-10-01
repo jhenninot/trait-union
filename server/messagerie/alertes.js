@@ -17,6 +17,7 @@ const minutes = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padSt
 
 export function apercu(message) {
   if (message.type === 'photo') return message.texte ? `Photo : ${message.texte}` : 'Photo'
+  if (message.type === 'sondage') return `Sondage : ${message.texte ?? ''}`
   if (message.type === 'vocal') return `Message vocal (${minutes(message.fichier?.duree ?? 0)})`
   const texte = message.texte ?? ''
   return texte.length > 140 ? `${texte.slice(0, 137)}…` : texte

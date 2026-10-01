@@ -31,7 +31,8 @@ async function lireNouveaux() {
     const nouveau = messages.find((m) => m.nouveau && !dejaLus.has(m.id))
     if (!nouveau) return
     messages.forEach((m) => dejaLus.add(m.id))
-    const quoi = nouveau.type === 'photo' ? 'vous a envoyé une photo' : nouveau.type === 'vocal' ? 'vous a envoyé un message vocal' : 'vous a écrit'
+    const quoi = nouveau.type === 'photo' ? 'vous a envoyé une photo' : nouveau.type === 'vocal' ? 'vous a envoyé un message vocal'
+      : nouveau.type === 'sondage' ? 'cherche une date pour' : 'vous a écrit'
     parler(`${nouveau.auteur.prenom} ${quoi}. ${nouveau.type === 'vocal' ? '' : nouveau.texte ?? ''}`)
   } catch { /* hors ligne */ }
 }

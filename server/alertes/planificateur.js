@@ -11,6 +11,9 @@ import { derniereApk } from '../application.js'
 import { joursFetes, age } from '../anniversaires.js'
 import { chargerArbre, parente } from '../arbre.js'
 import { purgerMessages } from '../messagerie/conservation.js'
+import { sondagesARelancer, relancerSondage } from '../messagerie/sondages.js'
+import { membresCercle } from '../messagerie/droits.js'
+import { sondages, conversations } from '../db/schema.js'
 
 // Tâche de fond lancée au démarrage du serveur : chaque minute, elle envoie
 // - les rappels de rendez-vous dont l'heure est arrivée ;
@@ -303,6 +306,16 @@ async function purger(maintenant) {
   if (n) console.log(`Messagerie : ${n} message${n > 1 ? 's' : ''} effacé${n > 1 ? 's' : ''} (durée de conservation)`)
 }
 
+// Sondages de dates : la veille de la date limite (à partir de 10 h), une alerte à ceux qui
+// n'ont pas encore répondu
+async function relancerSondages(maintenant) {
+  for (const sondage of await sondagesARelancer(maintenant)) {
+    await db.update(sondages).set({ relanceAutoLe: maintenant }).where(eq(sondages.id, sondage.id))
+    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, sondage.conversationId))
+    if (conversation) await relancerSondage(sondage, conversation, await membresCercle(sondage.cercleId))
+  }
+}
+
 let enCours = false
 async function tour() {
   if (enCours) return
@@ -322,6 +335,11 @@ async function tour() {
     await envoyerAnniversaires(maintenant)
   } catch (e) {
     console.error('Alertes d\'anniversaire :', e)
+  }
+  try {
+    await relancerSondages(maintenant)
+  } catch (e) {
+    console.error('Relance des sondages :', e)
   }
   try {
     await purger(maintenant)

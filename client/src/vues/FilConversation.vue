@@ -14,6 +14,10 @@ import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
 import { motDecede } from '../coordonnees.js'
+import { useRoute } from 'vue-router'
+import CarteSondage from './CarteSondage.vue'
+import DetailSondage from './DetailSondage.vue'
+import FenetreSondage from './FenetreSondage.vue'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -268,6 +272,19 @@ async function sourdine() {
   donnees.value.conversation.muet = muet
 }
 
+// --- Sondages de dates (« Toute la famille ») : création, réponses, tableau
+const route = useRoute()
+const nouveauSondage = ref(false)
+const detail = ref(null) // { id, mode: 'repondre' | 'detail' }
+const sondageLance = (r) => {
+  nouveauSondage.value = false
+  charger()
+  emit('change')
+  if (r?.id) detail.value = { id: r.id, mode: 'repondre' }
+}
+// Ouvert depuis une alerte de relance (?sondage=<id>)
+watch(() => route.query.sondage, (id) => id && (detail.value = { id, mode: 'repondre' }), { immediate: true })
+
 const enGrand = ref(null) // photo affichée en grand
 const vocalPossible = enregistrementPossible()
 </script>
@@ -330,7 +347,9 @@ const vocalPossible = enregistrementPossible()
           <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="36" class="avatar-msg" :decede="b.auteur.decede" />
           <div class="bulle-bloc">
             <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}<span v-if="b.auteur.decede" class="mention-deces">{{ motDecede(b.auteur.genre) }}</span></div>
-            <div class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
+            <CarteSondage v-if="b.sondage" :sondage="b.sondage" :class="{ choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id"
+              @repondre="detail = { id: b.sondage.id, mode: 'repondre' }" @detail="detail = { id: b.sondage.id, mode: 'detail' }" />
+            <div v-else class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
               <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = { ...b.photo, message: b }" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
               <div v-if="b.vocal" class="vocal"><Icone nom="micro" class="en-ligne" /><audio :src="b.vocal.lien" controls preload="none" /><span>{{ duree(b.vocal.duree) }}</span></div>
@@ -390,6 +409,7 @@ const vocalPossible = enregistrementPossible()
         <option :value="null">Tous</option>
         <option v-for="a in donnees.accompagnes" :key="a.utilisateurId" :value="a.utilisateurId">{{ a.prenom }}</option>
       </select>
+      <BoutonIcone v-if="donnees.peutSonder" icone="sondage" libelle="Proposer des dates (sondage)" :disabled="envoi" @click="nouveauSondage = true" />
       <BoutonIcone v-if="donnees.fichiers" icone="photo" libelle="Envoyer une photo" :disabled="envoi" @click="choixPhoto.click()" />
       <input ref="choixPhoto" type="file" accept="image/*" hidden @change="photoChoisie" />
       <textarea ref="champ" v-model="texte" :placeholder="placeholder" rows="1" maxlength="4000" @keydown="touche" />
@@ -400,6 +420,10 @@ const vocalPossible = enregistrementPossible()
       {{ conversation.autre.prenom }} est {{ motDecede(conversation.autre.genre) }} : vos messages restent ici, mais on ne peut plus lui écrire.
     </p>
     <p v-else-if="conversation" class="aide ferme">Vous ne pouvez plus écrire dans cette conversation.</p>
+
+    <FenetreSondage v-if="nouveauSondage" :conversation-id="conversationId" @fermer="nouveauSondage = false" @enregistre="sondageLance" />
+    <DetailSondage v-if="detail && conversation" :key="detail.id + detail.mode" :sondage-id="detail.id" :cercle-id="conversation.cercleId" :mode="detail.mode"
+      @fermer="detail = null" @change="charger({ garderPosition: true }); emit('change')" />
 
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
       <img :src="enGrand.ecran" alt="Photo" />
@@ -442,6 +466,7 @@ const vocalPossible = enregistrementPossible()
 .moi .bulle :deep(.apercu-lien) { background: rgb(255 255 255 / 0.12); }
 .bulle.rapide { background: var(--vert-clair); color: var(--vert); font-weight: 700; }
 .bulle.choisie { outline: 2px solid var(--vert); }
+.carte-sondage.choisie { outline: 2px solid var(--bleu-nuit); }
 .texte { white-space: pre-wrap; overflow-wrap: anywhere; }
 .h { font-size: 0.72rem; color: var(--gris); text-align: right; margin-top: 2px; }
 .moi .h { color: #c5cbe0; }

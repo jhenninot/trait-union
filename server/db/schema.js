@@ -346,7 +346,8 @@ export const conversations = pgTable('conversations', {
 
 // texte : message écrit ; rapide : réponse toute faite (« Je t'embrasse ») ; photo et vocal : fichier
 // chez l'hébergeur S3 (cercles/<cercle>/messages/<message>/...), envoyé directement par le navigateur.
-export const typeMessage = pgEnum('type_message', ['texte', 'rapide', 'photo', 'vocal'])
+// sondage : sondage de dates (fichier : { sondageId }, texte : son titre), voir la table sondages
+export const typeMessage = pgEnum('type_message', ['texte', 'rapide', 'photo', 'vocal', 'sondage'])
 
 export const messages = pgTable('messages', {
   ...commun,
@@ -380,4 +381,46 @@ export const lectures = pgTable('lectures', {
   muet: boolean('muet').notNull().default(false)
 }, (t) => [
   unique('lectures_unique').on(t.conversationId, t.utilisateurId)
+])
+
+// Sondage de dates façon Doodle (server/messagerie/sondages.js), publié comme un message de
+// « Toute la famille ». Dates proposées : AAAA-MM-JJ, triées ; moment : journée entière, midi,
+// soir ou heure précise (heure « HH:MM »). À la clôture, la date retenue crée un rendez-vous.
+export const momentSondage = pgEnum('moment_sondage', ['journee', 'midi', 'soir', 'heure'])
+
+export const sondages = pgTable('sondages', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  // Supprimer le message (ou le compte de son auteur) supprime le sondage
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  creeParId: uuid('cree_par_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  titre: text('titre').notNull(),
+  lieu: text('lieu'),
+  moment: momentSondage('moment').notNull().default('journee'),
+  heure: text('heure'),
+  dates: jsonb('dates').$type().notNull().default([]),
+  dateLimite: date('date_limite'),
+  // Date retenue (AAAA-MM-JJ) et rendez-vous créé : le sondage est clos
+  dateRetenue: date('date_retenue'),
+  rendezVousId: uuid('rendez_vous_id').references(() => rendezVous.id, { onDelete: 'set null' }),
+  closParId: uuid('clos_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  // Relances : bouton « Relancer » (dernière fois) et alerte automatique la veille de la date limite
+  relanceLe: timestamp('relance_le', { withTimezone: true }),
+  relanceAutoLe: timestamp('relance_auto_le', { withTimezone: true })
+}, (t) => [
+  uniqueIndex('sondages_message_unique').on(t.messageId)
+])
+
+// Réponses d'une personne : { 'AAAA-MM-JJ': 'oui' | 'peut_etre' | 'non' }. Un aidant peut répondre
+// à la place d'une personne accompagnée (repondu_par_id : l'aidant).
+export const sondageReponses = pgTable('sondage_reponses', {
+  ...commun,
+  sondageId: uuid('sondage_id').notNull().references(() => sondages.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  reponses: jsonb('reponses').$type().notNull().default({}),
+  commentaire: text('commentaire'),
+  reponduParId: uuid('repondu_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+}, (t) => [
+  unique('sondage_reponses_unique').on(t.sondageId, t.utilisateurId)
 ])
