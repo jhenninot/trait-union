@@ -32,7 +32,7 @@ const ESSENTIEL = [
     icone: 'agenda',
     couleur: 'bleu',
     titre: 'Un agenda partagé par tous',
-    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens sur son écran, et le reste n\'encombre pas son écran.'
+    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens, et le reste n\'encombre pas son écran.'
   },
   {
     icone: 'photo',
@@ -43,10 +43,44 @@ const ESSENTIEL = [
 ]
 
 const ROLES = [
-  { icone: 'compte', nom: 'La personne accompagnée', texte: 'Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette ou son smartphone, qui reste ensuite connecté.' },
-  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, appareils de la personne accompagnée, coordonnées de la personne accompagnée, réglages de ses alertes.' },
-  { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos et gardent le contact, même de loin.' },
-  { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun. Pas les photos de famille.' }
+  { icone: 'compte', nom: 'Les personnes accompagnées', texte: 'Une ou plusieurs par cercle, un couple par exemple. Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette ou son smartphone, qui reste ensuite connecté.' },
+  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, arbre de la famille, appareils et coordonnées des personnes accompagnées, réglages de leurs alertes.' },
+  { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos, consultent l\'arbre et gardent le contact, même de loin.' },
+  { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun. Ni les photos de famille, ni l\'arbre.' }
+]
+
+// Arbre d'exemple, vu par la personne accompagnée : les liens sont calculés par l'application
+const ARBRE = [
+  {
+    famille: 'La famille de Michel',
+    couleur: 'vert',
+    generations: [
+      { lien: 'Mon fils', personnes: [{ prenom: 'Michel', avatar: 'mature-man-fair-grey' }, { prenom: 'Anne', avatar: 'mature-woman-fair-auburn', allie: true }] },
+      { lien: 'Mon petit-fils', personnes: [{ prenom: 'Julien', avatar: 'adult-man-fair-glasses' }] },
+      { lien: 'Mon arrière-petit-fils', personnes: [{ prenom: 'Léo', avatar: 'baby', age: '4 mois' }] }
+    ]
+  },
+  {
+    famille: 'La famille de Sylvie',
+    couleur: 'orange',
+    generations: [
+      { lien: 'Ma fille', personnes: [{ prenom: 'Sylvie', avatar: 'mature-woman-black-short' }, { prenom: 'Pierre', avatar: 'mature-man-fair-silver', allie: true }] },
+      { lien: 'Ma petite-fille', personnes: [{ prenom: 'Claire', avatar: 'young-woman-fair-ginger' }] }
+    ]
+  }
+]
+const ARBRE_POINTS = [
+  'Les liens se calculent tout seuls : « mon fils », « ma petite-fille », « mon gendre »',
+  'Des personnes sans compte : un bébé, un oncle sans smartphone',
+  'Les disparus gardent leur place, sans alerte d\'anniversaire',
+  'L\'âge des bébés en mois, en semaines ou en jours'
+]
+
+const TABLEAU_POINTS = [
+  'Appeler, envoyer un SMS ou un message WhatsApp en un geste',
+  'Savoir si la personne accompagnée a vu les nouvelles photos',
+  'Un appareil à relier ou une alerte à activer : c\'est dans « À faire »',
+  'Plusieurs cercles pour un même compte, chacun avec son rôle'
 ]
 
 // Agenda d'exemple : chaque rendez-vous a son niveau de visibilité
@@ -59,16 +93,17 @@ const RENDEZ_VOUS = [
 const AUSSI = [
   { icone: 'cloche', titre: 'Des alertes qui arrivent', texte: 'Rappel avant un rendez-vous, nouvelles photos, anniversaire du jour : sur le téléphone de chacun, et sur la tablette ou le smartphone de la personne accompagnée, même écran éteint.' },
   { icone: 'gateau', titre: 'Les anniversaires', texte: 'Le matin, son écran lui rappelle à qui souhaiter son anniversaire, avec l\'âge. Toute la famille reçoit la même alerte.' },
-  { icone: 'telephone', titre: 'Les coordonnées de chacun', texte: 'Téléphone, adresse, âge : une fiche en gros caractères pour qu\'elle sache qui est qui, et qui appeler.' },
+  { icone: 'telephone', titre: 'Les coordonnées de chacun', texte: 'Téléphone, adresse, âge et lien avec elle : une fiche en gros caractères, lue à voix haute, pour qu\'elle sache qui est qui, et qui appeler.' },
   { icone: 'compte', titre: 'Un visage pour chacun', texte: 'Une photo ou un avatar illustré pour chaque membre, pour reconnaître tout le monde d\'un coup d\'oeil.' },
   { icone: 'partager', titre: 'Partager depuis le téléphone', texte: 'Sur Android, « Partager » depuis la galerie envoie directement des photos dans un album du cercle.' },
   { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
-  { icone: 'mobile', titre: 'Sur tous les écrans', texte: 'Ordinateur, téléphone ou tablette : application installable sur iPhone et Android, et application Android dédiée.' }
+  { icone: 'mobile', titre: 'Sur tous les écrans', texte: 'Ordinateur, téléphone ou tablette : application installable sur iPhone et Android, et application Android dédiée.' },
+  { icone: 'repeter', titre: 'Toujours à jour', texte: 'Quand une nouvelle version de l\'application Android sort, chacun est prévenu, et les aidants voient quels appareils mettre à jour.' }
 ]
 
 const ETAPES = [
   { titre: 'Créer le cercle', texte: 'Un cercle par famille, avec une ou plusieurs personnes accompagnées et leurs aidants.' },
-  { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé par email ou par message. Chacun choisit son mot de passe.' },
+  { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé par email ou par message. Chacun choisit son mot de passe, puis complète son profil : photo, téléphone, lien avec la personne accompagnée.' },
   { titre: 'Installer son appareil', texte: 'Un code à 6 chiffres sur sa tablette ou son smartphone, et c\'est prêt. Rien à retenir pour elle.' }
 ]
 
@@ -146,7 +181,7 @@ function contacter() {
                   </div>
                   <div class="pave anniversaire">
                     <span class="pave-titre"><Icone nom="gateau" /> Anniversaire aujourd'hui</span>
-                    <strong><span class="rond">P</span> Paul · 51 ans</strong>
+                    <strong><img class="rond" src="/avatars/senior-man-fair-beard.webp" alt="" /> Paul · 86 ans</strong>
                   </div>
                 </div>
                 <div class="barre">
@@ -202,6 +237,44 @@ function contacter() {
         </div>
       </section>
 
+      <!-- L'arbre de la famille -->
+      <section class="section">
+        <div class="encadre inverse">
+          <div class="demo-arbre" aria-hidden="true">
+            <div class="arbre-couple">
+              <span class="arbre-personne moi"><img src="/avatars/senior-woman-fair-glasses.webp" alt="" /><strong>Jeanne</strong><em>Moi</em></span>
+              <span class="arbre-et">et</span>
+              <span class="arbre-personne defunt"><img src="/avatars/senior-man-fair-glasses.webp" alt="" /><strong>Robert</strong><small>Mon mari, 1938 - 2015</small></span>
+            </div>
+            <div class="arbre-branches">
+              <div v-for="b in ARBRE" :key="b.famille" class="arbre-branche" :class="b.couleur">
+                <strong class="arbre-famille">{{ b.famille }}</strong>
+                <template v-for="g in b.generations" :key="g.lien">
+                  <span class="arbre-lien">{{ g.lien }}</span>
+                  <div class="arbre-generation">
+                    <span v-for="per in g.personnes" :key="per.prenom" class="arbre-personne" :class="{ allie: per.allie }">
+                      <img :src="`/avatars/${per.avatar}.webp`" alt="" />
+                      <strong>{{ per.prenom }}</strong>
+                      <small v-if="per.age">{{ per.age }}</small>
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="pastille">L'arbre de la famille</span>
+            <h2>Qui est qui, sans avoir à le demander</h2>
+            <p>Les aidants dessinent l'arbre de la famille, et chacun y trouve sa place. Sur son écran, elle voit ses
+              enfants, ses petits-enfants et leurs conjoints, avec leur visage et ce qu'ils sont pour elle. Une fiche en
+              gros caractères, lue à voix haute, rappelle l'âge de chacun, où il habite et comment l'appeler.</p>
+            <ul class="points">
+              <li v-for="pt in ARBRE_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <!-- Chacun sa place : rôles et visibilité de l'agenda -->
       <section class="section">
         <div class="encadre">
@@ -230,6 +303,46 @@ function contacter() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tableau de bord des aidants -->
+      <section class="section">
+        <div class="encadre inverse">
+          <div class="demo-tableau" aria-hidden="true">
+            <span class="demo-titre">Accueil des aidants</span>
+            <div class="tableau-anniversaire">
+              <img src="/avatars/senior-man-fair-beard.webp" alt="" />
+              <div><strong>Anniversaire de Paul aujourd'hui</strong><span>Paul fête ses 86 ans</span></div>
+              <span class="tableau-bouton"><Icone nom="telephone" class="en-ligne" /> Appeler</span>
+            </div>
+            <div class="tableau-bloc a-faire">
+              <strong><Icone nom="cloche" class="en-ligne" /> À faire</strong>
+              <span>Paul n'a pas encore d'appareil relié</span>
+            </div>
+            <div class="tableau-bloc">
+              <strong><Icone nom="compte" class="en-ligne" /> Personnes accompagnées</strong>
+              <div v-for="pa in [{ prenom: 'Jeanne', age: 82, avatar: 'senior-woman-fair-glasses', photos: 'A regardé toutes les photos', vu: true }, { prenom: 'Paul', age: 86, avatar: 'senior-man-fair-beard', photos: '4 photos pas encore vues', vu: false }]" :key="pa.prenom" class="tableau-personne">
+                <img :src="`/avatars/${pa.avatar}.webp`" alt="" />
+                <div>
+                  <strong>{{ pa.prenom }} · {{ pa.age }} ans</strong>
+                  <span :class="pa.vu ? 'vu' : 'pas-vu'"><Icone :nom="pa.vu ? 'coche' : 'photo'" class="en-ligne" /> {{ pa.photos }}</span>
+                </div>
+                <span class="tableau-rond"><Icone nom="telephone" /></span>
+                <span class="tableau-rond"><Icone nom="message" /></span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="pastille">Pour les aidants</span>
+            <h2>Tout le cercle d'un coup d'oeil</h2>
+            <p>En ouvrant l'application, aidants et proches voient ce qui compte aujourd'hui : les anniversaires du jour,
+              ce qu'il reste à faire, les prochains rendez-vous, les nouvelles photos, et des nouvelles de chaque personne
+              accompagnée.</p>
+            <ul class="points">
+              <li v-for="pt in TABLEAU_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -484,6 +597,7 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .pave.anniversaire .pave-titre { color: #b02e5c; }
 
 .rond {
+  object-fit: cover;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -712,6 +826,176 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .etiquette.aidants { background: #fdf0dc; color: #9a5b12; }
 .etiquette.auxiliaires { background: #efe6f8; color: #6b3fa0; }
 .etiquette.accompagne { background: var(--vert-clair); color: var(--vert); }
+
+/* Encadré avec la démonstration à gauche sur ordinateur */
+@media (min-width: 900px) {
+  .encadre.inverse { grid-template-columns: 0.95fr 1.05fr; }
+}
+
+@media (max-width: 899px) {
+  .encadre.inverse > :first-child { order: 2; }
+}
+
+.points {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--bleu-nuit);
+}
+
+.points .icone { color: var(--vert); }
+
+/* Arbre d'exemple */
+.demo-arbre {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 14px;
+  border-radius: 18px;
+  background: var(--fond);
+  border: 1px solid #ece9e3;
+}
+
+.arbre-couple, .arbre-generation {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.arbre-et { align-self: center; color: var(--gris); font-size: 0.85rem; margin-top: -18px; }
+
+.arbre-personne {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  text-align: center;
+}
+
+.arbre-personne img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: white;
+}
+
+.arbre-personne strong { color: var(--bleu-nuit); font-size: 0.9rem; }
+.arbre-personne small { color: var(--gris); font-size: 0.72rem; line-height: 1.2; }
+.arbre-personne em {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--bleu-nuit);
+  color: white;
+}
+
+.arbre-personne.moi img { width: 64px; height: 64px; box-shadow: 0 0 0 3px var(--bleu-nuit); }
+.arbre-personne.defunt img { filter: grayscale(1); opacity: 0.8; }
+.arbre-personne.defunt strong, .arbre-personne.allie strong { color: #5a6280; }
+
+.arbre-branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.arbre-branche {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 16px;
+}
+
+.arbre-branche.vert { background: var(--vert-clair); }
+.arbre-branche.orange { background: #fdf1e4; }
+.arbre-famille { color: var(--bleu-nuit); font-size: 0.85rem; margin-bottom: 4px; }
+.arbre-lien { font-size: 0.72rem; color: var(--gris); margin-top: 4px; }
+
+/* Tableau de bord d'exemple */
+.demo-tableau {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--fond);
+  border: 1px solid #ece9e3;
+}
+
+.tableau-anniversaire {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fbe7ee;
+  border: 1px solid #f5cfdc;
+}
+
+.tableau-anniversaire img, .tableau-personne img { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.tableau-anniversaire div, .tableau-personne div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.tableau-anniversaire strong { color: #9b2557; font-size: 0.9rem; }
+.tableau-anniversaire div span { font-size: 0.8rem; color: #4a4a55; }
+
+.tableau-bouton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--vert);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tableau-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.tableau-bloc > strong { color: var(--bleu-nuit); font-size: 0.92rem; }
+.tableau-bloc.a-faire { background: #fff6ec; border: 1px solid #f6dfc2; box-shadow: none; }
+.tableau-bloc.a-faire > strong { color: #9a5b12; }
+.tableau-bloc.a-faire > span { font-size: 0.85rem; }
+
+.tableau-personne { display: flex; align-items: center; gap: 10px; }
+.tableau-personne strong { color: var(--bleu-nuit); font-size: 0.9rem; }
+.tableau-personne span.vu { font-size: 0.78rem; color: var(--vert); }
+.tableau-personne span.pas-vu { font-size: 0.78rem; color: #c26a12; }
+
+.tableau-rond {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--vert-clair);
+  color: var(--vert);
+}
+
+.tableau-rond .icone { width: 16px; height: 16px; }
 
 /* Pour qui */
 .pour-qui {
