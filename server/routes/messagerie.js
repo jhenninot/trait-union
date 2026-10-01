@@ -392,8 +392,9 @@ router.put('/conversations/:id/muet', chargerConversation, async (req, res) => {
 
 // Messages des autres dans « Toute la famille » et ses conversations privées, tous cercles confondus
 // (30 derniers jours), les plus récents d'abord ; `nouveau` s'ils n'avaient pas encore été lus.
-// (aussi lus à voix haute par l'assistant vocal, server/voix/assistant.js)
-export async function messagesAccompagne(utilisateur) {
+// (aussi lus à voix haute par l'assistant vocal, server/voix/assistant.js). avecLesMiens : ses propres
+// messages aussi (deMoi), pour que la page « Mes messages » montre la conversation entière.
+export async function messagesAccompagne(utilisateur, { avecLesMiens = false } = {}) {
   const [lienAvatar, stockage] = await Promise.all([liensAvatars(), stockageActif()])
   const resultat = { messages: [], famille: [], reglages: reglages(utilisateur.messagerie), fichiers: Boolean(stockage) }
   for (const c of (await mesCercles(utilisateur.id)).filter((x) => x.role === 'accompagne')) {
@@ -409,7 +410,7 @@ export async function messagesAccompagne(utilisateur) {
       inArray(messages.conversationId, convs.map((x) => x.id)),
       eq(messages.publie, true),
       sql`${messages.retireLe} is null`,
-      sql`${messages.auteurId} <> ${moi.utilisateurId}`,
+      ...(avecLesMiens ? [] : [sql`${messages.auteurId} <> ${moi.utilisateurId}`]),
       sql`${messages.creeLe} > ${new Date(Date.now() - 30 * JOUR).toISOString()}::timestamptz`
     )).orderBy(sql`${messages.creeLe} desc`).limit(40)
     for (const m of lignes) {
@@ -417,15 +418,18 @@ export async function messagesAccompagne(utilisateur) {
       const auteur = liste.find((x) => x.utilisateurId === m.auteurId)
       const p = presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage })
       const lu = etats.get(conversation.id)?.luJusquA
-      // Répondre : en privé à l'auteur si c'est permis, sinon à toute la famille
-      const repondre = conversation.type === 'privee' || peutEcrirePrive(moi, auteur)
-        ? { cercleId: c.id, conversationId: conversation.type === 'privee' ? conversation.id : null, utilisateurId: m.auteurId, prive: true }
-        : { cercleId: c.id, conversationId: famille?.id, prive: false }
+      // Répondre : dans la même conversation, comme un groupe WhatsApp (la réponse à un message de
+      // « Toute la famille » va à toute la famille, celle à un message privé reste privée)
+      const repondre = p.deMoi ? null : { cercleId: c.id, conversationId: conversation.id, utilisateurId: m.auteurId, prive: conversation.type === 'privee' }
       resultat.messages.push({
         ...p,
         auteur: { ...p.auteur, lien: liens.get(m.auteurId) ?? auteur?.lien ?? null },
         groupe: conversation.type === 'famille',
-        nouveau: !lu || lu < m.creeLe,
+        // Ses propres messages privés : à qui elle a écrit
+        a: p.deMoi && conversation.type === 'privee'
+          ? liste.find((x) => x.utilisateurId === (conversation.personneA === moi.utilisateurId ? conversation.personneB : conversation.personneA))?.prenom ?? null
+          : null,
+        nouveau: !p.deMoi && (!lu || lu < m.creeLe),
         repondre
       })
     }
@@ -436,7 +440,7 @@ export async function messagesAccompagne(utilisateur) {
 }
 
 router.get('/accompagne', async (req, res) => {
-  res.json(await messagesAccompagne(req.utilisateur))
+  res.json(await messagesAccompagne(req.utilisateur, { avecLesMiens: req.query.avecLesMiens === '1' }))
 })
 
 // La personne accompagnée a vu ses messages : toutes ses conversations sont marquées lues

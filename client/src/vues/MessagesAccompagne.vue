@@ -32,7 +32,7 @@ const lecture = lectureDisponible()
 
 async function charger() {
   try {
-    donnees.value = await api('GET', '/messagerie/accompagne')
+    donnees.value = await api('GET', '/messagerie/accompagne?avecLesMiens=1')
     erreur.value = ''
     // Les messages affichés sont lus (les pastilles « Nouveau » restent jusqu'au prochain chargement)
     if (donnees.value.messages.some((m) => m.nouveau)) {
@@ -67,7 +67,8 @@ function ecouter(m) {
     audio.value = { id: m.id, element }
     return
   }
-  const debut = m.type === 'photo' ? `${m.auteur.prenom} vous a envoyé une photo.` : `${m.auteur.prenom} vous a écrit.`
+  const debut = m.deMoi ? (m.type === 'photo' ? 'Vous avez envoyé une photo.' : 'Vous avez écrit.')
+    : m.type === 'photo' ? `${m.auteur.prenom} vous a envoyé une photo.` : `${m.auteur.prenom} vous a écrit.`
   parler(`${debut} ${m.texte ?? ''}`)
 }
 function arreterAudio() {
@@ -171,22 +172,22 @@ async function terminerVocal() {
       <h1>Mes messages</h1>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <p v-if="donnees && !donnees.messages.length" class="vide">Pas de message pour le moment.</p>
-      <article v-for="m in donnees?.messages ?? []" :key="m.id" class="carte-msg" :class="{ nouveau: m.nouveau }">
+      <article v-for="m in donnees?.messages ?? []" :key="m.id" class="carte-msg" :class="{ nouveau: m.nouveau, moi: m.deMoi }">
         <div class="tete-msg">
           <Avatar :src="m.auteur.avatar" :prenom="m.auteur.prenom" :taille="72" />
           <div class="grandit">
-            <p class="qui">{{ m.auteur.prenom }}<span v-if="m.nouveau" class="pastille-nouveau">Nouveau</span></p>
-            <p class="lien-msg">{{ [m.auteur.lien, m.groupe ? 'à toute la famille' : null, quandLong(m.creeLe)].filter(Boolean).join(' · ') }}</p>
+            <p class="qui">{{ m.deMoi ? 'Vous' : m.auteur.prenom }}<span v-if="m.nouveau" class="pastille-nouveau">Nouveau</span></p>
+            <p class="lien-msg">{{ (m.deMoi ? [m.groupe ? 'à toute la famille' : m.a ? `à ${m.a}` : null, quandLong(m.creeLe)] : [m.auteur.lien, m.groupe ? 'à toute la famille' : null, quandLong(m.creeLe)]).filter(Boolean).join(' · ') }}</p>
           </div>
         </div>
         <img v-if="m.photo" :src="m.photo.ecran" alt="Photo" class="photo" @click="enGrand = m.photo" />
         <p v-if="m.vocal" class="vocal-msg"><Icone nom="micro" class="en-ligne" /> Message vocal · {{ duree(m.vocal.duree) }}</p>
         <p v-if="m.texte" class="texte" :class="{ rapide: m.type === 'rapide' }">{{ m.texte }}</p>
-        <div class="actions">
+        <div v-if="!m.deMoi" class="actions">
           <button v-if="m.vocal || lecture" class="secondaire" @click="audio?.id === m.id ? arreterAudio() : ecouter(m)">
             <Icone :nom="audio?.id === m.id ? 'stop' : 'son'" class="en-ligne" /> {{ audio?.id === m.id ? 'Arrêter' : 'Écouter' }}
           </button>
-          <button @click="repondre(m)"><Icone nom="message" class="en-ligne" /> Répondre</button>
+          <button v-if="m.repondre" @click="repondre(m)"><Icone nom="message" class="en-ligne" /> Répondre</button>
         </div>
       </article>
       <button v-if="donnees?.famille.length" class="ecrire" @click="ecrireFamille"><Icone nom="ajouter" class="en-ligne" /> Envoyer un message à ma famille</button>
@@ -260,6 +261,8 @@ h1 { font-size: 2.4rem; margin: 0; }
 .vide { font-size: 1.6rem; color: var(--gris); text-align: center; margin-top: 40px; }
 .carte-msg { background: white; border-radius: 24px; padding: 22px 24px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.08); border: 3px solid transparent; }
 .carte-msg.nouveau { border-color: var(--vert); }
+/* Ses propres messages, décalés à droite comme dans une conversation */
+.carte-msg.moi { background: var(--vert-clair); margin-left: 12%; box-shadow: none; padding-bottom: 18px; }
 .tete-msg { display: flex; gap: 16px; align-items: center; }
 .grandit { flex: 1; min-width: 0; }
 .qui { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

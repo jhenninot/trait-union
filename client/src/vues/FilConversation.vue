@@ -283,9 +283,10 @@ const vocalPossible = enregistrementPossible()
         </article>
 
         <div v-else class="ligne-msg" :class="{ moi: b.deMoi }">
-          <Avatar v-if="!b.deMoi" :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="34" />
+          <!-- Chaque message montre qui l'a écrit : avatar et prénom (« Vous » pour les siens) -->
+          <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="36" class="avatar-msg" />
           <div class="bulle-bloc">
-            <div v-if="!b.deMoi && conversation.type !== 'privee'" class="auteur">{{ b.auteur.prenom }}</div>
+            <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</div>
             <div class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
               <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = b.photo" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
@@ -366,11 +367,13 @@ const vocalPossible = enregistrementPossible()
 .vide { text-align: center; margin: 32px auto; max-width: 420px; }
 .separateur-jour { text-align: center; margin: 6px 0; }
 .separateur-jour span { background: #efece6; color: var(--gris); font-size: 0.8rem; padding: 3px 12px; border-radius: 999px; }
-.ligne-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 75%; }
+.ligne-msg { display: flex; gap: 8px; align-items: flex-start; max-width: 75%; }
+.avatar-msg { flex: none; margin-top: 2px; }
 .ligne-msg.moi { align-self: flex-end; flex-direction: row-reverse; }
 .bulle-bloc { min-width: 0; display: flex; flex-direction: column; }
 .moi .bulle-bloc { align-items: flex-end; }
-.auteur { font-size: 0.8rem; color: var(--gris); margin: 0 0 2px 10px; }
+.auteur { font-size: 0.85rem; font-weight: 700; color: var(--bleu-nuit); margin: 0 0 3px 10px; }
+.moi .auteur { margin: 0 10px 3px 0; }
 .bulle { background: white; border-radius: 16px 16px 16px 4px; padding: 8px 12px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.07); line-height: 1.4; cursor: pointer; max-width: 100%; }
 .moi .bulle { background: var(--bleu-nuit); color: white; border-radius: 16px 16px 4px 16px; }
 .bulle.rapide { background: var(--vert-clair); color: var(--vert); font-weight: 700; }
