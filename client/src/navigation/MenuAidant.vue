@@ -110,6 +110,7 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
       <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
       <RouterLink to="/admin/alertes" class="lien" :class="{ actif: estActif('/admin/alertes') }"><Icone nom="cloche" /> Alertes</RouterLink>
+      <RouterLink to="/admin/presentation" class="lien" :class="{ actif: estActif('/admin/presentation') }"><Icone nom="oeil" /> Page de présentation</RouterLink>
     </template>
 
     <div class="bas-menu">

@@ -5,6 +5,7 @@ import { lireConfiguration, enregistrerConfiguration, verifierCompte, envoyerEma
 import * as stockage from '../stockage/s3.js'
 import { urlApplication } from '../url.js'
 import * as alertes from '../alertes/envoi.js'
+import * as presentation from '../presentation/config.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -140,6 +141,57 @@ router.put('/alertes', async (req, res) => {
   if (config.actif) await alertes.verifierFirebase(config.compte)
   await alertes.enregistrerFirebase(config)
   res.json(firebasePublic(config))
+})
+
+// --- Page de présentation (/decouvrir/<clé>, voir server/routes/presentation.js)
+
+const presentationPublique = (c) => ({
+  actif: Boolean(c.actif),
+  cle: c.cle,
+  afficherContact: Boolean(c.afficherContact),
+  typeContact: c.typeContact,
+  contact: c.contact,
+  contactPret: Boolean(presentation.lienContact(c.typeContact, c.contact)),
+  visites: c.visites || 0,
+  derniereVisite: c.derniereVisite,
+  visitesDepuis: c.visitesDepuis
+})
+
+router.get('/presentation', async (req, res) => {
+  res.json(presentationPublique(await presentation.lireConfiguration()))
+})
+
+// Corps : { actif, afficherContact, typeContact, contact }
+router.put('/presentation', async (req, res) => {
+  const config = await presentation.lireConfiguration()
+  config.typeContact = ['email', 'whatsapp', 'url'].includes(req.body.typeContact) ? req.body.typeContact : 'email'
+  config.contact = valider.texte(req.body.contact, 'contact', { obligatoire: false, max: 300 }) || ''
+  config.afficherContact = Boolean(req.body.afficherContact)
+  if ((config.contact || config.afficherContact) && !presentation.lienContact(config.typeContact, config.contact)) {
+    throw new valider.ErreurSaisie({
+      email: 'Saisissez une adresse email valide',
+      whatsapp: 'Saisissez un numéro WhatsApp au format international (ex. +33 6 12 34 56 78)',
+      url: 'Saisissez un lien commençant par https://'
+    }[config.typeContact])
+  }
+  config.actif = Boolean(req.body.actif)
+  if (config.actif && !config.cle) config.cle = presentation.nouvelleCle()
+  if (!config.visitesDepuis) config.visitesDepuis = new Date()
+  await presentation.enregistrerConfiguration(config)
+  res.json(presentationPublique(config))
+})
+
+// Nouvelle adresse secrète : l'ancien lien cesse aussitôt de fonctionner
+router.post('/presentation/nouvelle-adresse', async (req, res) => {
+  const config = { ...await presentation.lireConfiguration(), cle: presentation.nouvelleCle() }
+  await presentation.enregistrerConfiguration(config)
+  res.json(presentationPublique(config))
+})
+
+router.post('/presentation/remise-a-zero', async (req, res) => {
+  const config = { ...await presentation.lireConfiguration(), visites: 0, derniereVisite: null, visitesDepuis: new Date() }
+  await presentation.enregistrerConfiguration(config)
+  res.json(presentationPublique(config))
 })
 
 export default router

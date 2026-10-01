@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { session } from './session.js'
 import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
@@ -8,8 +9,10 @@ import { etatPartage } from './partage.js'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
 // les aidants, proches et administrateurs (menu complet), et les pages publiques (sans menu).
+// La page de présentation s'affiche toujours sans menu, même pour une personne connectée.
+const route = useRoute()
 const miseEnPage = computed(() => {
-  if (!session.utilisateur) return 'publique'
+  if (!session.utilisateur || route.meta.sansMenu) return 'publique'
   return session.typeSession === 'appareil' ? 'accompagne' : 'aidant'
 })
 </script>

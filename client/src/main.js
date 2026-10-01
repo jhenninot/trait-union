@@ -23,6 +23,8 @@ import Recevoir from './vues/Recevoir.vue'
 import Profil from './vues/Profil.vue'
 import Alertes from './vues/Alertes.vue'
 import AdminAlertes from './vues/AdminAlertes.vue'
+import AdminPresentation from './vues/AdminPresentation.vue'
+import Presentation from './vues/Presentation.vue'
 import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
 import { surveillerPartages } from './partage.js'
@@ -47,11 +49,14 @@ const router = createRouter({
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
     { path: '/admin/alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },
+    { path: '/admin/presentation', component: AdminPresentation, meta: { connecte: true, admin: true } },
     { path: '/connexion', component: Connexion },
     { path: '/bienvenue', component: Initialisation },
     { path: '/appareil', component: Appareil },
     { path: '/invitation/:jeton', component: Invitation },
     { path: '/confidentialite', component: Confidentialite, meta: { publique: true } },
+    // Page de présentation, à l'adresse secrète réglée par l'administrateur (jamais indexée)
+    { path: '/decouvrir/:cle', component: Presentation, meta: { publique: true, sansMenu: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })

@@ -12,6 +12,7 @@ import routesAdmin from './routes/admin.js'
 import routesVoix from './routes/voix.js'
 import routesProfil from './routes/profil.js'
 import routesAlertes from './routes/alertes.js'
+import routesPresentation from './routes/presentation.js'
 import { ErreurAlertes } from './alertes/envoi.js'
 import { demarrerAlertes } from './alertes/planificateur.js'
 import { ErreurEmail } from './email/brevo.js'
@@ -26,6 +27,11 @@ const app = express()
 // Derrière Nginx Proxy Manager (réseau local) : req.secure et req.ip viennent des en-têtes X-Forwarded-*
 app.set('trust proxy', 'loopback, linklocal, uniquelocal')
 app.use(express.json())
+// Application privée : jamais indexée par les moteurs de recherche (voir aussi robots.txt)
+app.use((req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow')
+  next()
+})
 app.use('/api', chargerSession)
 
 app.get('/api/health', async (req, res) => {
@@ -44,6 +50,7 @@ app.use('/api/admin', routesAdmin)
 app.use('/api/voix', routesVoix)
 app.use('/api/profil', routesProfil)
 app.use('/api/alertes', routesAlertes)
+app.use('/api/presentation', routesPresentation)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })
