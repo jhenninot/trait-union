@@ -45,7 +45,7 @@ async function envoyer(conversation, message, auteur, destinataires) {
   })
   const corps = apercu(message)
   const tag = `messages-${conversation.id}`
-  const groupe = conversation.type === 'privee' ? null : TITRES[conversation.type]
+  const groupe = conversation.type === 'privee' ? null : conversation.type === 'groupe' ? conversation.titre : TITRES[conversation.type]
   const accompagnes = aPrevenir.filter((m) => m.role === 'accompagne').map((m) => m.utilisateurId)
   const autres = aPrevenir.filter((m) => m.role !== 'accompagne').map((m) => m.utilisateurId)
   await envoyerAlerte(accompagnes, { categorie: 'messages', titre: `${auteur.prenom} vous a écrit`, corps, url: '/messages', tag })

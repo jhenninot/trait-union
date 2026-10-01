@@ -176,6 +176,13 @@
       "when": 1790888735627,
       "tag": "0024_sondages",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790890079150,
+      "tag": "0025_groupes",
+      "breakpoints": true
     }
   ]
 }
