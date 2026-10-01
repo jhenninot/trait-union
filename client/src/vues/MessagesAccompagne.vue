@@ -183,10 +183,29 @@ async function envoyer(fn) {
 const envoyerReponse = (r) => envoyer((id) => envoyerRapide(id, r))
 const envoyerClavier = () => texte.value.trim() && envoyer((id) => envoyerTexte(id, texte.value.trim()))
 
+// Photo choisie : aperçu en grand, avec un commentaire facultatif, avant l'envoi
+const photo = ref(null) // { fichier, apercu, commentaire }
 function photoChoisie(e) {
   const fichier = e.target.files?.[0]
   e.target.value = ''
-  if (fichier) envoyer((id) => envoyerPhotoMessage(id, fichier))
+  if (!fichier) return
+  photo.value = { fichier, apercu: URL.createObjectURL(fichier), commentaire: '' }
+  ecran.value = 'photo'
+}
+function oublierPhoto() {
+  if (photo.value) URL.revokeObjectURL(photo.value.apercu)
+  photo.value = null
+}
+function annulerPhoto() {
+  oublierPhoto()
+  ecran.value = 'repondre'
+}
+const envoyerLaPhoto = () => {
+  const { fichier, commentaire } = photo.value
+  return envoyer(async (id) => {
+    await envoyerPhotoMessage(id, fichier, commentaire.trim())
+    oublierPhoto()
+  })
 }
 
 async function commencerVocal() {
@@ -324,6 +343,18 @@ async function terminerVocal() {
       <p v-if="envoi" class="envoi">Envoi en cours…</p>
     </template>
 
+    <!-- Photo choisie : commentaire facultatif puis Envoyer -->
+    <div v-else-if="ecran === 'photo' && photo" class="ecran-photo">
+      <p class="petit-gris">Photo pour <strong>{{ cible.famille ? 'toute la famille' : cible.titre }}</strong></p>
+      <img :src="photo.apercu" alt="Photo choisie" class="apercu-grand" />
+      <textarea v-model="photo.commentaire" rows="2" maxlength="1000" placeholder="Ajouter un commentaire (facultatif)" aria-label="Commentaire" />
+      <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      <div class="deux-grands etroit">
+        <button class="tres-gros annuler" :disabled="envoi" @click="annulerPhoto"><Icone nom="effacer" /><span>Annuler</span></button>
+        <button class="tres-gros" :disabled="envoi" @click="envoyerLaPhoto"><Icone nom="envoyer" /><span>{{ envoi ? 'Envoi…' : 'Envoyer' }}</span></button>
+      </div>
+    </div>
+
     <!-- Enregistrement d'un message vocal -->
     <div v-else-if="ecran === 'vocal'" class="enregistre">
       <p class="petit-gris">Message pour <strong>{{ cible.famille ? 'toute la famille' : cible.titre }}</strong></p>
@@ -417,6 +448,9 @@ h1 { font-size: 2.4rem; margin: 0; }
 .formulaire-clavier textarea { font: inherit; font-size: 1.5rem; padding: 14px; border-radius: 16px; border: 2px solid #ddd; }
 .formulaire-clavier button { font-size: 1.4rem; font-weight: 700; padding: 14px; border-radius: 16px; }
 .envoi { font-size: 1.4rem; color: var(--gris); text-align: center; }
+.ecran-photo { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.apercu-grand { max-width: 100%; max-height: 42vh; border-radius: 20px; object-fit: contain; }
+.ecran-photo textarea { font: inherit; font-size: 1.5rem; width: 100%; max-width: 720px; padding: 14px; border-radius: 16px; border: 2px solid #ddd; }
 .enregistre, .envoye { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; padding-top: 10px; }
 .micro-anime { width: 180px; height: 180px; border-radius: 50%; background: var(--rouge); color: white; display: grid; place-items: center; box-shadow: 0 0 0 22px rgb(179 38 30 / 0.15), 0 0 0 44px rgb(179 38 30 / 0.07); margin: 30px 0 10px; animation: battre 1.6s ease-in-out infinite; }
 @keyframes battre { 50% { box-shadow: 0 0 0 28px rgb(179 38 30 / 0.12), 0 0 0 54px rgb(179 38 30 / 0.05); } }
@@ -431,6 +465,8 @@ h1 { font-size: 2.4rem; margin: 0; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* Smartphone */
 @media (max-width: 600px) {
+  .ecran-photo textarea { font-size: 1.15rem; }
+  .apercu-grand { max-height: 34vh; }
   .conv { padding: 12px 14px; gap: 12px; border-radius: 18px; }
   .conv :deep(.avatar), .conv .rond-famille { width: 56px !important; height: 56px !important; }
   .conv-titre { font-size: 1.3rem; }

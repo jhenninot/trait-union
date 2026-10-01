@@ -168,12 +168,25 @@ function touche(e) {
 }
 
 // --- Photo : aperçu, légende, et option « aussi dans les photos du cercle »
-const peutAlbum = computed(() => conversation.value?.type === 'famille')
+// Les photos du cercle : pas pour les auxiliaires de vie (ni depuis le cahier de liaison)
+const peutAlbum = computed(() => Boolean(donnees.value?.monRole) && donnees.value.monRole !== 'auxiliaire' && conversation.value?.type !== 'liaison')
+const albums = ref(null) // albums du cercle, chargés à la demande
+async function chargerAlbums() {
+  if (albums.value || !peutAlbum.value) return
+  try {
+    albums.value = (await api('GET', `/cercles/${conversation.value.cercleId}/albums`)).albums
+  } catch {
+    albums.value = []
+  }
+}
+// album : false = pas dans les photos du cercle, 'aucun' = « Non classé », sinon l'id de l'album
+const albumId = (album) => (album === 'aucun' ? null : album)
 function photoChoisie(e) {
   const fichier = e.target.files?.[0]
   e.target.value = ''
   if (!fichier) return
   photo.value = { fichier, apercu: URL.createObjectURL(fichier), legende: texte.value.trim(), album: false }
+  chargerAlbums()
 }
 function annulerPhoto() {
   if (photo.value) URL.revokeObjectURL(photo.value.apercu)
@@ -182,9 +195,30 @@ function annulerPhoto() {
 const envoyerLaPhoto = () => action(async () => {
   const { fichier, legende, album } = photo.value
   await envoyerPhotoMessage(props.conversationId, fichier, legende, extra())
-  if (album) await envoyerPhoto(conversation.value.cercleId, fichier, legende).catch((e) => { throw new Error(`Message envoyé, mais pas ajouté aux photos : ${e.message}`) })
+  if (album !== false) await envoyerPhoto(conversation.value.cercleId, fichier, legende, albumId(album)).catch((e) => { throw new Error(`Message envoyé, mais pas ajouté aux photos : ${e.message}`) })
   texte.value = ''
   annulerPhoto()
+})
+
+// --- Photo d'une conversation : l'ajouter aux photos du cercle, dans l'album choisi
+const ajout = ref(null) // { message, album }
+const ajoutees = ref(new Set()) // messages déjà ajoutés depuis cet écran
+function preparerAjout(m) {
+  ajout.value = { message: m, album: 'aucun' }
+  chargerAlbums()
+}
+const ajouterAuxPhotos = () => action(async () => {
+  const { message, album } = ajout.value
+  let image
+  try {
+    image = await (await fetch(message.photo.ecran)).blob()
+  } catch {
+    throw new Error('Impossible de récupérer la photo chez l\'hébergeur')
+  }
+  await envoyerPhoto(conversation.value.cercleId, image, message.texte ?? '', albumId(album))
+  ajoutees.value = new Set([...ajoutees.value, message.id])
+  ajout.value = null
+  selection.value = null
 })
 
 // --- Message vocal : appuyer pour commencer, puis Envoyer ou Effacer
@@ -295,8 +329,20 @@ const vocalPossible = enregistrementPossible()
               <div class="h">{{ heureMessage(b.creeLe) }}</div>
             </div>
             <p v-if="b.deMoi && b.vuPar?.length && (conversation.type === 'privee' || b.id === dernierDeMoi)" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
-            <div v-if="selection === b.id && b.peutRetirer" class="actions-msg">
-              <button class="danger" @click="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer pour tout le monde' : 'Retirer ce message' }}</button>
+            <p v-if="ajoutees.has(b.id)" class="vu"><Icone nom="coche" class="en-ligne" /> Ajoutée aux photos</p>
+            <div v-if="selection === b.id && (b.peutRetirer || (b.photo && peutAlbum))" class="actions-msg">
+              <template v-if="ajout?.message.id === b.id">
+                <select v-model="ajout.album" aria-label="Album">
+                  <option value="aucun">Non classé</option>
+                  <option v-for="a in albums ?? []" :key="a.id" :value="a.id">{{ a.nom }}</option>
+                </select>
+                <button :disabled="envoi" @click.stop="ajouterAuxPhotos"><Icone nom="photo" class="en-ligne" /> {{ envoi ? 'Ajout…' : 'Ajouter' }}</button>
+                <button class="secondaire" @click.stop="ajout = null">Annuler</button>
+              </template>
+              <template v-else>
+                <button v-if="b.photo && peutAlbum && !ajoutees.has(b.id)" class="secondaire" @click.stop="preparerAjout(b)"><Icone nom="photo" class="en-ligne" /> Ajouter aux photos</button>
+                <button v-if="b.peutRetirer" class="danger" @click="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer pour tout le monde' : 'Retirer ce message' }}</button>
+              </template>
             </div>
           </div>
         </div>
@@ -309,8 +355,12 @@ const vocalPossible = enregistrementPossible()
     <div v-if="photo" class="apercu-photo">
       <img :src="photo.apercu" alt="" />
       <div class="grandit">
-        <input v-model="photo.legende" placeholder="Ajouter un texte (facultatif)" maxlength="1000" />
-        <label v-if="peutAlbum" class="case"><input v-model="photo.album" type="checkbox" /> Ajouter aussi aux photos du cercle</label>
+        <textarea v-model="photo.legende" rows="2" placeholder="Ajouter un commentaire (facultatif)" maxlength="1000" aria-label="Commentaire" />
+        <select v-if="peutAlbum" v-model="photo.album" aria-label="Photos du cercle">
+          <option :value="false">Pas dans les photos du cercle</option>
+          <option value="aucun">Photos du cercle : Non classé</option>
+          <option v-for="a in albums ?? []" :key="a.id" :value="a.id">Album « {{ a.nom }} »</option>
+        </select>
       </div>
       <div class="boutons-apercu">
         <button class="secondaire" :disabled="envoi" @click="annulerPhoto">Annuler</button>
@@ -388,7 +438,8 @@ const vocalPossible = enregistrementPossible()
 .audio { width: 100%; max-width: 320px; height: 36px; margin: 6px 0 0; }
 .retire-ligne { max-width: none; }
 .retire { color: var(--gris); font-style: italic; font-size: 0.88rem; background: #f1eee9; border-radius: 12px; padding: 6px 12px; }
-.actions-msg { margin-top: 4px; }
+.actions-msg { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.actions-msg button, .actions-msg select { font-size: 0.85rem; border-radius: 8px; padding: 6px 10px; }
 .actions-msg .danger { font-size: 0.85rem; background: #fbeceb; border-radius: 8px; padding: 6px 10px; }
 .note { background: white; border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.07); border-left: 4px solid #f2a65a; cursor: pointer; max-width: 720px; }
 .note.choisie { outline: 2px solid var(--vert); }
@@ -404,7 +455,9 @@ const vocalPossible = enregistrementPossible()
 .point-rouge { width: 14px; height: 14px; border-radius: 50%; background: var(--rouge); animation: clignote 1s infinite; flex: none; }
 @keyframes clignote { 50% { opacity: 0.3; } }
 .apercu-photo { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: white; border-top: 1px solid #ebe8e3; flex-wrap: wrap; }
-.apercu-photo img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+.apercu-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
+.apercu-photo .grandit { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.apercu-photo textarea { font: inherit; width: 100%; resize: vertical; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; }
 .apercu-photo input:not([type]) { width: 100%; }
 .case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; margin-top: 6px; font-size: 0.92rem; }
 .boutons-apercu { display: flex; gap: 8px; }

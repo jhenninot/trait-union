@@ -274,6 +274,7 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     accompagnes: conversation.type === 'liaison' ? liste.filter((m) => m.role === 'accompagne').map((m) => personne(lienAvatar, m)) : [],
     fichiers: Boolean(stockage),
     peutModerer: conversation.type !== 'privee' && moi.role === 'aidant',
+    monRole: moi.role,
     // Réglages de la personne accompagnée connectée (réponses toutes faites, vocal)
     reglages: moi.role === 'accompagne' ? reglages(moi.messagerie) : undefined
   })
