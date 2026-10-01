@@ -38,6 +38,8 @@ const retirer = (m) => action(async () => {
   await api('DELETE', `${url.value}/membres/${m.id}`)
   await charger()
 })
+// Adresse courte qui télécharge la dernière APK (server/index.js)
+const adresseApk = `${location.host}/apk`
 </script>
 
 <template>
@@ -55,6 +57,12 @@ const retirer = (m) => action(async () => {
           <strong>{{ m.prenom }} {{ m.nom }}</strong>
           <span class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
         </div>
+        <p v-if="m.appareilsAMettreAJour" class="mise-a-jour">
+          <Icone nom="telecharger" class="en-ligne" />
+          Nouvelle version de l'application à installer sur {{ m.appareilsAMettreAJour > 1 ? `${m.appareilsAMettreAJour} de ses appareils` : 'son appareil' }} :
+          sur l'appareil de {{ m.prenom }}, ouvrez Chrome à l'adresse <strong>{{ adresseApk }}</strong>,
+          puis ouvrez le fichier téléchargé et touchez « Mettre à jour ».
+        </p>
         <div v-if="m.alertes" class="alertes">
           <span class="titre-alertes"><Icone nom="cloche" class="en-ligne" /> Alertes</span>
           <label class="case"><input type="checkbox" :checked="m.alertes.rendezVous" @change="changerAlertes(m, 'rendezVous', $event.target.checked)" /> Rappels de rendez-vous</label>
@@ -90,6 +98,14 @@ const retirer = (m) => action(async () => {
 </template>
 
 <style scoped>
+.mise-a-jour {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vert-clair);
+  color: var(--bleu-nuit);
+  font-size: 0.95rem;
+}
 .surtitre { margin: 0; }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }

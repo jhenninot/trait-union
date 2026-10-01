@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { session } from './session.js'
 import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
+import BandeauApplication from './navigation/BandeauApplication.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
 import { etatPartage } from './partage.js'
 
@@ -25,7 +26,10 @@ const miseEnPage = computed(() => {
   </div>
   <div v-else-if="miseEnPage === 'aidant'" class="mise-en-page-aidant">
     <MenuAidant />
-    <div class="page"><RouterView /></div>
+    <div class="page">
+      <BandeauApplication />
+      <RouterView />
+    </div>
   </div>
   <RouterView v-else />
   <p v-if="etatPartage.message" class="bulle-partage" role="status">{{ etatPartage.message }}</p>

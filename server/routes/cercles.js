@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { and, eq, isNull, count } from 'drizzle-orm'
+import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes } from '../db/schema.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
@@ -14,6 +14,7 @@ import routesPhotos from './photos.js'
 import routesAlbums from './albums.js'
 import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { preferences, lirePreferences } from './alertes.js'
+import { derniereApkConnue } from '../application.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -89,13 +90,19 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .where(eq(membres.cercleId, req.cercle.id))
     .orderBy(membres.role, membres.prenom)
   // Nombre d'appareils connectés pour chaque personne accompagnée
+  // et, parmi eux, ceux qui ont une ancienne version de l'application Android
+  const apk = derniereApkConnue()
   const appareils = await db
-    .select({ utilisateurId: sessions.utilisateurId, n: count() })
+    .select({
+      utilisateurId: sessions.utilisateurId,
+      n: count(),
+      anciens: apk ? sql`count(*) filter (where ${sessions.versionApk} < ${apk.version})`.mapWith(Number) : sql`0`.mapWith(Number)
+    })
     .from(sessions)
     .innerJoin(membres, eq(membres.utilisateurId, sessions.utilisateurId))
     .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne'), eq(sessions.type, 'appareil')))
     .groupBy(sessions.utilisateurId)
-  const parUtilisateur = new Map(appareils.map((a) => [a.utilisateurId, a.n]))
+  const parUtilisateur = new Map(appareils.map((a) => [a.utilisateurId, a]))
   // Appareils des personnes accompagnées qui reçoivent les alertes
   const avecAlertes = await db
     .select({ utilisateurId: appareilsAlertes.utilisateurId, n: count() })
@@ -122,7 +129,8 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       // Les aidants choisissent l'avatar des personnes accompagnées
       avatarChoix: req.peutGerer && m.role === 'accompagne' ? avatar : undefined,
       email: req.peutGerer ? email : undefined,
-      appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId) ?? 0) : undefined,
+      appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId)?.n ?? 0) : undefined,
+      appareilsAMettreAJour: m.role === 'accompagne' && req.peutGerer ? (parUtilisateur.get(utilisateurId)?.anciens ?? 0) : undefined,
       // Les aidants choisissent les alertes des personnes accompagnées
       alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined
     }))

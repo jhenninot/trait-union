@@ -15,6 +15,7 @@ import routesAlertes from './routes/alertes.js'
 import routesPresentation from './routes/presentation.js'
 import { ErreurAlertes } from './alertes/envoi.js'
 import { demarrerAlertes } from './alertes/planificateur.js'
+import { derniereApk, versionApk, APK_URL } from './application.js'
 import { ErreurEmail } from './email/brevo.js'
 import { ErreurStockage } from './stockage/s3.js'
 
@@ -42,6 +43,13 @@ app.get('/api/health', async (req, res) => {
     res.status(503).json({ status: 'erreur', version, database: 'injoignable' })
   }
 })
+
+// Application Android : dernière version publiée et version de l'appareil qui demande
+app.get('/api/application', async (req, res) => {
+  res.json({ derniere: await derniereApk(), installee: versionApk(req.get('user-agent')), url: APK_URL })
+})
+// Adresse courte à taper dans Chrome pour télécharger l'APK (ex. maison.fr/apk)
+app.get('/apk', (req, res) => res.redirect(APK_URL))
 
 app.use('/api/auth', routesAuth)
 app.use('/api/cercles', routesCercles)

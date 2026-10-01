@@ -127,6 +127,13 @@
       "when": 1790852337188,
       "tag": "0017_lien_membre",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790853388564,
+      "tag": "0018_version_apk",
+      "breakpoints": true
     }
   ]
 }

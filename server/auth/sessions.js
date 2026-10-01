@@ -2,6 +2,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { sessions, utilisateurs } from '../db/schema.js'
 import { nouveauJeton, empreinte } from './securite.js'
+import { versionApk } from '../application.js'
 
 export const NOM_COOKIE = 'tu_session'
 const JOUR = 24 * 60 * 60 * 1000
@@ -12,7 +13,7 @@ const DUREES = { mot_de_passe: 30 * JOUR, google: 30 * JOUR, appareil: 365 * JOU
 export async function ouvrirSession(res, req, utilisateurId, type, libelle = null) {
   const jeton = nouveauJeton()
   const expireLe = new Date(Date.now() + DUREES[type])
-  await db.insert(sessions).values({ utilisateurId, jetonHash: empreinte(jeton), type, libelle, expireLe })
+  await db.insert(sessions).values({ utilisateurId, jetonHash: empreinte(jeton), type, libelle, expireLe, versionApk: versionApk(req.get('user-agent')) })
   res.cookie(NOM_COOKIE, jeton, {
     httpOnly: true,
     sameSite: 'lax',
@@ -52,6 +53,12 @@ export async function chargerSession(req, res, next) {
     req.jeton = jeton
     req.session = ligne.session
     req.utilisateur = ligne.utilisateur
+    // Application Android mise à jour (ou session ouverte depuis un autre navigateur)
+    const version = versionApk(req.get('user-agent'))
+    if (version !== ligne.session.versionApk) {
+      await db.update(sessions).set({ versionApk: version }).where(eq(sessions.id, ligne.session.id))
+      req.session.versionApk = version
+    }
     // Prolonge la session au plus une fois par jour
     const nouvelleExpiration = Date.now() + DUREES[ligne.session.type]
     if (nouvelleExpiration - ligne.session.expireLe.getTime() > JOUR) {

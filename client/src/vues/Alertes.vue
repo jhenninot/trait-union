@@ -24,10 +24,14 @@ const autres = computed(() => donnees.value?.appareils.filter((a) => !a.ceAppare
 // Une personne qui n'est qu'auxiliaire de vie n'a pas accès aux photos
 const voitPhotos = computed(() => session.utilisateur.estAdmin || session.cercles.some((c) => !estAuxiliaire(c.role)))
 
+// Seulement pour qui utilise l'application Android
+const avecApk = computed(() => mode.startsWith('android') || donnees.value?.appareils.some((a) => a.type === 'android'))
+
 const CATEGORIES = computed(() => [
   { valeur: 'rendezVous', icone: 'agenda', libelle: 'Rappels de rendez-vous', aide: 'Pour les rendez-vous de l\'agenda qui ont une alerte, au moment choisi.' },
   ...(voitPhotos.value ? [{ valeur: 'photos', icone: 'photo', libelle: 'Nouvelles photos', aide: 'Quand quelqu\'un ajoute des photos dans un de vos cercles.' }] : []),
-  ...(voitPhotos.value ? [{ valeur: 'anniversaires', icone: 'gateau', libelle: 'Anniversaires', aide: 'Le jour de l\'anniversaire d\'un membre de vos cercles, à 9 h.' }] : [])
+  ...(voitPhotos.value ? [{ valeur: 'anniversaires', icone: 'gateau', libelle: 'Anniversaires', aide: 'Le jour de l\'anniversaire d\'un membre de vos cercles, à 9 h.' }] : []),
+  ...(avecApk.value ? [{ valeur: 'application', icone: 'telecharger', libelle: 'Nouvelle version de l\'application', aide: 'Quand une mise à jour de l\'application Android est disponible.' }] : [])
 ])
 
 async function action(fn, succes = '') {

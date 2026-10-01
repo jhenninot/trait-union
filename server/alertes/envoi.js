@@ -172,7 +172,7 @@ async function envoyerAndroid(appareil, alerte, options) {
 // --- Envoi
 
 // Catégories d'alertes (préférences de chaque personne, utilisateurs.alertes)
-export const CATEGORIES = ['rendezVous', 'photos', 'anniversaires']
+export const CATEGORIES = ['rendezVous', 'photos', 'anniversaires', 'application']
 
 // Envoie une alerte à des personnes, sur tous leurs appareils, si elles ont gardé la catégorie.
 // alerte : { categorie, titre, corps, url (chemin dans l'application), tag, image }

@@ -67,6 +67,8 @@ export const sessions = pgTable('sessions', {
   jetonHash: text('jeton_hash').notNull().unique(),
   type: typeSession('type').notNull(),
   libelle: text('libelle'), // ex. « Tablette de la chambre »
+  // Version de l'application Android utilisée (null : navigateur ; 0 : APK sans numéro de version)
+  versionApk: integer('version_apk'),
   expireLe: timestamp('expire_le', { withTimezone: true }).notNull()
 }, (t) => [
   index('sessions_utilisateur_idx').on(t.utilisateurId)

@@ -1,12 +1,13 @@
 import { and, eq, ne, or, lt, gte, isNull, isNotNull, inArray, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums, anniversairesEnvoyes } from '../db/schema.js'
+import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums, anniversairesEnvoyes, parametres, appareilsAlertes, sessions } from '../db/schema.js'
 import { occurrences } from '../agenda/recurrence.js'
 import { peutVoir } from '../routes/agenda.js'
 import { lienAffichage } from '../routes/photos.js'
 import { stockageActif } from '../stockage/s3.js'
 import { aLesDroits } from '../auth/roles.js'
-import { envoyerAlerte } from './envoi.js'
+import { envoyerAlerte, envoyerAux } from './envoi.js'
+import { derniereApk } from '../application.js'
 import { joursFetes, age } from '../anniversaires.js'
 
 // Tâche de fond lancée au démarrage du serveur : chaque minute, elle envoie
@@ -209,6 +210,49 @@ async function envoyerAnniversaires(maintenant) {
   await db.delete(anniversairesEnvoyes).where(lt(anniversairesEnvoyes.annee, maintenant.getFullYear() - 1))
 }
 
+// Nouvelle APK publiée (vérifiée une fois par heure) : alerte sur les téléphones des aidants et de
+// la famille qui ont l'application Android avec les alertes et une version plus ancienne. Pas sur
+// les appareils des personnes accompagnées : ce sont les aidants qui les mettent à jour.
+const INTERVALLE_APK = 60 * MINUTE
+let apkVerifieeLe = 0
+
+async function annoncerApplication(maintenant) {
+  if (maintenant - apkVerifieeLe < INTERVALLE_APK) return
+  apkVerifieeLe = maintenant.getTime()
+  const apk = await derniereApk({ forcer: true })
+  if (!apk) return
+  const [connue] = await db.select().from(parametres).where(eq(parametres.cle, 'apk'))
+  // Premier démarrage : on retient la version publiée, sans rien annoncer
+  if (!connue) {
+    await db.insert(parametres).values({ cle: 'apk', valeur: { version: apk.version } }).onConflictDoNothing()
+    return
+  }
+  // Une seule fois, même avec plusieurs serveurs
+  const nouvelle = await db.update(parametres).set({ valeur: { version: apk.version } })
+    .where(and(eq(parametres.cle, 'apk'), sql`coalesce((${parametres.valeur}->>'version')::int, 0) < ${apk.version}`))
+    .returning()
+  if (!nouvelle.length) return
+  const lignes = await db.select({ appareil: appareilsAlertes, alertes: utilisateurs.alertes })
+    .from(appareilsAlertes)
+    .innerJoin(sessions, eq(appareilsAlertes.sessionId, sessions.id))
+    .innerJoin(utilisateurs, eq(appareilsAlertes.utilisateurId, utilisateurs.id))
+    .where(and(
+      eq(appareilsAlertes.type, 'android'),
+      ne(sessions.type, 'appareil'),
+      isNull(utilisateurs.desactiveLe),
+      or(isNull(sessions.versionApk), lt(sessions.versionApk, apk.version))
+    ))
+  const appareils = lignes.filter((l) => l.alertes?.application !== false).map((l) => l.appareil)
+  if (!appareils.length) return
+  await envoyerAux(appareils, {
+    categorie: 'application',
+    titre: 'Nouvelle version de l\'application',
+    corps: `La version ${apk.nom} de Trait d'union est disponible. Touchez pour l'installer.`,
+    url: '/application',
+    tag: 'application'
+  }, { duree: 7 * 86_400, urgent: false })
+}
+
 let enCours = false
 async function tour() {
   if (enCours) return
@@ -228,6 +272,11 @@ async function tour() {
     await envoyerAnniversaires(maintenant)
   } catch (e) {
     console.error('Alertes d\'anniversaire :', e)
+  }
+  try {
+    await annoncerApplication(maintenant)
+  } catch (e) {
+    console.error('Nouvelle version de l\'application :', e)
   } finally {
     enCours = false
   }

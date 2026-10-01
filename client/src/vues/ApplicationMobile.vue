@@ -1,11 +1,23 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { installation, installer, APK_URL, dansAppliAndroid, estIOS, estAndroid, modeAutonome } from '../installation.js'
+import { etatApplication, verifierApplication, miseAJourDisponible, telechargementDirect, telechargerApk, adresseCourte } from '../application.js'
+import { copier } from '../cercle.js'
+import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 const android = dansAppliAndroid()
 const autonome = modeAutonome()
 const ios = estIOS()
 const surAndroid = estAndroid()
 const adresse = location.origin
+
+onMounted(verifierApplication)
+const copie = ref(false)
+async function copierAdresse() {
+  await copier(`https://${adresseCourte()}`)
+  copie.value = true
+}
+const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
 // La page de démarrage de l'application Android est servie en local (https://localhost)
 function changerDeServeur() {
@@ -21,6 +33,30 @@ function changerDeServeur() {
       <h2>Vous utilisez l'application Android</h2>
       <p>Elle est reliée au serveur <strong>{{ adresse }}</strong>.</p>
       <button class="secondaire" @click="changerDeServeur">Changer de serveur</button>
+    </section>
+
+    <section v-if="android && etatApplication.derniere" class="carte">
+      <h2>{{ miseAJourDisponible ? 'Une nouvelle version est disponible' : 'Votre application est à jour' }}</h2>
+      <p>Version installée : <strong>{{ etatApplication.installee ? `0.1.${etatApplication.installee}` : 'ancienne version' }}</strong><br />
+        Dernière version : <strong>{{ etatApplication.derniere.nom }}</strong>, publiée le {{ date(etatApplication.derniere.publieeLe) }}</p>
+      <template v-if="miseAJourDisponible">
+        <template v-if="telechargementDirect()">
+          <button @click="telechargerApk">Télécharger la nouvelle version</button>
+          <p class="aide">Le navigateur télécharge le fichier : ouvrez-le et touchez « Mettre à jour ».
+            Vos réglages et votre connexion sont conservés.</p>
+        </template>
+        <template v-else>
+          <p>Cette version de l'application ne sait pas encore télécharger la mise à jour elle-même. Une seule fois :</p>
+          <ol class="aide">
+            <li>Ouvrez Chrome (ou un autre navigateur) sur ce téléphone.</li>
+            <li>Tapez l'adresse <strong>{{ adresseCourte() }}</strong>
+              <BoutonIcone icone="copier" libelle="Copier l'adresse" @click="copierAdresse" />
+              <span v-if="copie"> copiée.</span></li>
+            <li>Ouvrez le fichier téléchargé et touchez « Mettre à jour ». Vos réglages et votre connexion sont conservés.</li>
+          </ol>
+          <p class="aide">Les prochaines fois, un bouton Télécharger suffira.</p>
+        </template>
+      </template>
     </section>
 
     <template v-else>

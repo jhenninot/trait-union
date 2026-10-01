@@ -51,6 +51,8 @@ import org.json.JSONObject;
 // (client/src/pleinEcran.js).
 // Enfin window.TraitUnionAlertes donne à la page le jeton Firebase Cloud Messaging de l'appareil
 // pour recevoir les alertes (événement « tu-alertes », voir client/src/alertes.js et AlertesService).
+// window.TraitUnionAppli ouvre une adresse dans le navigateur du téléphone : la WebView ne sait pas
+// télécharger de fichier, il faut passer par Chrome pour installer une nouvelle version de l'APK.
 public class MainActivity extends BridgeActivity {
 
     // Page à ouvrir quand on touche une alerte (adresse complète sur le serveur de la famille)
@@ -98,6 +100,9 @@ public class MainActivity extends BridgeActivity {
             envoyer("tu-alertes", detail);
         });
         getBridge().getWebView().addJavascriptInterface(new Alertes(), "TraitUnionAlertes");
+        getBridge().getWebView().addJavascriptInterface(new Appli(), "TraitUnionAppli");
+        // Un lien vers un fichier à télécharger s'ouvre dans le navigateur
+        getBridge().getWebView().setDownloadListener((adresse, agent, disposition, type, taille) -> ouvrirNavigateur(adresse));
         recevoir(getIntent());
         ouvrirAlerte(getIntent());
     }
@@ -186,6 +191,25 @@ public class MainActivity extends BridgeActivity {
     private void envoyer(String evenement, JSONObject detail) {
         WebView vue = getBridge().getWebView();
         vue.post(() -> vue.evaluateJavascript("window.dispatchEvent(new CustomEvent('" + evenement + "', { detail: " + detail + " }))", null));
+    }
+
+    private void ouvrirNavigateur(String adresse) {
+        if (adresse == null || !adresse.startsWith("https://")) return;
+        runOnUiThread(() -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(adresse)));
+            } catch (Exception e) {
+                // Aucun navigateur installé
+            }
+        });
+    }
+
+    private class Appli {
+
+        @JavascriptInterface
+        public void ouvrirNavigateur(String adresse) {
+            MainActivity.this.ouvrirNavigateur(adresse);
+        }
     }
 
     private class Alertes {
