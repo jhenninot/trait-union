@@ -1,21 +1,24 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { parler, arreterParole, lectureDisponible } from '../voix.js'
 import {
   ecouterMessagerie, rafraichirNonLus, envoyerRapide, envoyerTexte, envoyerPhotoMessage, envoyerVocal,
-  enregistrer, enregistrementPossible, quandLong, duree, DUREE_VOCAL_MAX
+  enregistrer, enregistrementPossible, quandCourt, heureMessage, jourMessage, duree, DUREE_VOCAL_MAX
 } from '../messagerie.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 
-// « Mes messages » de la personne accompagnée : un message par grande carte (le plus récent en
-// haut), qu'on peut écouter ; pour répondre, des réponses toutes faites d'un geste, un message
-// vocal ou une photo. Pas de clavier par défaut.
-const donnees = ref(null)
+// « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
+// conversations (« Toute la famille » et les privées) avec une pastille de messages non lus ;
+// en touchant une conversation, son fil (qui a écrit quoi, avec avatar et prénom), et un gros
+// bouton « Répondre » : réponses toutes faites d'un geste, message vocal ou photo.
+const donnees = ref(null) // { conversations, contacts, reglages, fichiers }
 const erreur = ref('')
-const ecran = ref('liste') // liste | repondre | vocal | envoye
-const cible = ref(null) // { titre, prenom, avatar, lien, conversationId, cercleId, utilisateurId, prive }
+const ecran = ref('liste') // liste | contacts | fil | repondre | vocal | envoye
+const fil = ref(null) // { conversation, messages }
+const zoneFil = ref(null)
+const cible = ref(null) // { titre, prenom, avatar, lien, famille, conversationId, cercleId, utilisateurId }
 const envoi = ref(false)
 const clavier = ref(false)
 const texte = ref('')
@@ -23,7 +26,7 @@ const enregistrement = ref(null) // { session, secondes }
 const enGrand = ref(null)
 const choixPhoto = ref(null)
 let chrono = null
-let retourListe = null
+let retourFil = null
 
 const reglages = computed(() => donnees.value?.reglages ?? { reponses: [], vocal: false })
 const fichiers = computed(() => Boolean(donnees.value?.fichiers) && reglages.value.vocal)
@@ -32,27 +35,89 @@ const lecture = lectureDisponible()
 
 async function charger() {
   try {
-    donnees.value = await api('GET', '/messagerie/accompagne?avecLesMiens=1')
+    donnees.value = await api('GET', '/messagerie/accompagne/conversations')
     erreur.value = ''
-    // Les messages affichés sont lus (les pastilles « Nouveau » restent jusqu'au prochain chargement)
-    if (donnees.value.messages.some((m) => m.nouveau)) {
-      api('POST', '/messagerie/accompagne/lu').then(rafraichirNonLus).catch(() => {})
-    }
   } catch (e) {
     erreur.value = e.message
+  }
+}
+
+async function chargerFil(id, { defiler = true } = {}) {
+  const d = await api('GET', `/messagerie/conversations/${id}`)
+  fil.value = { conversation: d.conversation, messages: d.messages }
+  api('POST', `/messagerie/conversations/${id}/lu`).then(rafraichirNonLus).catch(() => {})
+  if (defiler) {
+    await nextTick()
+    if (zoneFil.value) zoneFil.value.scrollTop = zoneFil.value.scrollHeight
   }
 }
 
 let arreter
 onMounted(() => {
   charger()
-  arreter = ecouterMessagerie((type) => type === 'message' && ecran.value === 'liste' && charger())
+  arreter = ecouterMessagerie((type, d) => {
+    if (type !== 'message') return
+    if (ecran.value === 'liste') charger()
+    else if (ecran.value === 'fil' && d.conversationId === fil.value?.conversation.id) chargerFil(d.conversationId)
+  })
 })
 onUnmounted(() => {
   arreter?.()
   arreterParole()
   annulerVocal()
-  clearTimeout(retourListe)
+  clearTimeout(retourFil)
+})
+
+// --- Liste et fil
+
+const titreConv = (c) => (c.type === 'famille' ? 'Toute la famille' : c.titre)
+// « Marc : … » dans un groupe ; dans une conversation privée, le message seul (sauf « Vous : … »)
+const apercu = (c) => {
+  if (!c.dernier) return 'Pas encore de message'
+  if (c.dernier.deMoi) return `Vous : ${c.dernier.apercu}`
+  return c.type === 'privee' ? c.dernier.apercu : `${c.dernier.auteurPrenom} : ${c.dernier.apercu}`
+}
+
+async function ouvrir(c) {
+  arreterAudio()
+  erreur.value = ''
+  try {
+    await chargerFil(c.id ?? c)
+    ecran.value = 'fil'
+    await nextTick()
+    if (zoneFil.value) zoneFil.value.scrollTop = zoneFil.value.scrollHeight
+  } catch (e) {
+    erreur.value = e.message
+  }
+}
+
+async function ecrireA(p) {
+  try {
+    const { id } = await api('POST', `/messagerie/cercles/${p.cercleId}/privee`, { utilisateurId: p.utilisateurId })
+    await ouvrir(id)
+  } catch (e) {
+    erreur.value = e.message
+  }
+}
+
+function versListe() {
+  arreterAudio()
+  ecran.value = 'liste'
+  fil.value = null
+  charger()
+}
+
+// Le fil, avec un séparateur par jour
+const blocs = computed(() => {
+  const r = []
+  let jour = null
+  for (const m of fil.value?.messages ?? []) {
+    const j = jourMessage(m.creeLe)
+    if (j !== jour) r.push({ separateur: j, cle: `j-${m.id}` })
+    jour = j
+    r.push(m)
+  }
+  return r
 })
 
 // --- Écouter un message
@@ -67,33 +132,26 @@ function ecouter(m) {
     audio.value = { id: m.id, element }
     return
   }
-  const debut = m.deMoi ? (m.type === 'photo' ? 'Vous avez envoyé une photo.' : 'Vous avez écrit.')
-    : m.type === 'photo' ? `${m.auteur.prenom} vous a envoyé une photo.` : `${m.auteur.prenom} vous a écrit.`
+  const qui = m.deMoi ? 'Vous avez' : `${m.auteur.prenom} a`
+  const debut = m.type === 'photo' ? `${qui} envoyé une photo.` : `${qui} écrit.`
   parler(`${debut} ${m.texte ?? ''}`)
+  audio.value = { id: m.id, element: null }
+  setTimeout(() => audio.value?.id === m.id && !audio.value.element && (audio.value = null), 8000)
 }
 function arreterAudio() {
-  audio.value?.element.pause()
+  audio.value?.element?.pause()
   audio.value = null
   arreterParole()
 }
 
-// --- Répondre
+// --- Répondre (dans la conversation ouverte)
 
-function repondre(m) {
+function repondre() {
   arreterAudio()
-  const r = m.repondre
-  cible.value = r.prive
-    ? { titre: m.auteur.prenom, prenom: m.auteur.prenom, avatar: m.auteur.avatar, lien: m.auteur.lien, ...r }
-    : { titre: 'toute la famille', famille: true, ...r }
-  ouvrirReponse()
-}
-function ecrireFamille() {
-  arreterAudio()
-  const f = donnees.value.famille[0]
-  cible.value = { titre: 'toute la famille', famille: true, cercleId: f.cercleId, conversationId: f.conversationId, prive: false }
-  ouvrirReponse()
-}
-function ouvrirReponse() {
+  const c = fil.value.conversation
+  cible.value = c.type === 'famille'
+    ? { titre: 'toute la famille', famille: true, conversationId: c.id }
+    : { titre: c.titre, prenom: c.autre?.prenom ?? c.titre, avatar: c.autre?.avatar, lien: c.autre?.lien, conversationId: c.id }
   clavier.value = false
   texte.value = ''
   erreur.value = ''
@@ -101,16 +159,9 @@ function ouvrirReponse() {
 }
 function retour() {
   annulerVocal()
-  ecran.value = 'liste'
-  charger()
-}
-
-async function conversationCible() {
-  const c = cible.value
-  if (c.conversationId) return c.conversationId
-  const { id } = await api('POST', `/messagerie/cercles/${c.cercleId}/privee`, { utilisateurId: c.utilisateurId })
-  c.conversationId = id
-  return id
+  clearTimeout(retourFil)
+  ecran.value = 'fil'
+  ouvrir(cible.value.conversationId)
 }
 
 async function envoyer(fn) {
@@ -118,9 +169,9 @@ async function envoyer(fn) {
   envoi.value = true
   erreur.value = ''
   try {
-    await fn(await conversationCible())
+    await fn(cible.value.conversationId)
     ecran.value = 'envoye'
-    retourListe = setTimeout(retour, 3500)
+    retourFil = setTimeout(retour, 2500)
   } catch (e) {
     erreur.value = e.message
     if (ecran.value === 'vocal') ecran.value = 'repondre'
@@ -167,31 +218,76 @@ async function terminerVocal() {
 
 <template>
   <main class="messages-aide">
-    <!-- Liste des messages -->
+    <!-- Liste des conversations -->
     <template v-if="ecran === 'liste'">
       <h1>Mes messages</h1>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
-      <p v-if="donnees && !donnees.messages.length" class="vide">Pas de message pour le moment.</p>
-      <article v-for="m in donnees?.messages ?? []" :key="m.id" class="carte-msg" :class="{ nouveau: m.nouveau, moi: m.deMoi }">
-        <div class="tete-msg">
-          <Avatar :src="m.auteur.avatar" :prenom="m.auteur.prenom" :taille="72" />
-          <div class="grandit">
-            <p class="qui">{{ m.deMoi ? 'Vous' : m.auteur.prenom }}<span v-if="m.nouveau" class="pastille-nouveau">Nouveau</span></p>
-            <p class="lien-msg">{{ (m.deMoi ? [m.groupe ? 'à toute la famille' : m.a ? `à ${m.a}` : null, quandLong(m.creeLe)] : [m.auteur.lien, m.groupe ? 'à toute la famille' : null, quandLong(m.creeLe)]).filter(Boolean).join(' · ') }}</p>
-          </div>
-        </div>
-        <img v-if="m.photo" :src="m.photo.ecran" alt="Photo" class="photo" @click="enGrand = m.photo" />
-        <p v-if="m.vocal" class="vocal-msg"><Icone nom="micro" class="en-ligne" /> Message vocal · {{ duree(m.vocal.duree) }}</p>
-        <p v-if="m.texte" class="texte" :class="{ rapide: m.type === 'rapide' }">{{ m.texte }}</p>
-        <div v-if="!m.deMoi" class="actions">
-          <button v-if="m.vocal || lecture" class="secondaire" @click="audio?.id === m.id ? arreterAudio() : ecouter(m)">
-            <Icone :nom="audio?.id === m.id ? 'stop' : 'son'" class="en-ligne" /> {{ audio?.id === m.id ? 'Arrêter' : 'Écouter' }}
-          </button>
-          <button v-if="m.repondre" @click="repondre(m)"><Icone nom="message" class="en-ligne" /> Répondre</button>
-        </div>
-      </article>
-      <button v-if="donnees?.famille.length" class="ecrire" @click="ecrireFamille"><Icone nom="ajouter" class="en-ligne" /> Envoyer un message à ma famille</button>
+      <button v-for="c in donnees?.conversations ?? []" :key="c.id" class="conv" :class="{ 'non-lu': c.nonLus }" @click="ouvrir(c)">
+        <Avatar v-if="c.autre" :src="c.autre.avatar" :prenom="c.autre.prenom" :taille="76" />
+        <span v-else class="rond-famille"><Icone nom="famille" /></span>
+        <span class="conv-milieu">
+          <span class="conv-titre">{{ titreConv(c) }}<small v-if="c.sousTitre"> · {{ c.sousTitre }}</small></span>
+          <span class="conv-apercu">{{ apercu(c) }}</span>
+        </span>
+        <span class="conv-droite">
+          <span class="conv-heure">{{ c.dernier ? quandCourt(c.dernier.le) : '' }}</span>
+          <span v-if="c.nonLus" class="pastille" :aria-label="`${c.nonLus} nouveau${c.nonLus > 1 ? 'x' : ''} message${c.nonLus > 1 ? 's' : ''}`">{{ c.nonLus }}</span>
+        </span>
+      </button>
+      <button v-if="donnees?.contacts.length" class="ecrire" @click="ecran = 'contacts'"><Icone nom="ajouter" class="en-ligne" /> Écrire à quelqu'un</button>
     </template>
+
+    <!-- À qui écrire en privé -->
+    <template v-else-if="ecran === 'contacts'">
+      <button class="secondaire retour" @click="versListe"><Icone nom="precedent" class="en-ligne" /> Retour</button>
+      <h1>Écrire à…</h1>
+      <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      <button v-for="p in donnees.contacts" :key="`${p.cercleId}-${p.utilisateurId}`" class="conv" @click="ecrireA(p)">
+        <Avatar :src="p.avatar" :prenom="p.prenom" :taille="76" />
+        <span class="conv-milieu">
+          <span class="conv-titre">{{ p.prenom }}</span>
+          <span v-if="p.lien" class="conv-apercu">{{ p.lien }}</span>
+        </span>
+      </button>
+    </template>
+
+    <!-- Une conversation -->
+    <div v-else-if="ecran === 'fil' && fil" class="ecran-fil">
+      <div class="tete-fil">
+        <button class="secondaire retour" @click="versListe"><Icone nom="precedent" class="en-ligne" /> Retour</button>
+        <Avatar v-if="fil.conversation.autre" :src="fil.conversation.autre.avatar" :prenom="fil.conversation.autre.prenom" :taille="64" />
+        <span v-else class="rond-famille petit-rond"><Icone nom="famille" /></span>
+        <div class="grandit">
+          <p class="qui">{{ titreConv(fil.conversation) }}</p>
+          <p v-if="fil.conversation.type === 'famille'" class="lien-msg">{{ fil.conversation.membres.map((m) => m.prenom).join(', ') }}</p>
+          <p v-else-if="fil.conversation.autre?.lien" class="lien-msg">{{ fil.conversation.autre.lien }}</p>
+        </div>
+      </div>
+      <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      <div ref="zoneFil" class="zone-fil">
+        <p v-if="!fil.messages.length" class="vide">Pas encore de message. Touchez « Répondre » pour écrire le premier.</p>
+        <template v-for="b in blocs" :key="b.cle ?? b.id">
+          <p v-if="b.separateur" class="jour"><span>{{ b.separateur }}</span></p>
+          <p v-else-if="b.retire" class="retire">Message retiré</p>
+          <div v-else class="ligne" :class="{ moi: b.deMoi }">
+            <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="56" />
+            <div class="bulle" :class="{ rapide: b.type === 'rapide' }">
+              <p class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</p>
+              <img v-if="b.photo" :src="b.photo.ecran" alt="Photo" class="photo" @click="enGrand = b.photo" />
+              <p v-if="b.vocal" class="vocal-msg"><Icone nom="micro" class="en-ligne" /> Message vocal · {{ duree(b.vocal.duree) }}</p>
+              <p v-if="b.texte" class="texte">{{ b.texte }}</p>
+              <div class="pied-bulle">
+                <button v-if="b.vocal || lecture" class="ecouter" :aria-label="audio?.id === b.id ? 'Arrêter' : 'Écouter'" @click="audio?.id === b.id ? arreterAudio() : ecouter(b)">
+                  <Icone :nom="audio?.id === b.id ? 'stop' : 'son'" class="en-ligne" /> {{ audio?.id === b.id ? 'Arrêter' : 'Écouter' }}
+                </button>
+                <span class="heure">{{ heureMessage(b.creeLe) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <button v-if="fil.conversation.peutEcrire" class="repondre" @click="repondre"><Icone nom="message" class="en-ligne" /> Répondre</button>
+    </div>
 
     <!-- Répondre : réponses toutes faites, vocal, photo -->
     <template v-else-if="ecran === 'repondre'">
@@ -246,7 +342,7 @@ async function terminerVocal() {
       <span class="coche"><Icone nom="coche" /></span>
       <p class="qui grand">Votre message est parti</p>
       <p class="petit-gris">{{ cible.famille ? 'Toute la famille va le recevoir.' : `${cible.titre} va le recevoir.` }}</p>
-      <button class="secondaire grand-bouton" @click="retour">Revenir à mes messages</button>
+      <button class="secondaire grand-bouton" @click="retour">Revenir à la conversation</button>
     </div>
 
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
@@ -259,22 +355,48 @@ async function terminerVocal() {
 .messages-aide { max-width: 1100px; width: 100%; flex: 1; min-height: 0; overflow-y: auto; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; }
 h1 { font-size: 2.4rem; margin: 0; }
 .vide { font-size: 1.6rem; color: var(--gris); text-align: center; margin-top: 40px; }
-.carte-msg { background: white; border-radius: 24px; padding: 22px 24px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.08); border: 3px solid transparent; }
-.carte-msg.nouveau { border-color: var(--vert); }
-/* Ses propres messages, décalés à droite comme dans une conversation */
-.carte-msg.moi { background: var(--vert-clair); margin-left: 12%; box-shadow: none; padding-bottom: 18px; }
-.tete-msg { display: flex; gap: 16px; align-items: center; }
 .grandit { flex: 1; min-width: 0; }
 .qui { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .qui.grand { font-size: 2.2rem; }
-.pastille-nouveau { background: var(--vert); color: white; font-size: 1rem; border-radius: 999px; padding: 3px 14px; }
 .lien-msg { color: var(--gris); font-size: 1.15rem; margin: 2px 0 0; }
 .photo { display: block; max-width: 100%; max-height: 420px; border-radius: 16px; margin-top: 14px; cursor: zoom-in; }
 .vocal-msg { font-size: 1.4rem; color: var(--vert); margin: 14px 0 0; }
 .texte { font-size: 1.75rem; line-height: 1.4; margin: 14px 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .texte.rapide { color: var(--vert); font-weight: 700; }
-.actions { display: flex; gap: 14px; margin-top: 16px; }
-.actions button { flex: 1; font-size: 1.5rem; font-weight: 700; padding: 16px 20px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+/* Liste des conversations */
+.conv { display: flex; align-items: center; gap: 18px; width: 100%; padding: 18px 22px; border-radius: 22px; background: white; color: inherit; text-align: left; box-shadow: 0 1px 4px rgb(0 0 0 / 0.08); }
+.conv-milieu { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.conv-titre { font-size: 1.8rem; font-weight: 700; color: var(--bleu-nuit); }
+.conv-titre small { font-size: 1.1rem; font-weight: 400; color: var(--gris); }
+.conv-apercu { font-size: 1.3rem; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.non-lu .conv-apercu { color: #2b2b2b; font-weight: 600; }
+.conv-droite { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.conv-heure { font-size: 1.1rem; color: var(--gris); }
+.non-lu .conv-heure { color: var(--vert); font-weight: 700; }
+.pastille { background: var(--vert); color: white; font-size: 1.4rem; font-weight: 700; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 999px; display: grid; place-items: center; }
+/* Une conversation */
+.ecran-fil { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+.tete-fil { display: flex; align-items: center; gap: 16px; }
+.tete-fil .retour { flex: none; }
+.tete-fil p { margin: 0; }
+.petit-rond { width: 64px; height: 64px; }
+.petit-rond .icone { width: 36px; height: 36px; }
+.zone-fil { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 8px; }
+.jour { text-align: center; margin: 6px 0 0; }
+.jour span { background: #ebe8e3; color: #555; font-size: 1.1rem; border-radius: 999px; padding: 4px 16px; }
+.retire { align-self: center; color: var(--gris); font-style: italic; font-size: 1.1rem; margin: 0; }
+.ligne { display: flex; gap: 12px; align-items: flex-start; max-width: 85%; }
+.ligne.moi { align-self: flex-end; flex-direction: row-reverse; }
+.bulle { background: white; border-radius: 22px 22px 22px 6px; padding: 12px 18px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); min-width: 0; }
+.moi .bulle { background: #dff1e7; border-radius: 22px 22px 6px 22px; }
+.bulle p { margin: 0; }
+.auteur { font-size: 1.25rem; font-weight: 700; color: var(--bleu-nuit); }
+.bulle .texte { margin: 4px 0 0; font-size: 1.6rem; }
+.bulle.rapide .texte { color: var(--vert); font-weight: 700; }
+.pied-bulle { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
+.ecouter { background: var(--vert-clair); color: var(--vert); font-size: 1.15rem; font-weight: 700; padding: 8px 16px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
+.heure { color: var(--gris); font-size: 1rem; }
+.repondre { flex: none; font-size: 1.7rem; font-weight: 700; padding: 20px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
 .ecrire { font-size: 1.5rem; font-weight: 700; padding: 20px; border-radius: 20px; background: var(--bleu-nuit); display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 .retour { align-self: flex-start; font-size: 1.4rem; font-weight: 700; padding: 14px 24px; border-radius: 16px; }
 .a-qui { display: flex; gap: 20px; align-items: center; }
@@ -309,18 +431,29 @@ h1 { font-size: 2.4rem; margin: 0; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* Smartphone */
 @media (max-width: 600px) {
+  .conv { padding: 12px 14px; gap: 12px; border-radius: 18px; }
+  .conv :deep(.avatar), .conv .rond-famille { width: 56px !important; height: 56px !important; }
+  .conv-titre { font-size: 1.3rem; }
+  .conv-apercu { font-size: 1rem; }
+  .conv-heure { font-size: 0.9rem; }
+  .pastille { font-size: 1.1rem; min-width: 34px; height: 34px; padding: 0 9px; }
+  .tete-fil { gap: 10px; }
+  .tete-fil :deep(.avatar), .petit-rond { width: 48px !important; height: 48px !important; }
+  .tete-fil .retour { padding: 10px 12px; font-size: 1rem; }
+  .ligne { max-width: 94%; gap: 8px; }
+  .ligne :deep(.avatar) { width: 40px !important; height: 40px !important; }
+  .auteur { font-size: 1.05rem; }
+  .bulle { padding: 10px 14px; }
+  .bulle .texte { font-size: 1.25rem; }
+  .ecouter { font-size: 1rem; padding: 6px 12px; }
+  .repondre { font-size: 1.35rem; padding: 16px; }
   .messages-aide { padding: 18px 14px; gap: 14px; }
   h1 { font-size: 1.9rem; }
-  .carte-msg { padding: 16px; border-radius: 18px; }
-  .tete-msg :deep(.avatar) { width: 56px !important; height: 56px !important; }
   .qui { font-size: 1.4rem; gap: 8px; }
   .qui.grand { font-size: 1.8rem; }
-  .pastille-nouveau { font-size: 0.85rem; }
   .lien-msg { font-size: 0.95rem; }
   .texte { font-size: 1.35rem; }
   .photo { max-height: 260px; }
-  .actions { gap: 8px; }
-  .actions button { font-size: 1.15rem; padding: 14px 8px; }
   .ecrire { font-size: 1.15rem; padding: 16px; }
   .retour { font-size: 1.15rem; padding: 12px 18px; }
   .a-qui :deep(.avatar), .rond-famille { width: 64px !important; height: 64px !important; }

@@ -439,6 +439,31 @@ export async function messagesAccompagne(utilisateur, { avecLesMiens = false } =
   return resultat
 }
 
+// Ses conversations (« Toute la famille » et privées), tous cercles confondus, comme la liste
+// des discussions de WhatsApp : la plus récente en haut, avec le nombre de messages non lus ;
+// et les personnes à qui elle peut écrire en privé.
+router.get('/accompagne/conversations', async (req, res) => {
+  const resultat = { conversations: [], contacts: [], reglages: reglages(req.utilisateur.messagerie), fichiers: Boolean(await stockageActif()) }
+  const lienAvatar = await liensAvatars()
+  const cercles = (await mesCercles(req.utilisateur.id)).filter((x) => x.role === 'accompagne')
+  for (const c of cercles) {
+    const vue = await vueCercle(req, c.id)
+    if (!vue.moi) continue
+    for (const conv of await listeConversations(req, c.id, vue)) {
+      if (conv.type !== 'famille' && conv.type !== 'privee') continue
+      // Plusieurs cercles : le nom du cercle distingue les groupes « Toute la famille »
+      resultat.conversations.push({ ...conv, sousTitre: conv.type === 'famille' && cercles.length > 1 ? c.nom : null })
+    }
+    for (const m of vue.liste.filter((x) => peutEcrirePrive(vue.moi, x))) {
+      resultat.contacts.push({ ...personne(lienAvatar, m), cercleId: c.id })
+    }
+  }
+  const quand = (c) => (c.dernier ? new Date(c.dernier.le).getTime() : 0)
+  resultat.conversations.sort((a, b) => quand(b) - quand(a) || (a.type === 'famille' ? -1 : 1))
+  resultat.contacts.sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'))
+  res.json(resultat)
+})
+
 router.get('/accompagne', async (req, res) => {
   res.json(await messagesAccompagne(req.utilisateur, { avecLesMiens: req.query.avecLesMiens === '1' }))
 })
