@@ -8,6 +8,8 @@ import {
 } from '../messagerie.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
+import TexteMessage from './TexteMessage.vue'
+import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
 
 // « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
@@ -43,7 +45,12 @@ async function charger() {
   }
 }
 
+// Une image qui finit de charger allonge le fil : on reste en bas juste après l'ouverture
+let defileLe = 0
+const apresImage = () => Date.now() - defileLe < 5000 && zoneFil.value && (zoneFil.value.scrollTop = zoneFil.value.scrollHeight)
+
 async function chargerFil(id, { defiler = true } = {}) {
+  if (defiler) defileLe = Date.now()
   const d = await api('GET', `/messagerie/conversations/${id}`)
   fil.value = { conversation: d.conversation, messages: d.messages }
   api('POST', `/messagerie/conversations/${id}/lu`).then(rafraichirNonLus).catch(() => {})
@@ -307,9 +314,10 @@ async function terminerVocal() {
             <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="56" />
             <div class="bulle" :class="{ rapide: b.type === 'rapide' }">
               <p class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</p>
-              <img v-if="b.photo" :src="b.photo.ecran" alt="Photo" class="photo" @click="enGrand = b.photo" />
+              <img v-if="b.photo" :src="b.photo.ecran" alt="Photo" class="photo" @load="apresImage" @click="enGrand = b.photo" />
               <p v-if="b.vocal" class="vocal-msg"><Icone nom="micro" class="en-ligne" /> Message vocal · {{ duree(b.vocal.duree) }}</p>
-              <p v-if="b.texte" class="texte">{{ b.texte }}</p>
+              <p v-if="b.texte" class="texte"><TexteMessage :texte="b.texte" /></p>
+              <ApercuLien v-if="b.lien" :lien="b.lien" grand @charge="apresImage" />
               <div class="pied-bulle">
                 <button v-if="b.vocal || lecture" class="ecouter" :aria-label="audio?.id === b.id ? 'Arrêter' : 'Écouter'" @click="audio?.id === b.id ? arreterAudio() : ecouter(b)">
                   <Icone :nom="audio?.id === b.id ? 'stop' : 'son'" class="en-ligne" /> {{ audio?.id === b.id ? 'Arrêter' : 'Écouter' }}

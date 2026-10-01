@@ -12,6 +12,7 @@ import { mesCercles } from './auth.js'
 import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peutEcrirePrive, peutRetirer } from '../messagerie/droits.js'
 import { ouvrirFlux, signaler } from '../messagerie/flux.js'
 import { programmerAlertes, apercu } from '../messagerie/alertes.js'
+import { premierLien, apercuDe, imageDe } from '../messagerie/liens.js'
 import { VARIANTES_PHOTO, VOCAL_MAX, DUREE_VOCAL_MAX, FORMATS_VOCAL, DUREE_ENVOI, clePhoto, cleVocal, clesFichiers, lienLecture, supprimerFichiers } from '../messagerie/fichiers.js'
 
 // Messagerie : conversations de groupe du cercle, conversations privées, cahier de liaison
@@ -161,6 +162,10 @@ function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, l
     return { ...base, retire: { parAuteur: m.retireParId === m.auteurId, prenom: par?.prenom ?? null } }
   }
   const message = { ...base, texte: m.texte, peutRetirer: peutRetirer(conversation, moi, m) }
+  const lien = m.type === 'texte' ? m.fichier?.lien : null
+  if (lien) {
+    message.lien = { url: lien.url, titre: lien.titre, description: lien.description, site: lien.site, image: lien.image ? `/api/messagerie/messages/${m.id}/apercu-image` : null }
+  }
   if (m.type === 'photo' && stockage) {
     message.photo = { miniature: lienLecture(stockage, clePhoto(m, 'miniature')), ecran: lienLecture(stockage, clePhoto(m, 'ecran')), largeur: m.fichier?.largeur, hauteur: m.fichier?.hauteur }
   }
@@ -197,6 +202,20 @@ async function annoncer(req, message) {
   const membresConv = participants(conversation, liste)
   signaler(membresConv.map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id, auteurId: moi.utilisateurId })
   programmerAlertes(conversation, message, moi, membresConv.filter((m) => m.utilisateurId !== moi.utilisateurId))
+}
+
+// Aperçu du premier lien d'un message (après l'envoi, sans faire attendre l'auteur) : enregistré
+// dans fichier.lien, puis les pages ouvertes rechargent la conversation (événement sans auteurId,
+// pour ne pas relancer la lecture à voix haute de la personne accompagnée).
+function ajouterApercu(req, message) {
+  const lien = premierLien(message.texte)
+  if (!lien) return
+  const { conversation, liste } = req
+  apercuDe(lien).then(async (a) => {
+    if (!a) return
+    await db.update(messages).set({ fichier: { lien: a } }).where(and(eq(messages.id, message.id), sql`${messages.retireLe} is null`))
+    signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id })
+  }).catch((e) => console.error('[Messagerie] Aperçu de lien :', e.message))
 }
 
 // --- Routes
@@ -301,6 +320,7 @@ router.post('/conversations/:id/messages', chargerConversation, async (req, res)
     valeurs.texte = valider.texte(req.body.texte, 'message', { max: type === 'rapide' ? 60 : 4000 })
     const [message] = await db.insert(messages).values(valeurs).returning()
     await annoncer(req, message)
+    if (type === 'texte') ajouterApercu(req, message)
     return res.status(201).json({ id: message.id })
   }
 
@@ -368,10 +388,23 @@ router.delete('/messages/:messageId', chargerMessage, async (req, res) => {
     await supprimerFichiers(await stockageActif(), message).catch((e) => console.error('[Messagerie] Fichier :', e.message))
     // Un envoi jamais terminé disparaît tout à fait
     if (!message.publie) await db.delete(messages).where(eq(messages.id, message.id))
-    else await db.update(messages).set({ retireLe: new Date(), retireParId: moi.utilisateurId, texte: null }).where(eq(messages.id, message.id))
+    else await db.update(messages).set({ retireLe: new Date(), retireParId: moi.utilisateurId, texte: null, ...(message.type === 'texte' ? { fichier: null } : {}) }).where(eq(messages.id, message.id))
     signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id })
   }
   res.status(204).end()
+})
+
+// Image de l'aperçu d'un lien, relayée par le serveur
+router.get('/messages/:messageId/apercu-image', chargerMessage, async (req, res) => {
+  const url = req.message.retireLe ? null : req.message.fichier?.lien?.image
+  if (!url) return res.status(404).end()
+  try {
+    const image = await imageDe(url)
+    res.set({ 'Content-Type': image.type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' })
+    res.send(image.corps)
+  } catch {
+    res.status(404).end()
+  }
 })
 
 // La personne a lu la conversation (jusqu'à maintenant)

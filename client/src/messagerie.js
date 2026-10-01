@@ -200,3 +200,18 @@ export function texteVu(prenoms) {
   if (prenoms.length === 2) return `Vu par ${prenoms[0]} et ${prenoms[1]}`
   return `Vu par ${prenoms[0]}, ${prenoms[1]} et ${prenoms.length - 2} autre${prenoms.length > 3 ? 's' : ''}`
 }
+
+// Texte d'un message découpé en morceaux de texte et liens cliquables (http et https seulement)
+export function morceaux(texte) {
+  const resultat = []
+  const motif = /https?:\/\/[^\s<>"']+/gi
+  let debut = 0
+  for (const m of String(texte ?? '').matchAll(motif)) {
+    const lien = m[0].replace(/[).,;:!?»]+$/, '')
+    if (m.index > debut) resultat.push({ texte: texte.slice(debut, m.index) })
+    resultat.push({ lien })
+    debut = m.index + lien.length
+  }
+  if (debut < String(texte ?? '').length) resultat.push({ texte: texte.slice(debut) })
+  return resultat
+}

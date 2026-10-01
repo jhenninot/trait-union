@@ -10,6 +10,8 @@ import {
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Avatar from './Avatar.vue'
+import TexteMessage from './TexteMessage.vue'
+import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
@@ -314,7 +316,8 @@ const vocalPossible = enregistrementPossible()
           </div>
           <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" @click.stop="enGrand = b.photo" />
           <audio v-if="b.vocal" :src="b.vocal.lien" controls preload="none" class="audio" />
-          <p v-if="b.texte" class="texte-note">{{ b.texte }}</p>
+          <p v-if="b.texte" class="texte-note"><TexteMessage :texte="b.texte" /></p>
+          <ApercuLien v-if="b.lien" :lien="b.lien" @charge="apresImage" />
           <p v-if="b.vuPar?.length" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
           <div v-if="selection === b.id && b.peutRetirer" class="actions-msg">
             <button class="danger" @click.stop="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer' : 'Retirer' }}</button>
@@ -330,7 +333,8 @@ const vocalPossible = enregistrementPossible()
               <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = { ...b.photo, message: b }" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
               <div v-if="b.vocal" class="vocal"><Icone nom="micro" class="en-ligne" /><audio :src="b.vocal.lien" controls preload="none" /><span>{{ duree(b.vocal.duree) }}</span></div>
-              <div v-if="b.texte" class="texte">{{ b.texte }}</div>
+              <div v-if="b.texte" class="texte"><TexteMessage :texte="b.texte" /></div>
+              <ApercuLien v-if="b.lien" :lien="b.lien" @charge="apresImage" />
               <div class="h">{{ heureMessage(b.creeLe) }}</div>
             </div>
             <p v-if="b.deMoi && b.vuPar?.length && (conversation.type === 'privee' || b.id === dernierDeMoi)" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
@@ -431,6 +435,7 @@ const vocalPossible = enregistrementPossible()
 .moi .auteur { margin: 0 10px 3px 0; }
 .bulle { background: white; border-radius: 16px 16px 16px 4px; padding: 8px 12px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.07); line-height: 1.4; cursor: pointer; max-width: 100%; }
 .moi .bulle { background: var(--bleu-nuit); color: white; border-radius: 16px 16px 4px 16px; }
+.moi .bulle :deep(.apercu-lien) { background: rgb(255 255 255 / 0.12); }
 .bulle.rapide { background: var(--vert-clair); color: var(--vert); font-weight: 700; }
 .bulle.choisie { outline: 2px solid var(--vert); }
 .texte { white-space: pre-wrap; overflow-wrap: anywhere; }
