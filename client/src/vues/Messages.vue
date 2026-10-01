@@ -7,6 +7,7 @@ import { motDecede } from '../coordonnees.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import FilConversation from './FilConversation.vue'
+import FenetreGroupe from './FenetreGroupe.vue'
 
 // Messagerie du cercle (aidants, proches, auxiliaires) : la liste des conversations et, à côté sur
 // grand écran (à la place sur téléphone), la conversation choisie (?c=<id>).
@@ -18,6 +19,7 @@ const choisie = computed(() => route.query.c ?? null)
 const donnees = ref(null)
 const erreur = ref('')
 const ecrire = ref(false) // choix de la personne à qui écrire en privé
+const nouveauGroupe = ref(false)
 const grandEcran = ref(window.matchMedia('(min-width: 900px)').matches)
 const media = window.matchMedia('(min-width: 900px)')
 const suivreEcran = (e) => (grandEcran.value = e.matches)
@@ -67,11 +69,20 @@ const apresChangement = () => {
   charger()
   rafraichirNonLus()
 }
+function groupeCree(id) {
+  nouveauGroupe.value = false
+  charger()
+  ouvrir(id)
+}
+function groupeSupprime() {
+  router.replace({ query: {} })
+  apresChangement()
+}
 
-const icone = (c) => ({ famille: 'famille', aidants: 'cadenas', liaison: 'carnet' })[c.type]
+const icone = (c) => ({ famille: 'famille', aidants: 'cadenas', liaison: 'carnet', groupe: 'famille' })[c.type]
 const note = computed(() => {
   const r = donnees.value?.monRole
-  if (r === 'aidant') return '« Toute la famille » réunit tout le cercle, personnes accompagnées comprises (pas les auxiliaires). « Les aidants » et le cahier de liaison ne sont pas visibles par les personnes accompagnées.'
+  if (r === 'aidant') return '« Toute la famille » réunit tout le cercle, personnes accompagnées comprises (pas les auxiliaires). « Les aidants » et le cahier de liaison ne sont pas visibles par les personnes accompagnées. « Nouveau groupe » crée une conversation avec les personnes de votre choix.'
   if (r === 'auxiliaire') return 'Le cahier de liaison est partagé avec les aidants de la famille. Vous pouvez aussi écrire en privé aux aidants et aux personnes accompagnées.'
   return null
 })
@@ -84,7 +95,10 @@ const montrerFil = computed(() => Boolean(choisie.value))
     <section v-if="montrerListe" class="colonne-liste">
       <div class="titre-liste">
         <h1>Messages</h1>
-        <button v-if="donnees?.contacts.length" class="petit" @click="ecrire = !ecrire"><Icone nom="ajouter" class="en-ligne" /> Écrire</button>
+        <span class="boutons-liste">
+          <button v-if="donnees?.peutCreerGroupe" class="petit secondaire" @click="nouveauGroupe = true"><Icone nom="famille" class="en-ligne" /> Nouveau groupe</button>
+          <button v-if="donnees?.contacts.length" class="petit" @click="ecrire = !ecrire"><Icone nom="ajouter" class="en-ligne" /> Écrire</button>
+        </span>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
@@ -115,8 +129,9 @@ const montrerFil = computed(() => Boolean(choisie.value))
       <p v-if="note" class="aide note">{{ note }}</p>
     </section>
 
-    <FilConversation v-if="montrerFil" :key="choisie" :conversation-id="choisie" :retour="!grandEcran" class="colonne-fil" @retour="fermer" @change="apresChangement" />
+    <FilConversation v-if="montrerFil" :key="choisie" :conversation-id="choisie" :retour="!grandEcran" class="colonne-fil" @retour="fermer" @change="apresChangement" @supprime="groupeSupprime" />
     <div v-else-if="grandEcran" class="colonne-fil vide"><Icone nom="message" class="grande" /><p class="aide">Choisissez une conversation</p></div>
+    <FenetreGroupe v-if="nouveauGroupe" :cercle-id="cercleId" @fermer="nouveauGroupe = false" @enregistre="groupeCree" />
   </div>
 </template>
 
@@ -127,8 +142,10 @@ const montrerFil = computed(() => Boolean(choisie.value))
 .colonne-fil { flex: 1; min-width: 0; }
 .colonne-fil.vide { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--gris); }
 .grande { width: 56px; height: 56px; stroke-width: 1.5; }
-.titre-liste { display: flex; justify-content: space-between; align-items: center; margin: 0 8px 12px; }
+.titre-liste { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 0 8px 12px; }
 .titre-liste h1 { margin: 0; }
+.boutons-liste { display: flex; gap: 6px; }
+.boutons-liste button { white-space: nowrap; }
 .petit { padding: 8px 14px; font-size: 0.92rem; }
 .conv { display: flex; gap: 12px; align-items: center; width: 100%; padding: 10px; border-radius: 12px; background: none; color: inherit; text-align: left; }
 .conv:hover { background: #f6f4f0; }
@@ -144,6 +161,7 @@ const montrerFil = computed(() => Boolean(choisie.value))
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .rond.liaison { background: #fdebd8; color: #b46a22; }
 .rond.aidants { background: #e8ebf5; color: var(--bleu-nuit); }
+.rond.groupe { background: #efe8f6; color: #6b4b94; }
 .note { margin: 14px 10px 0; line-height: 1.4; }
 .contacts { margin: 0 0 12px; padding: 8px; }
 .titre-contacts { font-weight: 600; color: var(--bleu-nuit); margin: 4px 8px 6px; }

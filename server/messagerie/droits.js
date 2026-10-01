@@ -8,7 +8,10 @@ import { membres, utilisateurs, personnes } from '../db/schema.js'
 // - « Cahier de liaison » : aidants et auxiliaires de vie ;
 // - conversations privées à deux, entre membres du cercle, sauf auxiliaire ↔ proche. Une
 //   personne accompagnée ne reçoit de message privé que de ceux que ses aidants autorisent
-//   (réglage « prive ») ; les aidants ne lisent pas ses conversations privées.
+//   (réglage « prive ») ; les aidants ne lisent pas ses conversations privées ;
+// - groupes créés par les aidants (Julien, 2026-10-01) : un nom et des membres choisis parmi le
+//   cercle, sans y réunir auxiliaires et proches (même règle que pour les privées). Les aidants
+//   membres du groupe le renomment, changent ses membres ou le suppriment.
 // Il faut être membre du cercle : un administrateur qui n'en fait pas partie ne voit rien.
 
 export const GROUPES = ['famille', 'aidants', 'liaison']
@@ -23,6 +26,16 @@ export const TITRES = { famille: 'Toute la famille', aidants: 'Les aidants', lia
 export const REPONSES_DEFAUT = ['Je t\'embrasse', 'Merci', 'Oui', 'Non', 'Appelle-moi', 'Viens me voir']
 export const REGLAGES_DEFAUT = { prive: 'tous', reponses: REPONSES_DEFAUT, lectureAuto: false, vocal: true }
 export const reglages = (messagerie) => ({ ...REGLAGES_DEFAUT, ...messagerie })
+
+// Membres possibles d'un groupe créé : refus (message) ou null
+export function compositionInvalide(ids, liste) {
+  const choisis = ids.map((id) => liste.find((m) => m.utilisateurId === id))
+  if (choisis.some((m) => !m || m.decede)) return 'Une des personnes choisies ne fait pas partie du cercle'
+  if (choisis.length < 2) return 'Choisissez au moins une autre personne'
+  const roles = choisis.map((m) => m.role)
+  if (roles.includes('auxiliaire') && roles.includes('proche')) return 'Une auxiliaire de vie ne peut pas être dans un groupe avec des proches'
+  return null
+}
 
 export const voitGroupe = (type, role) => ROLES_GROUPE[type]?.includes(role) ?? false
 
@@ -72,8 +85,16 @@ export function participants(conversation, liste) {
   if (conversation.type === 'privee') {
     return liste.filter((m) => m.utilisateurId === conversation.personneA || m.utilisateurId === conversation.personneB)
   }
+  if (conversation.type === 'groupe') {
+    const ids = conversation.membresGroupe ?? []
+    return liste.filter((m) => !m.decede && ids.includes(m.utilisateurId))
+  }
   return liste.filter((m) => !m.decede && voitGroupe(conversation.type, m.role))
 }
+
+// Renommer un groupe créé, changer ses membres ou le supprimer : les aidants qui en font partie
+export const peutGererGroupe = (conversation, moi, liste) =>
+  conversation.type === 'groupe' && moi.role === 'aidant' && participants(conversation, liste).some((m) => m.utilisateurId === moi.utilisateurId)
 
 // Peut-on encore écrire dans cette conversation (privée : le réglage de l'aidé a pu changer) ?
 export function peutEcrire(conversation, moi, liste) {

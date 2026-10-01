@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
@@ -330,8 +331,10 @@ export const utilisationJour = pgTable('utilisation_jour', {
 // Messagerie d'un cercle (server/messagerie/). Chaque cercle a d'office trois conversations de groupe :
 // « famille » (tout le cercle sauf les auxiliaires), « aidants » (aidants seulement) et « liaison »
 // (cahier de liaison des aidants et auxiliaires) ; plus des conversations « privee » à deux
-// (personne_a < personne_b). Qui y a accès : server/messagerie/droits.js.
-export const typeConversation = pgEnum('type_conversation', ['famille', 'aidants', 'liaison', 'privee'])
+// (personne_a < personne_b) ; plus des « groupe » créés par les aidants, avec un nom (titre) et la
+// liste de leurs membres (membres_groupe). Qui y a accès : server/messagerie/droits.js.
+const AUCUN = sql.raw("'00000000-0000-0000-0000-000000000000'")
+export const typeConversation = pgEnum('type_conversation', ['famille', 'aidants', 'liaison', 'privee', 'groupe'])
 
 export const conversations = pgTable('conversations', {
   ...commun,
@@ -339,9 +342,16 @@ export const conversations = pgTable('conversations', {
   type: typeConversation('type').notNull(),
   personneA: uuid('personne_a').references(() => utilisateurs.id, { onDelete: 'cascade' }),
   personneB: uuid('personne_b').references(() => utilisateurs.id, { onDelete: 'cascade' }),
-  dernierMessageLe: timestamp('dernier_message_le', { withTimezone: true })
+  dernierMessageLe: timestamp('dernier_message_le', { withTimezone: true }),
+  // Groupes créés par les aidants : nom, identifiants des membres (comptes du cercle), créateur
+  titre: text('titre'),
+  membresGroupe: jsonb('membres_groupe').$type().notNull().default([]),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
 }, (t) => [
-  unique('conversations_unique').on(t.cercleId, t.type, t.personneA, t.personneB).nullsNotDistinct()
+  // Une seule conversation de chaque groupe d'office et une seule privée par paire ; autant de
+  // groupes créés qu'on veut (les valeurs citées évitent d'employer « groupe », ajouté dans la même migration)
+  uniqueIndex('conversations_unique').on(t.cercleId, t.type, sql`coalesce(${t.personneA}, ${AUCUN}::uuid)`, sql`coalesce(${t.personneB}, ${AUCUN}::uuid)`)
+    .where(sql`${t.type} in ('famille', 'aidants', 'liaison', 'privee')`)
 ])
 
 // texte : message écrit ; rapide : réponse toute faite (« Je t'embrasse ») ; photo et vocal : fichier

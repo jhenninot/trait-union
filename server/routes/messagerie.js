@@ -9,7 +9,7 @@ import { stockageActif, lienSigne, infoObjet } from '../stockage/s3.js'
 import { liensAvatars } from '../avatars.js'
 import { liensDesMembres } from '../arbre.js'
 import { mesCercles } from './auth.js'
-import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peutEcrirePrive, peutRetirer } from '../messagerie/droits.js'
+import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peutEcrirePrive, peutRetirer, peutGererGroupe, compositionInvalide } from '../messagerie/droits.js'
 import { ouvrirFlux, signaler } from '../messagerie/flux.js'
 import { programmerAlertes, apercu } from '../messagerie/alertes.js'
 import { premierLien, apercuDe, imageDe } from '../messagerie/liens.js'
@@ -93,7 +93,7 @@ function presenterConversation(c, { moi, liste, lienAvatar, dernier, nonLu, etat
     id: c.id,
     cercleId: c.cercleId,
     type: c.type,
-    titre: c.type === 'privee' ? (autre?.prenom ?? 'Ancien membre') : TITRES[c.type],
+    titre: c.type === 'privee' ? (autre?.prenom ?? 'Ancien membre') : c.type === 'groupe' ? c.titre : TITRES[c.type],
     autre: personne(lienAvatar, autre),
     nombre: membresConv.length,
     membres: membresConv.filter((m) => m.utilisateurId !== moi.utilisateurId).map((m) => personne(lienAvatar, m)),
@@ -105,7 +105,8 @@ function presenterConversation(c, { moi, liste, lienAvatar, dernier, nonLu, etat
     },
     nonLus: nonLu ?? 0,
     muet: etat?.muet ?? false,
-    peutEcrire: peutEcrire(c, moi, liste)
+    peutEcrire: peutEcrire(c, moi, liste),
+    peutGerer: peutGererGroupe(c, moi, liste)
   }
 }
 
@@ -258,8 +259,56 @@ router.get('/cercles/:cercleId', async (req, res) => {
     conversations: liste,
     contacts,
     // Pour le cahier de liaison : les personnes accompagnées du cercle
-    accompagnes: vue.liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m))
+    accompagnes: vue.liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)),
+    // Les aidants créent des groupes : les membres qu'ils peuvent y mettre
+    peutCreerGroupe: vue.moi.role === 'aidant',
+    membresCercle: vue.moi.role === 'aidant'
+      ? vue.liste.filter((m) => !m.decede).map((m) => personne(lienAvatar, m)).sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'))
+      : []
   })
+})
+
+// --- Groupes créés par les aidants : { titre, membres: [utilisateurId] } (la personne qui crée en fait partie)
+
+function lireGroupe(corps, moi, liste) {
+  const titre = valider.texte(corps.titre, 'nom du groupe', { max: 80 })
+  if (!Array.isArray(corps.membres)) throw new ErreurSaisie('Choisissez les membres du groupe')
+  const ids = [...new Set([moi.utilisateurId, ...corps.membres.map(String)])]
+  const refus = compositionInvalide(ids, liste)
+  if (refus) throw new ErreurSaisie(refus)
+  return { titre, membresGroupe: ids }
+}
+
+router.post('/cercles/:cercleId/groupes', async (req, res) => {
+  const { liste, moi } = await vueCercle(req, req.params.cercleId)
+  if (moi?.role !== 'aidant') return res.status(403).json({ erreur: 'Seuls les aidants créent des groupes' })
+  const [c] = await db.insert(conversations)
+    .values({ cercleId: req.params.cercleId, type: 'groupe', creeParId: moi.utilisateurId, ...lireGroupe(req.body, moi, liste) })
+    .returning()
+  signaler(participants(c, liste).map((m) => m.utilisateurId), 'message', { cercleId: c.cercleId, conversationId: c.id })
+  res.status(201).json({ id: c.id })
+})
+
+// Renomme un groupe ou change ses membres ; les personnes retirées ne le voient plus
+router.put('/conversations/:id/groupe', chargerConversation, async (req, res) => {
+  const { conversation, liste, moi } = req
+  if (!peutGererGroupe(conversation, moi, liste)) return res.status(403).json({ erreur: 'Seuls les aidants du groupe le modifient' })
+  const avant = participants(conversation, liste).map((m) => m.utilisateurId)
+  const [c] = await db.update(conversations).set(lireGroupe(req.body, moi, liste)).where(eq(conversations.id, conversation.id)).returning()
+  signaler([...new Set([...avant, ...participants(c, liste).map((m) => m.utilisateurId)])], 'message', { cercleId: c.cercleId, conversationId: c.id })
+  res.status(204).end()
+})
+
+// Supprime un groupe, ses messages et leurs fichiers
+router.delete('/conversations/:id/groupe', chargerConversation, async (req, res) => {
+  const { conversation, liste, moi } = req
+  if (!peutGererGroupe(conversation, moi, liste)) return res.status(403).json({ erreur: 'Seuls les aidants du groupe le suppriment' })
+  const stockage = await stockageActif()
+  const lignes = await db.select().from(messages).where(eq(messages.conversationId, conversation.id))
+  for (const m of lignes.filter((x) => !x.retireLe)) await supprimerFichiers(stockage, m).catch((e) => console.error('[Messagerie] Fichier :', e.message))
+  await db.delete(conversations).where(eq(conversations.id, conversation.id))
+  signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id })
+  res.status(204).end()
 })
 
 // Ouvre (ou crée) la conversation privée avec un membre. Corps : { utilisateurId }
@@ -600,7 +649,7 @@ export async function messagesAccompagne(utilisateur, { avecLesMiens = false } =
   for (const c of (await mesCercles(utilisateur.id)).filter((x) => x.role === 'accompagne')) {
     const { liste, moi } = await vueCercle(utilisateur, c.id)
     if (!moi) continue
-    const convs = (await conversationsDe(c.id, moi, liste)).filter((x) => x.type === 'famille' || x.type === 'privee')
+    const convs = (await conversationsDe(c.id, moi, liste)).filter((x) => ['famille', 'privee', 'groupe'].includes(x.type))
     const famille = convs.find((x) => x.type === 'famille')
     if (famille) resultat.famille.push({ cercleId: c.id, conversationId: famille.id })
     if (!convs.length) continue
@@ -625,7 +674,7 @@ export async function messagesAccompagne(utilisateur, { avecLesMiens = false } =
       resultat.messages.push({
         ...p,
         auteur: { ...p.auteur, lien: liens.get(m.auteurId) ?? auteur?.lien ?? null },
-        groupe: conversation.type === 'famille',
+        groupe: conversation.type !== 'privee',
         // Ses propres messages privés : à qui elle a écrit
         a: p.deMoi && conversation.type === 'privee'
           ? liste.find((x) => x.utilisateurId === (conversation.personneA === moi.utilisateurId ? conversation.personneB : conversation.personneA))?.prenom ?? null
@@ -651,7 +700,7 @@ router.get('/accompagne/conversations', async (req, res) => {
     const vue = await vueCercle(req, c.id)
     if (!vue.moi) continue
     for (const conv of await listeConversations(req, c.id, vue)) {
-      if (conv.type !== 'famille' && conv.type !== 'privee') continue
+      if (!['famille', 'privee', 'groupe'].includes(conv.type)) continue
       // Plusieurs cercles : le nom du cercle distingue les groupes « Toute la famille »
       resultat.conversations.push({ ...conv, sousTitre: conv.type === 'famille' && cercles.length > 1 ? c.nom : null })
     }
@@ -674,7 +723,7 @@ router.post('/accompagne/lu', async (req, res) => {
   for (const c of (await mesCercles(req.utilisateur.id)).filter((x) => x.role === 'accompagne')) {
     const { liste, moi } = await vueCercle(req, c.id)
     if (!moi) continue
-    for (const conversation of (await conversationsDe(c.id, moi, liste)).filter((x) => x.type === 'famille' || x.type === 'privee')) {
+    for (const conversation of (await conversationsDe(c.id, moi, liste)).filter((x) => ['famille', 'privee', 'groupe'].includes(x.type))) {
       await marquerLu(conversation, moi.utilisateurId)
       signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'lu', { conversationId: conversation.id, utilisateurId: moi.utilisateurId })
     }

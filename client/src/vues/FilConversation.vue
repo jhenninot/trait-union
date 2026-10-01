@@ -18,6 +18,7 @@ import { useRoute } from 'vue-router'
 import CarteSondage from './CarteSondage.vue'
 import DetailSondage from './DetailSondage.vue'
 import FenetreSondage from './FenetreSondage.vue'
+import FenetreGroupe from './FenetreGroupe.vue'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -25,7 +26,8 @@ const props = defineProps({
   conversationId: { type: String, required: true },
   retour: Boolean // téléphone : flèche de retour vers la liste
 })
-const emit = defineEmits(['retour', 'change'])
+const emit = defineEmits(['retour', 'change', 'supprime'])
+const gererGroupe = ref(false)
 
 const donnees = ref(null)
 const messages = ref([])
@@ -65,6 +67,7 @@ const sousTitre = computed(() => {
   const aides = c.membres.filter((m) => m.role === 'accompagne').map((m) => m.prenom)
   if (c.type === 'famille') return `${c.nombre} personnes${aides.length ? `, dont ${aides.join(' et ')}` : ''}`
   if (c.type === 'aidants') return `Les aidants du cercle, sans ${aides.length ? aides.join(' ni ') : 'les personnes accompagnées'}`
+  if (c.type === 'groupe') return [...c.membres.map((m) => m.prenom), 'vous'].join(', ')
   if (c.type === 'liaison') return `Aidants et auxiliaires${aides.length ? ` · ${aides.join(' et ')} ne le ${aides.length > 1 ? 'voient' : 'voit'} pas` : ''}`
   return c.autre?.role === 'accompagne' ? 'Personne accompagnée' : c.autre?.lien ?? ''
 })
@@ -73,6 +76,7 @@ const placeholder = computed(() => {
   if (!c) return ''
   if (c.type === 'liaison') return 'Ajouter une note…'
   if (c.type === 'privee') return `Écrire à ${c.titre}…`
+  if (c.type === 'groupe') return `Écrire au groupe ${c.titre}…`
   return c.type === 'famille' ? 'Écrire à toute la famille…' : 'Écrire aux aidants…'
 })
 
@@ -294,15 +298,16 @@ const vocalPossible = enregistrementPossible()
     <header v-if="conversation" class="tete-fil">
       <button v-if="retour" class="retour" aria-label="Retour aux conversations" @click="emit('retour')"><Icone nom="precedent" /></button>
       <Avatar v-if="conversation.autre" :src="conversation.autre.avatar" :prenom="conversation.autre.prenom" :taille="42" :decede="conversation.autre.decede" />
-      <span v-else class="rond" :class="conversation.type"><Icone :nom="{ famille: 'famille', aidants: 'cadenas', liaison: 'carnet' }[conversation.type]" /></span>
+      <span v-else class="rond" :class="conversation.type"><Icone :nom="{ famille: 'famille', aidants: 'cadenas', liaison: 'carnet', groupe: 'famille' }[conversation.type]" /></span>
       <div class="grandit">
         <strong>{{ conversation.titre }}<span v-if="conversation.autre?.decede" class="mention-deces">{{ motDecede(conversation.autre.genre) }}</span></strong>
         <p class="aide">{{ sousTitre }}</p>
       </div>
-      <div v-if="conversation.type === 'famille'" class="avatars-groupe">
+      <div v-if="conversation.type === 'famille' || conversation.type === 'groupe'" class="avatars-groupe">
         <Avatar v-for="m in conversation.membres.slice(0, 5)" :key="m.utilisateurId" :src="m.avatar" :prenom="m.prenom" :taille="30" />
         <span v-if="conversation.membres.length > 5" class="encore">+{{ conversation.membres.length - 5 }}</span>
       </div>
+      <BoutonIcone v-if="conversation.peutGerer" icone="modifier" libelle="Modifier le groupe (nom, membres)" @click="gererGroupe = true" />
       <BoutonIcone :icone="conversation.muet ? 'sourdine' : 'cloche'" :libelle="conversation.muet ? 'Réactiver les alertes de cette conversation' : 'Ne plus recevoir d\'alerte pour cette conversation'" @click="sourdine" />
     </header>
 
@@ -422,6 +427,7 @@ const vocalPossible = enregistrementPossible()
     <p v-else-if="conversation" class="aide ferme">Vous ne pouvez plus écrire dans cette conversation.</p>
 
     <FenetreSondage v-if="nouveauSondage" :conversation-id="conversationId" @fermer="nouveauSondage = false" @enregistre="sondageLance" />
+    <FenetreGroupe v-if="gererGroupe" :cercle-id="conversation.cercleId" :groupe="conversation" @fermer="gererGroupe = false" @enregistre="gererGroupe = false; charger(); emit('change')" @supprime="gererGroupe = false; emit('supprime')" />
     <DetailSondage v-if="detail && conversation" :key="detail.id + detail.mode" :sondage-id="detail.id" :cercle-id="conversation.cercleId" :mode="detail.mode"
       @fermer="detail = null" @change="charger({ garderPosition: true }); emit('change')" />
 
@@ -443,6 +449,7 @@ const vocalPossible = enregistrementPossible()
 .rond { width: 42px; height: 42px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .rond.liaison { background: #fdebd8; color: #b46a22; }
 .rond.aidants { background: #e8ebf5; color: var(--bleu-nuit); }
+.rond.groupe { background: #efe8f6; color: #6b4b94; }
 .avatars-groupe { display: flex; align-items: center; }
 .avatars-groupe > * { margin-left: -8px; border: 2px solid white; }
 .encore { color: var(--gris); font-size: 0.85rem; margin-left: 6px; border: none; }

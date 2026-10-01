@@ -16,7 +16,7 @@ import { RouterLink } from 'vue-router'
 import { REPONSES, jourLong, momentTexte, repondreSondage } from '../sondages.js'
 
 // « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
-// conversations (« Toute la famille » et les privées) avec une pastille de messages non lus ;
+// conversations (« Toute la famille », les groupes créés par les aidants et les privées) avec une pastille de messages non lus ;
 // en touchant une conversation, son fil (qui a écrit quoi, avec avatar et prénom), et un gros
 // bouton « Écrire » : réponses toutes faites d'un geste, message vocal ou photo.
 const donnees = ref(null) // { conversations, contacts, reglages, fichiers }
@@ -211,8 +211,10 @@ function repondre() {
   arreterAudio()
   const c = fil.value.conversation
   cible.value = c.type === 'famille'
-    ? { titre: 'toute la famille', famille: true, conversationId: c.id }
-    : { titre: c.titre, prenom: c.autre?.prenom ?? c.titre, avatar: c.autre?.avatar, lien: c.autre?.lien, conversationId: c.id }
+    ? { titre: 'Toute la famille', pour: 'toute la famille', famille: true, conversationId: c.id }
+    : c.type === 'groupe'
+      ? { titre: c.titre, pour: `le groupe « ${c.titre} »`, famille: true, conversationId: c.id }
+      : { titre: c.titre, pour: c.titre, prenom: c.autre?.prenom ?? c.titre, avatar: c.autre?.avatar, lien: c.autre?.lien, conversationId: c.id }
   texte.value = ''
   erreur.value = ''
   ecran.value = 'repondre'
@@ -338,7 +340,7 @@ async function terminerVocal() {
         <span v-else class="rond-famille petit-rond"><Icone nom="famille" /></span>
         <div class="grandit">
           <p class="qui">{{ titreConv(fil.conversation) }}</p>
-          <p v-if="fil.conversation.type === 'famille'" class="lien-msg">{{ fil.conversation.membres.map((m) => m.prenom).join(', ') }}</p>
+          <p v-if="fil.conversation.type === 'famille' || fil.conversation.type === 'groupe'" class="lien-msg">{{ fil.conversation.membres.map((m) => m.prenom).join(', ') }}</p>
           <p v-else-if="fil.conversation.autre?.decede" class="lien-msg">{{ motDecede(fil.conversation.autre.genre, true) }}</p>
           <p v-else-if="fil.conversation.autre?.lien" class="lien-msg">{{ fil.conversation.autre.lien }}</p>
         </div>
@@ -392,7 +394,7 @@ async function terminerVocal() {
         <span v-else class="rond-famille"><Icone nom="famille" /></span>
         <div>
           <p class="petit-gris">Écrire à</p>
-          <p class="qui grand">{{ cible.famille ? 'Toute la famille' : cible.titre }}</p>
+          <p class="qui grand">{{ cible.titre }}</p>
           <p v-if="cible.lien" class="lien-msg">{{ cible.lien }}</p>
         </div>
       </div>
@@ -421,7 +423,7 @@ async function terminerVocal() {
 
     <!-- Photo choisie : commentaire facultatif puis Envoyer -->
     <div v-else-if="ecran === 'photo' && photo" class="ecran-photo">
-      <p class="petit-gris">Photo pour <strong>{{ cible.famille ? 'toute la famille' : cible.titre }}</strong></p>
+      <p class="petit-gris">Photo pour <strong>{{ cible.pour }}</strong></p>
       <img :src="photo.apercu" alt="Photo choisie" class="apercu-grand" />
       <textarea v-model="photo.commentaire" rows="2" maxlength="1000" placeholder="Ajouter un commentaire (facultatif)" aria-label="Commentaire" />
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
@@ -433,7 +435,7 @@ async function terminerVocal() {
 
     <!-- Enregistrement d'un message vocal -->
     <div v-else-if="ecran === 'vocal'" class="enregistre">
-      <p class="petit-gris">Message pour <strong>{{ cible.famille ? 'toute la famille' : cible.titre }}</strong></p>
+      <p class="petit-gris">Message pour <strong>{{ cible.pour }}</strong></p>
       <div class="micro-anime"><Icone nom="micro" /></div>
       <p class="chrono">{{ duree(enregistrement?.secondes ?? 0) }}</p>
       <p class="consigne">Je vous écoute. Appuyez sur « Envoyer » quand vous avez fini.</p>
@@ -479,7 +481,7 @@ async function terminerVocal() {
     <div v-else-if="ecran === 'envoye'" class="envoye">
       <span class="coche"><Icone nom="coche" /></span>
       <p class="qui grand">Votre message est parti</p>
-      <p class="petit-gris">{{ cible.famille ? 'Toute la famille va le recevoir.' : `${cible.titre} va le recevoir.` }}</p>
+      <p class="petit-gris">{{ cible.pour.charAt(0).toUpperCase() + cible.pour.slice(1) }} va le recevoir.</p>
       <button class="secondaire grand-bouton" @click="retour">Revenir à la conversation</button>
     </div>
 
