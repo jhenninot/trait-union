@@ -21,7 +21,7 @@ export async function invitationValide(jeton) {
 router.get('/:jeton', async (req, res) => {
   const ligne = await invitationValide(req.params.jeton)
   if (!ligne) return res.status(404).json({ erreur: 'Cette invitation n\'est plus valable. Demandez-en une nouvelle.' })
-  res.json({ cercle: ligne.cercle.nom, role: ligne.invitation.role })
+  res.json({ cercle: ligne.cercle.nom, role: ligne.invitation.role, email: ligne.invitation.email })
 })
 
 // Rattache l'utilisateur (existant, ou à créer à partir de `nouveau`) au cercle de l'invitation.

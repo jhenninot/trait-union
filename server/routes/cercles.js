@@ -147,7 +147,7 @@ router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, 
   if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
   const jeton = nouveauJeton()
   const expireLe = new Date(Date.now() + DUREE_INVITATION)
-  await db.insert(invitations).values({ cercleId: req.cercle.id, role, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
+  await db.insert(invitations).values({ cercleId: req.cercle.id, role, email: destinataire, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
   let emailEnvoye = null
   let erreurEmail = null
   if (destinataire) {

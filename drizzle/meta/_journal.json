@@ -113,6 +113,13 @@
       "when": 1790843328537,
       "tag": "0015_plusieurs_accompagnes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790848698503,
+      "tag": "0016_email_invitation",
+      "breakpoints": true
     }
   ]
 }

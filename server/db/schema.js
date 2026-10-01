@@ -87,6 +87,8 @@ export const invitations = pgTable('invitations', {
   ...commun,
   cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
   role: roleMembre('role').notNull(),
+  // Adresse à laquelle le lien a été envoyé : proposée (modifiable) sur la page d'invitation
+  email: text('email'),
   creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
   jetonHash: text('jeton_hash').notNull().unique(),
   expireLe: timestamp('expire_le', { withTimezone: true }).notNull(),

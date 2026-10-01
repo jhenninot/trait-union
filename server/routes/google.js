@@ -132,7 +132,8 @@ router.get('/retour', async (req, res) => {
     if (!ligne) return echec(res, 'Cette invitation n\'est plus valable. Demandez-en une nouvelle.')
     utilisateur = await accepterInvitation(ligne.invitation, utilisateur, utilisateur ? null : nouveau)
     if (!utilisateur) return echec(res, 'Cette invitation vient d\'être utilisée.')
-    suite = `/cercles/${ligne.invitation.cercleId}`
+    // Dernière étape : compléter son profil (photo, coordonnées)
+    suite = `/profil?bienvenue=${ligne.invitation.cercleId}`
   } else if (!utilisateur) {
     return echec(res, `Aucun compte Trait d'union n'est associé à ${email}. Demandez une invitation à un aidant.`)
   }

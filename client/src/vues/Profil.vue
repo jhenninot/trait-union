@@ -1,11 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { session } from '../session.js'
 import ChoixAvatar from './ChoixAvatar.vue'
 import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
+import Icone from '../navigation/Icone.vue'
 
-// « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée
+// « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée.
+// Après une invitation (?bienvenue=<cercle>), c'est la 2e étape : compléter son profil.
+const route = useRoute()
+const router = useRouter()
+const bienvenue = computed(() => route.query.bienvenue || null)
+const cercleBienvenue = computed(() => session.cercles?.find((c) => c.id === bienvenue.value)?.nom)
 const prenom = ref(session.utilisateur.prenom)
 const nom = ref(session.utilisateur.nom ?? '')
 const message = ref('')
@@ -37,15 +44,38 @@ async function enregistrerCoordonnees(c) {
   }
 }
 
+// « Terminer » enregistre aussi ce qui a été saisi sans cliquer sur « Enregistrer »
+const formulaireCoordonnees = ref(null)
+async function terminer() {
+  await enregistrer()
+  if (!erreur.value) await enregistrerCoordonnees(formulaireCoordonnees.value.valeurs())
+  if (!erreur.value && !erreurCoordonnees.value) router.push(`/cercles/${bienvenue.value}`)
+}
+
 const avatarChange = (a) => Object.assign(session.utilisateur, a)
 </script>
 
 <template>
   <main>
-    <h1>Mon profil</h1>
+    <template v-if="bienvenue">
+      <p class="aide surtitre">Étape 2 sur 2</p>
+      <h1>Bienvenue{{ cercleBienvenue ? ` dans ${cercleBienvenue}` : '' }}</h1>
+    </template>
+    <h1 v-else>Mon profil</h1>
+    <div class="carte importance">
+      <p><strong>{{ bienvenue ? 'Complétez votre profil : chaque information compte.' : 'Chaque information de votre profil compte.' }}</strong></p>
+      <p>La personne accompagnée vous voit sur sa tablette, dans « Ma famille ». Avec une maladie de la mémoire,
+        une photo et quelques repères l'aident beaucoup :</p>
+      <ul>
+        <li><Icone nom="compte" class="en-ligne" /> une <strong>vraie photo de vous</strong>, pour qu'elle vous reconnaisse ;</li>
+        <li><Icone nom="gateau" class="en-ligne" /> votre <strong>date de naissance</strong>, pour qu'elle vous souhaite votre anniversaire ;</li>
+        <li><Icone nom="telephone" class="en-ligne" /> votre <strong>téléphone</strong> et votre <strong>adresse</strong>, pour qu'elle puisse vous joindre.</li>
+      </ul>
+    </div>
     <div class="carte">
-      <strong>Mon avatar</strong>
-      <p class="aide">Il apparaît à côté de votre prénom, notamment sur la tablette de la personne accompagnée.</p>
+      <strong>Ma photo</strong>
+      <p class="aide">Mettez de préférence une vraie photo de vous, récente, de face et bien éclairée : c'est elle qui permet
+        à la personne accompagnée de vous reconnaître. Elle apparaît à côté de votre prénom, notamment sur sa tablette.</p>
       <ChoixAvatar
         base="/profil"
         :avatar="session.utilisateur.avatar"
@@ -67,12 +97,17 @@ const avatarChange = (a) => Object.assign(session.utilisateur, a)
     </form>
     <div class="carte">
       <strong>Mes coordonnées</strong>
-      <p class="aide">Facultatives. Elles s'affichent pour les membres de vos cercles dans « Famille et aidants » et sur la tablette.
+      <p class="aide">Elles s'affichent pour les membres de vos cercles dans « Famille et aidants » et sur la tablette.
         Les auxiliaires de vie ne voient que le téléphone.</p>
-      <FormulaireCoordonnees :personne="session.utilisateur" @enregistrer="enregistrerCoordonnees">
+      <FormulaireCoordonnees ref="formulaireCoordonnees" :personne="session.utilisateur" explications @enregistrer="enregistrerCoordonnees">
         <span v-if="messageCoordonnees" class="aide">{{ messageCoordonnees }}</span>
         <span v-if="erreurCoordonnees" class="erreur">{{ erreurCoordonnees }}</span>
       </FormulaireCoordonnees>
+    </div>
+    <div v-if="bienvenue" class="fin">
+      <p class="aide">Vous pourrez compléter ou modifier votre profil à tout moment depuis votre prénom, en bas du menu.</p>
+      <button type="button" @click="terminer">Enregistrer et voir le cercle</button>
+      <span v-if="erreur || erreurCoordonnees" class="erreur">{{ erreur || erreurCoordonnees }}</span>
     </div>
   </main>
 </template>
@@ -80,4 +115,9 @@ const avatarChange = (a) => Object.assign(session.utilisateur, a)
 <style scoped>
 form { display: flex; flex-direction: column; gap: 12px; }
 .actions { display: flex; align-items: center; gap: 12px; }
+.surtitre { margin: 0; }
+.importance { background: var(--vert-clair); }
+.importance p { margin: 0 0 8px; }
+.importance ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.fin { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; }
 </style>
