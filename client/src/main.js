@@ -26,6 +26,7 @@ import ArbreAccompagne from './vues/ArbreAccompagne.vue'
 import Alertes from './vues/Alertes.vue'
 import AdminAlertes from './vues/AdminAlertes.vue'
 import AdminPresentation from './vues/AdminPresentation.vue'
+import AdminUtilisateurs from './vues/AdminUtilisateurs.vue'
 import Presentation from './vues/Presentation.vue'
 import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
@@ -50,6 +51,7 @@ const router = createRouter({
     { path: '/alertes', component: Alertes, meta: { connecte: true } },
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
+    { path: '/admin/utilisateurs', component: AdminUtilisateurs, meta: { connecte: true, admin: true } },
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
     { path: '/admin/alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },

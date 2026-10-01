@@ -6,6 +6,7 @@ import * as stockage from '../stockage/s3.js'
 import { urlApplication } from '../url.js'
 import * as alertes from '../alertes/envoi.js'
 import * as presentation from '../presentation/config.js'
+import { listerComptes, apercuSuppression, supprimerCompte } from '../comptes.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -192,6 +193,24 @@ router.post('/presentation/remise-a-zero', async (req, res) => {
   const config = { ...await presentation.lireConfiguration(), visites: 0, derniereVisite: null, visitesDepuis: new Date() }
   await presentation.enregistrerConfiguration(config)
   res.json(presentationPublique(config))
+})
+
+// --- Utilisateurs : liste de tous les comptes et suppression (server/comptes.js)
+
+router.get('/utilisateurs', async (req, res) => {
+  res.json(await listerComptes())
+})
+
+// Ce que la suppression va toucher (cercles, dernier aidant, fiche de l'arbre...)
+router.get('/utilisateurs/:id/suppression', async (req, res) => {
+  const apercu = await apercuSuppression(req.params.id, req.utilisateur)
+  if (!apercu) return res.status(404).json({ erreur: 'Utilisateur introuvable' })
+  res.json(apercu)
+})
+
+router.delete('/utilisateurs/:id', async (req, res) => {
+  if (!await supprimerCompte(req.params.id, req.utilisateur)) return res.status(404).json({ erreur: 'Utilisateur introuvable' })
+  res.status(204).end()
 })
 
 export default router

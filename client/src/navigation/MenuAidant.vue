@@ -106,6 +106,7 @@ const estActif = (chemin) => route.path === chemin
     <template v-if="session.utilisateur.estAdmin">
       <p class="titre-section">Administration</p>
       <RouterLink to="/admin/cercles" class="lien" :class="{ actif: estActif('/admin/cercles') }"><Icone nom="cercle" /> Tous les cercles</RouterLink>
+      <RouterLink to="/admin/utilisateurs" class="lien" :class="{ actif: estActif('/admin/utilisateurs') }"><Icone nom="famille" /> Utilisateurs</RouterLink>
       <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
       <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
       <RouterLink to="/admin/alertes" class="lien" :class="{ actif: estActif('/admin/alertes') }"><Icone nom="cloche" /> Alertes</RouterLink>
