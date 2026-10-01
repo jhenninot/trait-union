@@ -6,6 +6,7 @@ import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { chargerArbre, parente, phrase, lienPossessif, filiation, ancetres } from '../arbre.js'
 import { preparerEnvoi, changerAvatar } from '../avatars.js'
+import { marquerDeces, annulerDeces } from '../deces.js'
 
 // Arbre généalogique d'un cercle (monté sous /api/cercles/:cercleId/arbre, après chargerCercle).
 // Les aidants le gèrent, les proches le consultent, la personne accompagnée en voit une version
@@ -27,8 +28,8 @@ router.get('/', async (req, res) => {
   const estAccompagne = req.role === 'accompagne' && !req.peutGerer
   // Membres du cercle qui n'ont pas encore de place dans l'arbre (hors auxiliaires de vie)
   const listeMembres = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId })
-    .from(membres).where(eq(membres.cercleId, req.cercle.id))
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, decede: utilisateurs.decede })
+    .from(membres).leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id)).where(eq(membres.cercleId, req.cercle.id))
   const places = new Set(g.personnes.map((p) => p.utilisateurId).filter(Boolean))
   const nonPlaces = listeMembres.filter((m) => m.role !== 'auxiliaire' && m.utilisateurId && !places.has(m.utilisateurId))
 
@@ -56,7 +57,9 @@ router.get('/', async (req, res) => {
   }
 
   // Vue des aidants et des proches : liens vus depuis chaque personne accompagnée placée
-  const accompagnes = g.personnes.filter((p) => p.role === 'accompagne')
+  // Liens vus depuis les personnes accompagnées en vie (toutes, s'il n'en reste aucune)
+  const toutes = g.personnes.filter((p) => p.role === 'accompagne')
+  const accompagnes = toutes.some((p) => !p.decede) ? toutes.filter((p) => !p.decede) : toutes
   res.json({
     peutGerer: req.peutGerer,
     accompagnes: accompagnes.map((p) => ({ id: p.id, prenom: p.prenom })),
@@ -80,7 +83,8 @@ function presenter(p, gestion) {
     nom: p.nom,
     genre: p.genre,
     compte: p.compte,
-    role: p.role,
+    // Une personne décédée apparaît comme une personne de l'arbre sans compte (plus de rôle)
+    role: p.decede ? null : p.role,
     membreId: p.membreId,
     utilisateurId: p.role === 'accompagne' ? p.utilisateurId : undefined,
     dateNaissance: p.dateNaissance,
@@ -176,7 +180,9 @@ router.post('/personnes', exigerGestion, async (req, res) => {
       const [deja] = await tx.select({ id: personnes.id }).from(personnes)
         .where(and(eq(personnes.cercleId, req.cercle.id), eq(personnes.utilisateurId, m.utilisateurId)))
       if (deja) throw new ErreurSaisie(`${m.prenom} est déjà dans l'arbre`)
-      valeurs = { ...lireFiche(req.body, { compte: true }), prenom: m.prenom, nom: m.nom, utilisateurId: m.utilisateurId }
+      // Le décès d'un membre se lit sur son compte (server/deces.js)
+      const [u] = await tx.select({ decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces }).from(utilisateurs).where(eq(utilisateurs.id, m.utilisateurId))
+      valeurs = { ...lireFiche(req.body, { compte: true }), prenom: m.prenom, nom: m.nom, utilisateurId: m.utilisateurId, decede: u.decede, dateDeces: u.dateDeces }
     } else {
       valeurs = lireFiche(req.body)
       if (!valeurs.prenom) throw new ErreurSaisie('Le champ « prénom » est obligatoire')
@@ -206,7 +212,15 @@ router.post('/personnes', exigerGestion, async (req, res) => {
 
 router.put('/personnes/:personneId', exigerGestion, chargerPersonne, async (req, res) => {
   const p = req.personne
-  const fiche = lireFiche(req.body, { compte: Boolean(p.utilisateurId) })
+  let fiche = lireFiche(req.body, { compte: Boolean(p.utilisateurId) })
+  // Cocher « Personne décédée » sur la fiche d'un membre indique son décès sur son compte
+  // (désactivé, réversible) ; décocher l'annule
+  if (p.utilisateurId && 'decede' in fiche) {
+    const { decede, dateDeces, ...reste } = fiche
+    if (decede) await marquerDeces(p.utilisateurId, dateDeces ?? null, req.utilisateur)
+    else if (p.decede) await annulerDeces(p.utilisateurId)
+    fiche = reste
+  }
   await db.transaction(async (tx) => {
     if (Object.keys(fiche).length) await tx.update(personnes).set(fiche).where(eq(personnes.id, p.id))
     // Les aidants renseignent aussi les coordonnées des personnes accompagnées (comme sur

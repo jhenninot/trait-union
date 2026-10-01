@@ -13,7 +13,7 @@ export async function chargerArbre(cercleId) {
   const [lignes, rels] = await Promise.all([
     db.select({
       p: personnes,
-      u: { prenom: utilisateurs.prenom, nom: utilisateurs.nom, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, avatar: utilisateurs.avatar },
+      u: { prenom: utilisateurs.prenom, nom: utilisateurs.nom, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, avatar: utilisateurs.avatar, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces },
       membreId: membres.id,
       role: membres.role
     })
@@ -36,6 +36,9 @@ export async function chargerArbre(cercleId) {
       telephone: compte ? u.telephone : p.telephone,
       dateNaissance: compte ? u.dateNaissance : p.dateNaissance,
       adresse: compte ? u.adresse : p.adresse,
+      // Un membre décédé garde son compte (désactivé) : le décès est indiqué sur le compte
+      decede: compte ? u.decede : p.decede,
+      dateDeces: compte ? u.dateDeces : p.dateDeces,
       avatarChoix: compte ? u.avatar : p.avatar,
       avatar: compte && u.avatar ? lienAvatar(p.utilisateurId, u.avatar) : lienAvatar(p.id, p.avatar)
     }
@@ -262,7 +265,7 @@ export async function liensDesMembres(cercleId, egoUtilisateurId = null) {
   if (!g.personnes.length) return { g, liens: new Map(), ego: null }
   const egoP = egoUtilisateurId
     ? g.personnes.find((p) => p.utilisateurId === egoUtilisateurId)
-    : g.personnes.find((p) => p.role === 'accompagne')
+    : g.personnes.find((p) => p.role === 'accompagne' && !p.decede) ?? g.personnes.find((p) => p.role === 'accompagne')
   const liens = new Map()
   if (egoP) {
     for (const p of g.personnes) {

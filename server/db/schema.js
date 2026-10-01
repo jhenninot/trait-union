@@ -32,7 +32,12 @@ export const utilisateurs = pgTable('utilisateurs', {
   // Messagerie d'une personne accompagnée, réglée par ses aidants (server/messagerie/droits.js) :
   // { prive: 'tous' | 'aidants' | 'personne', reponses: [...], lectureAuto, vocal }
   messagerie: jsonb('messagerie').$type(),
-  desactiveLe: timestamp('desactive_le', { withTimezone: true })
+  // Compte qui ne peut plus se connecter ni recevoir d'alertes (posé aussi au décès)
+  desactiveLe: timestamp('desactive_le', { withTimezone: true }),
+  // Personne décédée (server/deces.js) : son compte est désactivé mais gardé, pour pouvoir
+  // annuler en cas d'erreur ; elle apparaît partout comme une personne de l'arbre sans compte
+  decede: boolean('decede').notNull().default(false),
+  dateDeces: date('date_deces')
 })
 
 // Un cercle réunit la personne accompagnée et ses proches.

@@ -218,7 +218,7 @@ async function fini(id) {
                 :style="{ left: `${disposition.pos.get(p.id).x + 10}px`, top: `${disposition.pos.get(p.id).y + 10}px`, width: `${L}px`, height: `${H}px` }"
                 @click="choisir(p.id)"
               >
-                <span v-if="p.compte" class="marque" title="Utilise l'appli"><Icone nom="mobile" /></span>
+                <span v-if="p.compte && !p.decede" class="marque" title="Utilise l'appli"><Icone nom="mobile" /></span>
                 <span v-if="!p.visibleAide" class="marque cache" title="Caché à l'aidé"><Icone nom="oeilBarre" /></span>
                 <Avatar :src="p.avatar" :prenom="p.prenom" :taille="52" :class="{ gris: p.decede }" />
                 <strong>{{ p.prenom }}</strong>
@@ -243,7 +243,7 @@ async function fini(id) {
               <p class="etage"><Icone nom="haut" class="en-ligne" /> Parents</p>
               <div class="rangee">
                 <button v-for="p in branche.parents" :key="p.id" type="button" class="mini" :class="{ aidee: p.role === 'accompagne', decede: p.decede }" @click="choisir(p.id)">
-                  <span v-if="p.compte" class="marque"><Icone nom="mobile" /></span>
+                  <span v-if="p.compte && !p.decede" class="marque"><Icone nom="mobile" /></span>
                   <Avatar :src="p.avatar" :prenom="p.prenom" :taille="44" :class="{ gris: p.decede }" /><strong>{{ p.prenom }}</strong>
                   <span class="dates">{{ dates(p) }}</span><span v-if="lienDe(p)" class="pastille">{{ lienDe(p) }}</span>
                 </button>
@@ -252,7 +252,7 @@ async function fini(id) {
             </template>
             <div class="rangee centre">
               <button type="button" class="mini grand choisie" :class="{ aidee: personneChoisie.role === 'accompagne', decede: personneChoisie.decede }" @click="ficheOuverte = true">
-                <span v-if="personneChoisie.compte" class="marque"><Icone nom="mobile" /></span>
+                <span v-if="personneChoisie.compte && !personneChoisie.decede" class="marque"><Icone nom="mobile" /></span>
                 <Avatar :src="personneChoisie.avatar" :prenom="personneChoisie.prenom" :taille="64" :class="{ gris: personneChoisie.decede }" />
                 <strong>{{ personneChoisie.prenom }}</strong><span class="nom">{{ personneChoisie.nom }}</span>
                 <span class="dates">{{ dates(personneChoisie) }}</span>
@@ -262,7 +262,7 @@ async function fini(id) {
               <template v-for="c in branche.conjoints" :key="c.id">
                 <Icone nom="coeur" class="coeur" />
                 <button type="button" class="mini" :class="{ aidee: c.role === 'accompagne', decede: c.decede }" @click="choisir(c.id)">
-                  <span v-if="c.compte" class="marque"><Icone nom="mobile" /></span>
+                  <span v-if="c.compte && !c.decede" class="marque"><Icone nom="mobile" /></span>
                   <Avatar :src="c.avatar" :prenom="c.prenom" :taille="44" :class="{ gris: c.decede }" /><strong>{{ c.prenom }}</strong>
                   <span class="dates">{{ dates(c) }}</span><span v-if="lienDe(c)" class="pastille">{{ lienDe(c) }}</span>
                 </button>
@@ -273,7 +273,7 @@ async function fini(id) {
               <p class="etage"><Icone nom="bas" class="en-ligne" /> Enfants</p>
               <div class="rangee enveloppe">
                 <button v-for="p in branche.enfants" :key="p.id" type="button" class="mini" :class="{ aidee: p.role === 'accompagne', decede: p.decede }" @click="choisir(p.id)">
-                  <span v-if="p.compte" class="marque"><Icone nom="mobile" /></span>
+                  <span v-if="p.compte && !p.decede" class="marque"><Icone nom="mobile" /></span>
                   <Avatar :src="p.avatar" :prenom="p.prenom" :taille="44" :class="{ gris: p.decede }" /><strong>{{ p.prenom }}</strong>
                   <span class="dates">{{ dates(p) }}</span><span v-if="lienDe(p)" class="pastille">{{ lienDe(p) }}</span>
                 </button>
@@ -300,7 +300,7 @@ async function fini(id) {
                 <span class="grandit"><strong>{{ p.prenom }} {{ p.nom }}</strong><span class="aide"> {{ dates(p) }}</span>
                   <span v-if="p.filiation" class="aide bloc">{{ p.filiation }}</span></span>
                 <span v-if="lienDe(p)" class="pastille">{{ lienDe(p) }}</span>
-                <Icone v-if="p.compte" nom="mobile" class="marque-liste" />
+                <Icone v-if="p.compte && !p.decede" nom="mobile" class="marque-liste" />
               </button>
             </section>
           </div>
@@ -311,7 +311,7 @@ async function fini(id) {
             <div v-for="m in donnees.nonPlaces" :key="m.id" class="ligne-membre">
               <span class="grandit"><strong>{{ m.prenom }} {{ m.nom }}</strong>
                 <span v-if="m.lien" class="pastille">{{ m.lien }}</span>
-                <span class="aide bloc">{{ libellesRoles[m.role] }}</span></span>
+                <span class="aide bloc">{{ m.decede ? 'Décès indiqué' : libellesRoles[m.role] }}</span></span>
               <button v-if="donnees.peutGerer" type="button" class="secondaire petit" @click="placer(m)">Placer dans l'arbre</button>
             </div>
             <p class="aide">Les auxiliaires de vie n'apparaissent pas dans l'arbre.</p>

@@ -162,6 +162,13 @@
       "when": 1790878436949,
       "tag": "0022_messagerie",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790884785673,
+      "tag": "0023_deces",
+      "breakpoints": true
     }
   ]
 }

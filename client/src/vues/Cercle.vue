@@ -5,12 +5,13 @@ import { api } from '../api.js'
 import { session, rafraichirSession } from '../session.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
-import { aDesCoordonnees } from '../coordonnees.js'
+import { aDesCoordonnees, mentionDeces } from '../coordonnees.js'
 import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
 import Coordonnees from './Coordonnees.vue'
 import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 import ChoixLien from './ChoixLien.vue'
+import FenetreDeces from './FenetreDeces.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import { confirmer } from '../fenetre.js'
@@ -65,6 +66,14 @@ const retirer = (m) => action(async () => {
   }
 })
 
+// Décès d'un membre, ou annulation d'un décès indiqué par erreur
+const deces = ref(null) // membre concerné
+const seulAidant = (m) => m.role === 'aidant' && cercle.value.membres.filter((x) => x.role === 'aidant' && !x.decede).length === 1
+const decesFait = (r) => {
+  Object.assign(deces.value, r)
+  deces.value = null
+}
+
 const rejoindre = () => action(async () => {
   await api('POST', `${url.value}/rejoindre`)
   await rafraichirSession()
@@ -87,13 +96,19 @@ const rejoindre = () => action(async () => {
 
       <h2>Personnes accompagnées</h2>
       <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
-      <div v-for="m in accompagnes" :key="m.id" class="carte">
+      <div v-for="m in accompagnes" :key="m.id" class="carte" :class="{ decede: m.decede }">
         <div class="ligne">
           <span class="personne">
-            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="44" />
-            <strong>{{ m.prenom }} {{ m.nom }}</strong>
+            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="44" :decede="m.decede" />
+            <span>
+              <strong>{{ m.prenom }} {{ m.nom }}</strong>
+              <span v-if="m.decede" class="mention-deces">{{ mentionDeces(m) }}</span>
+            </span>
           </span>
-          <span v-if="cercle.peutGerer" class="liens">
+          <span v-if="cercle.peutGerer && m.decede" class="liens">
+            <BoutonIcone icone="annuler" :libelle="`Annuler le décès de ${m.prenom} (erreur)`" @click="deces = m" />
+          </span>
+          <span v-else-if="cercle.peutGerer" class="liens">
             <BoutonIcone
               :icone="coordonneesOuvertes === m.id ? 'fermer' : 'modifier'"
               :libelle="coordonneesOuvertes === m.id ? 'Fermer' : 'Modifier ses coordonnées'"
@@ -105,9 +120,11 @@ const rejoindre = () => action(async () => {
               @click="ouvrir('avatar', m.id)"
             />
             <RouterLink :to="`${url}/tablettes`" class="bouton-icone" aria-label="Gérer sa tablette" title="Gérer sa tablette"><Icone nom="tablette" /></RouterLink>
+            <BoutonIcone icone="fleur" :libelle="`Indiquer le décès de ${m.prenom}`" @click="deces = m" />
           </span>
         </div>
-        <Coordonnees v-if="coordonneesOuvertes !== m.id && aDesCoordonnees(m)" class="details" :personne="m" />
+        <template v-if="m.decede" />
+        <Coordonnees v-else-if="coordonneesOuvertes !== m.id && aDesCoordonnees(m)" class="details" :personne="m" />
         <FormulaireCoordonnees
           v-else
           class="choix"
@@ -128,18 +145,19 @@ const rejoindre = () => action(async () => {
       </div>
 
       <h2>Aidants, proches et auxiliaires</h2>
-      <div v-for="m in autres" :key="m.id" class="carte">
+      <div v-for="m in autres" :key="m.id" class="carte" :class="{ decede: m.decede }">
         <div class="ligne">
           <span class="personne">
-            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" />
+            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" :decede="m.decede" />
             <span>
               <strong>{{ m.prenom }} {{ m.nom }}</strong>
               <span v-if="m.lien" class="lien-famille">{{ m.lien }}</span>
-              <span v-if="m.email" class="aide"> · {{ m.email }}</span>
+              <span v-if="m.decede" class="mention-deces">{{ mentionDeces(m) }}</span>
+              <span v-else-if="m.email" class="aide"> · {{ m.email }}</span>
             </span>
           </span>
           <span class="liens">
-            <span class="aide">{{ libellesRoles[m.role] }}</span>
+            <span v-if="!m.decede" class="aide">{{ libellesRoles[m.role] }}</span>
             <!-- Placé dans l'arbre généalogique : le lien est calculé, on va le voir dans l'arbre -->
             <RouterLink
               v-if="m.lienCalcule"
@@ -149,12 +167,16 @@ const rejoindre = () => action(async () => {
               :title="`Voir ${m.prenom} dans l'arbre généalogique`"
             ><Icone nom="arbre" /></RouterLink>
             <BoutonIcone
-              v-else-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire'"
+              v-else-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire' && !m.decede"
               :icone="lienOuvert?.id === m.id ? 'fermer' : 'famille'"
               :libelle="lienOuvert?.id === m.id ? 'Fermer' : `Préciser le lien de ${m.prenom} avec la personne accompagnée`"
               @click="lienOuvert = lienOuvert?.id === m.id ? null : { id: m.id, lien: m.lien ?? '' }"
             />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
+            <template v-if="cercle.peutGerer && !m.moi">
+              <BoutonIcone v-if="m.decede" icone="annuler" :libelle="`Annuler le décès de ${m.prenom} (erreur)`" @click="deces = m" />
+              <BoutonIcone v-else icone="fleur" :libelle="`Indiquer le décès de ${m.prenom}`" @click="deces = m" />
+            </template>
             <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
           </span>
         </div>
@@ -162,7 +184,7 @@ const rejoindre = () => action(async () => {
           <label>Lien de {{ m.prenom }} avec la personne accompagnée <ChoixLien v-model="lienOuvert.lien" /></label>
           <div><button type="submit">Enregistrer</button></div>
         </form>
-        <Coordonnees v-if="aDesCoordonnees(m)" class="details" :personne="m" />
+        <Coordonnees v-if="!m.decede && aDesCoordonnees(m)" class="details" :personne="m" />
       </div>
 
       <div v-if="cercle.peutGerer" class="carte">
@@ -188,6 +210,7 @@ const rejoindre = () => action(async () => {
           <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(invitation.lien)" />
         </div>
       </div>
+      <FenetreDeces v-if="deces" :url="url" :membre="deces" :seul-aidant="seulAidant(deces)" @fermer="deces = null" @fait="decesFait" />
     </template>
   </main>
 </template>
@@ -197,6 +220,9 @@ const rejoindre = () => action(async () => {
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .personne { display: flex; align-items: center; gap: 12px; }
 .lien-famille { margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.mention-deces { margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: #ebe9e5; color: #5f5d58; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.carte.decede { background: #f8f7f5; }
+.carte.decede strong { color: #5f5d58; }
 .lien-form { display: flex; flex-direction: column; gap: 8px; }
 .liens { display: flex; align-items: center; gap: 8px; }
 .details { margin: 10px 0 0 52px; }

@@ -13,6 +13,7 @@ import Avatar from './Avatar.vue'
 import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
+import { motDecede } from '../coordonnees.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -275,10 +276,10 @@ const vocalPossible = enregistrementPossible()
   <section class="fil">
     <header v-if="conversation" class="tete-fil">
       <button v-if="retour" class="retour" aria-label="Retour aux conversations" @click="emit('retour')"><Icone nom="precedent" /></button>
-      <Avatar v-if="conversation.autre" :src="conversation.autre.avatar" :prenom="conversation.autre.prenom" :taille="42" />
+      <Avatar v-if="conversation.autre" :src="conversation.autre.avatar" :prenom="conversation.autre.prenom" :taille="42" :decede="conversation.autre.decede" />
       <span v-else class="rond" :class="conversation.type"><Icone :nom="{ famille: 'famille', aidants: 'cadenas', liaison: 'carnet' }[conversation.type]" /></span>
       <div class="grandit">
-        <strong>{{ conversation.titre }}</strong>
+        <strong>{{ conversation.titre }}<span v-if="conversation.autre?.decede" class="mention-deces">{{ motDecede(conversation.autre.genre) }}</span></strong>
         <p class="aide">{{ sousTitre }}</p>
       </div>
       <div v-if="conversation.type === 'famille'" class="avatars-groupe">
@@ -309,8 +310,8 @@ const vocalPossible = enregistrementPossible()
         <!-- Cahier de liaison : des notes plutôt que des bulles -->
         <article v-else-if="estLiaison" class="note" :class="{ choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
           <div class="note-tete">
-            <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="30" />
-            <strong>{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</strong>
+            <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="30" :decede="b.auteur.decede" />
+            <strong>{{ b.deMoi ? 'Vous' : b.auteur.prenom }}<span v-if="b.auteur.decede" class="mention-deces">{{ motDecede(b.auteur.genre) }}</span></strong>
             <span v-if="b.accompagne" class="pastille">{{ b.accompagne.prenom }}</span>
             <span class="heure">{{ heureMessage(b.creeLe) }}</span>
           </div>
@@ -326,9 +327,9 @@ const vocalPossible = enregistrementPossible()
 
         <div v-else class="ligne-msg" :class="{ moi: b.deMoi }">
           <!-- Chaque message montre qui l'a écrit : avatar et prénom (« Vous » pour les siens) -->
-          <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="36" class="avatar-msg" />
+          <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="36" class="avatar-msg" :decede="b.auteur.decede" />
           <div class="bulle-bloc">
-            <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</div>
+            <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}<span v-if="b.auteur.decede" class="mention-deces">{{ motDecede(b.auteur.genre) }}</span></div>
             <div class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
               <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = { ...b.photo, message: b }" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
@@ -395,6 +396,9 @@ const vocalPossible = enregistrementPossible()
       <BoutonIcone v-if="donnees.fichiers && vocalPossible && !texte.trim()" icone="micro" :libelle="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :disabled="envoi" @click="commencerVocal" />
       <button v-else class="envoyer" :disabled="envoi || !texte.trim()" aria-label="Envoyer" title="Envoyer"><Icone nom="envoyer" /></button>
     </form>
+    <p v-else-if="conversation?.autre?.decede" class="fin-conversation">
+      {{ conversation.autre.prenom }} est {{ motDecede(conversation.autre.genre) }} : vos messages restent ici, mais on ne peut plus lui écrire.
+    </p>
     <p v-else-if="conversation" class="aide ferme">Vous ne pouvez plus écrire dans cette conversation.</p>
 
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
@@ -487,4 +491,6 @@ const vocalPossible = enregistrementPossible()
   .saisie { padding: 8px 8px 10px; gap: 6px; }
   .saisie .pour { max-width: 90px; }
 }
+.mention-deces { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #ebe9e5; color: #5f5d58; font-size: 0.8rem; font-weight: 600; }
+.fin-conversation { margin: 0; padding: 14px 16px; border-top: 1px solid #ebe8e3; color: var(--gris); text-align: center; }
 </style>

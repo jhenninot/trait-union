@@ -57,7 +57,8 @@ const suisAuxiliaire = computed(() => !peutGerer.value && estAuxiliaire(cercle.v
 const suisProche = computed(() => !peutGerer.value && cercle.value?.monRole === 'proche')
 const base = computed(() => `/cercles/${cercleId.value}`)
 
-const accompagnes = computed(() => cercle.value?.membres.filter((m) => m.role === 'accompagne') ?? [])
+// Une personne accompagnée décédée n'apparaît plus sur l'accueil (elle reste dans « Famille et aidants »)
+const accompagnes = computed(() => cercle.value?.membres.filter((m) => m.role === 'accompagne' && !m.decede) ?? [])
 const plusieurs = computed(() => accompagnes.value.length > 1)
 
 // Rendez-vous à venir (les « Rendez-vous privé » restent dans l'agenda)
@@ -178,7 +179,7 @@ function quand(d) {
 
 // --- Anniversaires du jour (le sien compris), en tête de page ---
 const anniversaires = computed(() => [...(cercle.value?.membres ?? []), ...sansCompte.value]
-  .filter((m) => estAnniversaire(m.dateNaissance))
+  .filter((m) => !m.decede && estAnniversaire(m.dateNaissance))
   .map((m) => ({ ...m, age: age(m.dateNaissance) }))
   .sort((a, b) => Number(b.moi) - Number(a.moi)))
 

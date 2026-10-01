@@ -3,7 +3,7 @@ import { ref, reactive, computed } from 'vue'
 import { api } from '../api.js'
 import { copier } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
-import { dateLongue } from '../coordonnees.js'
+import { dateLongue, motDecede } from '../coordonnees.js'
 import { dates } from '../arbre.js'
 import Avatar from './Avatar.vue'
 import Coordonnees from './Coordonnees.vue'
@@ -109,7 +109,7 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
 
     <ul v-if="p.decede" class="infos">
       <li v-if="p.decede"><Icone nom="gateau" class="en-ligne" />
-        <span>{{ p.dateNaissance ? dateLongue(p.dateNaissance) : '?' }} – {{ p.dateDeces ? dateLongue(p.dateDeces) : (p.genre === 'homme' ? 'décédé' : 'décédée') }}</span></li>
+        <span>{{ p.dateNaissance ? dateLongue(p.dateNaissance) : '?' }} – {{ p.dateDeces ? dateLongue(p.dateDeces) : motDecede(p.genre) }}</span></li>
     </ul>
     <Coordonnees v-if="!p.decede" :personne="p" />
     <Coordonnees v-else-if="p.adresse" :personne="{ adresse: p.adresse }" />
@@ -123,8 +123,9 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
       {{ p.visibleAide ? `Visible dans « Ma famille » de ${aides}` : `Caché à ${aides}` }}
     </p>
     <p class="etat gris">
-      <Icone :nom="p.compte ? 'mobile' : 'compte'" class="en-ligne" />
-      {{ p.compte ? `Utilise l'appli (${libellesRoles[p.role]?.toLowerCase() ?? 'membre'})` : 'N\'utilise pas l\'appli' }}
+      <Icone :nom="p.compte && !p.decede ? 'mobile' : 'compte'" class="en-ligne" />
+      <template v-if="p.compte && p.decede">Compte désactivé depuis son décès (en cas d'erreur : Modifier, puis décocher « Personne décédée »)</template>
+      <template v-else>{{ p.compte ? `Utilise l'appli (${libellesRoles[p.role]?.toLowerCase() ?? 'membre'})` : 'N\'utilise pas l\'appli' }}</template>
     </p>
 
     <div v-for="[titre, liste] in proches" :key="titre" class="proches">

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
+import { mentionDeces } from '../coordonnees.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
@@ -81,8 +82,14 @@ const adresseApk = `${location.host}/apk`
       <div v-for="m in accompagnes" :key="m.id" class="carte">
         <div class="ligne">
           <strong>{{ m.prenom }} {{ m.nom }}</strong>
-          <span class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
+          <span v-if="m.decede" class="aide">{{ mentionDeces(m) }}</span>
+          <span v-else class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
         </div>
+        <template v-if="m.decede">
+          <p class="aide">Son compte est désactivé et ses appareils ont été déconnectés.
+            En cas d'erreur, annulez le décès depuis <RouterLink :to="url">Famille et aidants</RouterLink>.</p>
+        </template>
+        <template v-else>
         <p v-if="m.appareilsAMettreAJour" class="mise-a-jour">
           <Icone nom="telecharger" class="en-ligne" />
           Nouvelle version de l'application à installer sur {{ m.appareilsAMettreAJour > 1 ? `${m.appareilsAMettreAJour} de ses appareils` : 'son appareil' }} :
@@ -129,6 +136,7 @@ const adresseApk = `${location.host}/apk`
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
+        </template>
       </div>
 
       <div v-if="codeAppareil" class="carte encart">

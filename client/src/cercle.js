@@ -32,10 +32,14 @@ export function utiliserCercle() {
     }
   }
 
-  const accompagnes = computed(() => cercle.value?.membres.filter((m) => m.role === 'accompagne') ?? [])
-  const autres = computed(() => cercle.value?.membres.filter((m) => m.role !== 'accompagne') ?? [])
+  // Les membres décédés (gardés pour pouvoir annuler une erreur) passent après les autres
+  const parDeces = (a, b) => a.decede - b.decede
+  const accompagnes = computed(() => cercle.value?.membres.filter((m) => m.role === 'accompagne').sort(parDeces) ?? [])
+  const autres = computed(() => cercle.value?.membres.filter((m) => m.role !== 'accompagne').sort(parDeces) ?? [])
+  // Personnes accompagnées encore en vie (choix « Pour qui » de l'agenda, tablettes...)
+  const accompagnesActifs = computed(() => accompagnes.value.filter((m) => !m.decede))
 
-  return { url, cercle, erreur, charger, action, accompagnes, autres }
+  return { url, cercle, erreur, charger, action, accompagnes, autres, accompagnesActifs }
 }
 
 export const heure = (d) => new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })

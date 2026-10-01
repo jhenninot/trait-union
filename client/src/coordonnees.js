@@ -67,3 +67,12 @@ export function estAnniversaire(date, d = new Date()) {
 
 // Liens proposés avec la personne accompagnée ; tout autre lien se saisit en texte libre
 export const LIENS = ['Fils', 'Fille', 'Gendre', 'Belle-fille', 'Petit-fils', 'Petite-fille']
+
+// « décédé » ou « décédée » selon le genre renseigné dans l'arbre généalogique (« décédé(e) » sinon)
+export function motDecede(genre, majuscule = false) {
+  const mot = genre === 'homme' ? 'décédé' : genre === 'femme' ? 'décédée' : 'décédé(e)'
+  return majuscule ? `D${mot.slice(1)}` : mot
+}
+
+// « Décédé le 12 mars 2026 », ou « Décédée » sans date
+export const mentionDeces = (p) => `${motDecede(p.genre, true)}${p.dateDeces ? ` le ${dateLongue(p.dateDeces)}` : ''}`

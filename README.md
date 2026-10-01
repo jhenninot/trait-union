@@ -41,6 +41,10 @@ Le bouton « Se connecter avec Google » n'apparaît que si `GOOGLE_CLIENT_ID` e
 3. URI de redirection autorisée : `https://<votre domaine>/api/auth/google/retour` (Google impose HTTPS, sauf pour `http://localhost`).
 4. Dans l'onglet `.env` de Dockge : `APP_URL=https://<votre domaine>`, `GOOGLE_CLIENT_ID=...`, `GOOGLE_CLIENT_SECRET=...`, puis redéployer la pile.
 
+### Décès d'un membre
+
+Un aidant peut indiquer le décès de n'importe quel membre (personne accompagnée, aidant, proche, auxiliaire) depuis « Famille et aidants » (icône fleur, date facultative), ou en cochant « Personne décédée » sur sa fiche de l'arbre généalogique. Le compte n'est pas supprimé : il est désactivé (`utilisateurs.decede`, `date_deces`, `desactive_le`), ses sessions, appareils d'alertes et codes de tablette sont supprimés, et la personne apparaît partout comme une personne de l'arbre sans compte : visage grisé et « décédé » dans la famille, l'arbre, les messages et l'agenda, plus de connexion, d'alertes, d'anniversaire ni de messages. Ses photos, messages, rendez-vous et sa fiche de l'arbre restent. En cas d'erreur, « Annuler le décès » (ou décocher la case dans l'arbre) réactive le compte ; la personne doit se reconnecter. Logique dans `server/deces.js` ; on ne peut pas indiquer son propre décès ni celui du dernier administrateur.
+
 ## Envoi d'emails (Brevo, facultatif)
 
 Les emails partent par l'[API de Brevo](https://developers.brevo.com) (offre gratuite : 300 emails par jour). Tout se règle dans l'application : un administrateur ouvre « Envoi d'emails » dans la partie Administration du menu (`/admin/email`), où les étapes sont rappelées (compte Brevo, expéditeur validé, clé API `xkeysib-…`, IP publique de la box autorisée dans Brevo), vérifie la clé, choisit l'expéditeur, active l'envoi et envoie un email de test. La clé est stockée en base (table `parametres`) et n'est jamais renvoyée au navigateur. Une fois l'envoi activé, un aidant peut saisir l'adresse de la personne qu'il invite pour lui envoyer le lien par email ; le lien reste affiché pour être copié. Les liens des emails utilisent `APP_URL` si elle est définie.

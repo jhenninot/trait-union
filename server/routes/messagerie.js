@@ -82,7 +82,7 @@ async function etatsLecture(conversationIds, utilisateurId) {
   return new Map(l.map((x) => [x.conversationId, x]))
 }
 
-const personne = (lienAvatar, m) => m && ({ utilisateurId: m.utilisateurId, prenom: m.prenom, nom: m.nom, role: m.role, lien: m.lien, avatar: lienAvatar(m.utilisateurId, m.avatar) })
+const personne = (lienAvatar, m) => m && ({ utilisateurId: m.utilisateurId, prenom: m.prenom, nom: m.nom, role: m.role, lien: m.lien, avatar: lienAvatar(m.utilisateurId, m.avatar), ...(m.decede ? { decede: true, genre: m.genre } : {}) })
 
 function presenterConversation(c, { moi, liste, lienAvatar, dernier, nonLu, etat }) {
   const autreId = c.type === 'privee' ? (c.personneA === moi.utilisateurId ? c.personneB : c.personneA) : null
@@ -255,7 +255,7 @@ router.get('/cercles/:cercleId', async (req, res) => {
     conversations: liste,
     contacts,
     // Pour le cahier de liaison : les personnes accompagnées du cercle
-    accompagnes: vue.liste.filter((m) => m.role === 'accompagne').map((m) => personne(lienAvatar, m))
+    accompagnes: vue.liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m))
   })
 })
 
@@ -290,7 +290,7 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     conversation: presenterConversation(conversation, { moi, liste, lienAvatar, etat: etat.get(conversation.id) }),
     messages: lignes.reverse().map((m) => presenterMessage(m, contexte)),
     suite: lignes.length === PAR_PAGE,
-    accompagnes: conversation.type === 'liaison' ? liste.filter((m) => m.role === 'accompagne').map((m) => personne(lienAvatar, m)) : [],
+    accompagnes: conversation.type === 'liaison' ? liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)) : [],
     fichiers: Boolean(stockage),
     peutModerer: conversation.type !== 'privee' && moi.role === 'aidant',
     monRole: moi.role,
@@ -310,7 +310,7 @@ router.post('/conversations/:id/messages', chargerConversation, async (req, res)
   if (!['texte', 'rapide', 'photo', 'vocal'].includes(type)) throw new ErreurSaisie('Type de message invalide')
   let accompagneId = null
   if (req.body.accompagneId && conversation.type === 'liaison') {
-    const a = liste.find((m) => m.utilisateurId === req.body.accompagneId && m.role === 'accompagne')
+    const a = liste.find((m) => m.utilisateurId === req.body.accompagneId && m.role === 'accompagne' && !m.decede)
     if (!a) throw new ErreurSaisie('Personne accompagnée introuvable')
     accompagneId = a.utilisateurId
   }
