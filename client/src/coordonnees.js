@@ -53,4 +53,4 @@ export function estAnniversaire(date, d = new Date()) {
 }
 
 // Liens proposés avec la personne accompagnée ; tout autre lien se saisit en texte libre
-export const LIENS = ['Fils', 'Fille', 'Petit-fils', 'Petite-fille']
+export const LIENS = ['Fils', 'Fille', 'Gendre', 'Belle-fille', 'Petit-fils', 'Petite-fille']
