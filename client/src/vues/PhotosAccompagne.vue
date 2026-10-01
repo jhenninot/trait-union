@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { session } from '../session.js'
 import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
-import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
+import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { partagerPhoto, partageDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
@@ -165,8 +165,12 @@ function manuel(sens) {
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
         <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
-      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1) }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
-        <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo de famille'" />
+      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1), duree: diaporama ? 900 : 450 }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
+        <div class="piste">
+          <div v-for="d in diapos(liste, index, true)" :key="d.cle" :data-role="d.role" :data-id="d.photo.id">
+            <img :src="d.photo.ecran" :alt="d.photo.legende || 'Photo de famille'" />
+          </div>
+        </div>
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>
       <p class="envoi">
@@ -202,12 +206,14 @@ function manuel(sens) {
   align-items: center;
   padding: 16px 24px;
   gap: 8px;
+  overflow: hidden;
 }
-.cadre { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.cadre { flex: 1; min-height: 0; width: 100%; display: flex; }
+.piste { flex: 1; min-width: 0; }
 .cadre img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); }
 .plein { background: #111; }
 /* Plein écran : la photo seule sur fond noir, par-dessus la barre de boutons ; toucher pour revenir */
-.cadre.plein-ecran { position: fixed; inset: 0; z-index: 60; background: black; }
+.cadre.plein-ecran { position: fixed; inset: 0; z-index: 60; background: black; overflow: hidden; }
 .cadre.plein-ecran img { border-radius: 0; box-shadow: none; }
 .plein .cadre img { border-radius: 0; box-shadow: none; }
 .plein .legende, .plein .envoi { color: white; }

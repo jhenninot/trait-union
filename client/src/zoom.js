@@ -4,7 +4,8 @@
 // photo est agrandie, glisser le doigt la déplace au lieu de changer de photo (el.dataset.zoom).
 const MAX = 5
 
-const image = (el) => el.querySelector('img')
+// Sur une piste (v-balayage), seule la photo du milieu s'agrandit
+const image = (el) => el.querySelector('[data-role="courante"] img') ?? el.querySelector('img')
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
 const milieu = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
 

@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
-import { balayage as vBalayage, prechargerVoisines } from '../balayage.js'
+import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
 import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
@@ -361,7 +361,11 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <button class="agrandir" aria-label="Plein écran" title="Plein écran" @click="entrerPleinEcran"><Icone nom="agrandir" class="en-ligne" /></button>
         <button v-if="ouverte > 0" class="fleche gauche" aria-label="Photo précédente" @click="deplacer(-1)"><Icone nom="precedent" class="en-ligne" /></button>
       </template>
-      <img :key="photo.id" :src="photo.ecran" :alt="photo.legende || 'Photo'" @click="pleinEcran ? sortirPleinEcran() : entrerPleinEcran()" />
+      <div class="piste" @click.self="pleinEcran ? sortirPleinEcran() : fermer()">
+        <div v-for="d in diapos(liste, ouverte)" :key="d.cle" :data-role="d.role" :data-id="d.photo.id" @click.self="pleinEcran ? sortirPleinEcran() : fermer()">
+          <img :src="d.photo.ecran" :alt="d.photo.legende || 'Photo'" @click="pleinEcran ? sortirPleinEcran() : entrerPleinEcran()" />
+        </div>
+      </div>
       <button v-if="!pleinEcran && ouverte < liste.length - 1" class="fleche droite" aria-label="Photo suivante" @click="deplacer(1)"><Icone nom="suivant" class="en-ligne" /></button>
       <div v-if="!pleinEcran" class="infos">
         <form v-if="legendeEnEdition != null" class="edition" @submit.prevent="enregistrerLegende">
@@ -465,23 +469,25 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgb(15 18 30 / 0.94);
+  background: rgb(15 18 30 / 0.98);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 16px 16px;
+  padding: 64px 16px 16px;
   gap: 12px;
+  overflow: hidden;
 }
-.visionneuse img { max-width: 100%; max-height: calc(100vh - 190px); object-fit: contain; border-radius: 6px; }
-.fermer, .fleche { position: absolute; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; }
+.piste { flex: 1; min-height: 0; width: 100%; }
+.visionneuse img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.fermer, .fleche { position: absolute; z-index: 2; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; }
 .fermer, .agrandir { top: 12px; width: 44px; height: 44px; padding: 0; font-size: 1.3rem; }
 .fermer { right: 12px; }
-.agrandir { position: absolute; left: 12px; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; font-size: 1.5rem; }
+.agrandir { position: absolute; z-index: 2; left: 12px; background: rgb(255 255 255 / 0.15); color: white; border-radius: 999px; font-size: 1.5rem; }
 .visionneuse img { cursor: zoom-in; }
 /* Plein écran : la photo seule, aussi grande que possible, dans les deux sens de l'écran */
 .visionneuse.plein-ecran { padding: 0; background: black; gap: 0; }
-.visionneuse.plein-ecran img { max-width: 100vw; max-height: 100vh; max-height: 100dvh; border-radius: 0; cursor: zoom-out; }
+.visionneuse.plein-ecran img { border-radius: 0; cursor: zoom-out; }
 .fermer.discret { opacity: 0.6; z-index: 1; }
 .fleche { top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0; font-size: 2.2rem; line-height: 1; }
 .gauche { left: 12px; }
