@@ -12,7 +12,7 @@ import Avatar from './Avatar.vue'
 // « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
 // conversations (« Toute la famille » et les privées) avec une pastille de messages non lus ;
 // en touchant une conversation, son fil (qui a écrit quoi, avec avatar et prénom), et un gros
-// bouton « Répondre » : réponses toutes faites d'un geste, message vocal ou photo.
+// bouton « Écrire » : réponses toutes faites d'un geste, message vocal ou photo.
 const donnees = ref(null) // { conversations, contacts, reglages, fichiers }
 const erreur = ref('')
 const ecran = ref('liste') // liste | contacts | fil | repondre | vocal | envoye
@@ -159,7 +159,7 @@ function arreterAudio() {
   arreterParole()
 }
 
-// --- Répondre (dans la conversation ouverte)
+// --- Écrire (dans la conversation ouverte)
 
 function repondre() {
   arreterAudio()
@@ -299,7 +299,7 @@ async function terminerVocal() {
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <div ref="zoneFil" class="zone-fil">
-        <p v-if="!fil.messages.length" class="vide">Pas encore de message. Touchez « Répondre » pour écrire le premier.</p>
+        <p v-if="!fil.messages.length" class="vide">Pas encore de message. Touchez « Écrire » pour envoyer le premier.</p>
         <template v-for="b in blocs" :key="b.cle ?? b.id">
           <p v-if="b.separateur" class="jour"><span>{{ b.separateur }}</span></p>
           <p v-else-if="b.retire" class="retire">{{ b.retire.parAuteur ? 'Message effacé' : 'Message retiré' }}</p>
@@ -329,17 +329,17 @@ async function terminerVocal() {
           </div>
         </template>
       </div>
-      <button v-if="fil.conversation.peutEcrire" class="repondre" @click="repondre"><Icone nom="message" class="en-ligne" /> Répondre</button>
+      <button v-if="fil.conversation.peutEcrire" class="repondre" @click="repondre"><Icone nom="message" class="en-ligne" /> Écrire</button>
     </div>
 
-    <!-- Répondre : réponses toutes faites, vocal, photo -->
+    <!-- Écrire : réponses toutes faites, vocal, photo -->
     <template v-else-if="ecran === 'repondre'">
       <button class="secondaire retour" @click="retour"><Icone nom="precedent" class="en-ligne" /> Retour</button>
       <div class="a-qui">
         <Avatar v-if="!cible.famille" :src="cible.avatar" :prenom="cible.prenom" :taille="88" />
         <span v-else class="rond-famille"><Icone nom="famille" /></span>
         <div>
-          <p class="petit-gris">{{ cible.famille ? 'Écrire à' : 'Répondre à' }}</p>
+          <p class="petit-gris">Écrire à</p>
           <p class="qui grand">{{ cible.famille ? 'Toute la famille' : cible.titre }}</p>
           <p v-if="cible.lien" class="lien-msg">{{ cible.lien }}</p>
         </div>

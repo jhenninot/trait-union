@@ -97,7 +97,7 @@ const FIL = [
 ]
 const MESSAGES_POINTS = [
   '« Toute la famille », personnes accompagnées comprises, et des conversations à deux',
-  'Pour elle : gros boutons « Écouter » et « Répondre », réponses toutes faites, message vocal ou photo',
+  'Pour elle : gros boutons « Écouter » et « Écrire », réponses toutes faites, message vocal ou photo',
   'Une pastille pour les messages non lus, et « Vu par Claire et Michel »',
   'Le cahier de liaison, entre aidants et auxiliaires de vie : passages, repas, courses à prévoir',
   'Une photo reçue se range en un geste dans un album du cercle'
@@ -305,7 +305,7 @@ function contacter() {
             <h2>Des nouvelles de chacun, dans un même fil</h2>
             <p>Chaque cercle a sa conversation « Toute la famille », comme un groupe WhatsApp, mais réservé au cercle et
               pensé pour elle : elle voit qui écrit, avec son visage et son prénom, se fait lire les messages à voix haute
-              et répond d'un geste. Les aidants ont aussi leur conversation à eux, et chacun peut écrire en privé.</p>
+              et écrit d'un geste. Les aidants ont aussi leur conversation à eux, et chacun peut écrire en privé.</p>
             <ul class="points">
               <li v-for="pt in MESSAGES_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
             </ul>
@@ -329,7 +329,7 @@ function contacter() {
                   <span v-if="!m.moi" class="demo-ecouter"><Icone nom="son" class="en-ligne" /> Écouter</span>
                 </div>
               </div>
-              <span class="demo-repondre"><Icone nom="message" class="en-ligne" /> Répondre</span>
+              <span class="demo-repondre"><Icone nom="message" class="en-ligne" /> Écrire</span>
             </div>
           </div>
         </div>

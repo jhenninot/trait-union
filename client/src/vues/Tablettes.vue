@@ -121,7 +121,7 @@ const adresseApk = `${location.host}/apk`
             </form>
           </div>
           <label class="case"><input type="checkbox" :checked="m.messagerie.lectureAuto" @change="changerMessagerie(m, { lectureAuto: $event.target.checked })" /> Lire les nouveaux messages à voix haute dès leur arrivée</label>
-          <label class="case"><input type="checkbox" :checked="m.messagerie.vocal" @change="changerMessagerie(m, { vocal: $event.target.checked })" /> {{ m.prenom }} peut répondre par un message vocal ou une photo</label>
+          <label class="case"><input type="checkbox" :checked="m.messagerie.vocal" @change="changerMessagerie(m, { vocal: $event.target.checked })" /> {{ m.prenom }} peut envoyer un message vocal ou une photo</label>
         </div>
         <div v-if="cercle.peutGerer" class="actions">
           <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>

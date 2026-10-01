@@ -63,6 +63,17 @@ Chaque rendez-vous peut avoir une alerte (colonne `rendez_vous.rappel`, en minut
 - Application Android : Firebase Cloud Messaging (une WebView ne reçoit pas le Web Push). Il faut un projet Firebase avec une application Android `fr.traitunion.app` : son `google-services.json` va dans le secret de dépôt `GOOGLE_SERVICES_JSON` (lu par le workflow Android ; sans lui l'APK marche mais sans alertes), et la clé du compte de service se colle dans **Administration, Alertes** (`/admin/alertes`). Code natif : `AlertesService.java` et l'objet `window.TraitUnionAlertes` de `MainActivity.java`.
 - Les appareils (`appareils_alertes`) sont rattachés à la session : se déconnecter arrête leurs alertes.
 
+## Messagerie
+
+Chaque cercle a d'office trois conversations : « Toute la famille » (personnes accompagnées comprises, pas les auxiliaires de vie), « Les aidants » et le « Cahier de liaison » (aidants et auxiliaires), plus des conversations privées à deux. Une auxiliaire peut écrire en privé aux aidants et aux personnes accompagnées, pas aux proches ; les aidants ne lisent pas les conversations privées d'une personne accompagnée. Code : `server/messagerie/` (droits, temps réel, fichiers, alertes, conservation) et `server/routes/messagerie.js` ; tables `conversations`, `messages`, `lectures`.
+
+- Messages texte, réponses toutes faites, photos avec commentaire et messages vocaux (deux minutes au plus). Photos et vocaux sont rangés chez l'hébergeur S3 configuré pour les photos, envoyés en deux temps (lien signé, puis publication). Une photo d'une conversation peut être ajoutée aux photos du cercle, dans l'album choisi.
+- Temps réel par Server-Sent Events (`/api/messagerie/flux`, en-tête `X-Accel-Buffering: no`, rien à régler dans Nginx Proxy Manager) ; accusés de lecture (« Vu par… ») ; alerte « Nouveaux messages ».
+- Personne accompagnée (« Mes messages ») : la liste de ses conversations avec une pastille de non-lus, puis le fil en grand (avatar et prénom de chaque auteur, bouton « Écouter »), un gros bouton « Écrire » (réponses toutes faites, message vocal, photo) et « Effacer » sur ses propres messages. Commande vocale « Lis mes messages ».
+- Réglages par personne accompagnée (page Personnes accompagnées) : qui peut lui écrire en privé, ses réponses toutes faites, lecture à voix haute automatique, vocal et photo. Un aidant peut retirer un message d'un groupe.
+- Durée de conservation réglée par l'administrateur (**Administration, Messagerie**, `/admin/messagerie`) : les messages plus anciens sont effacés chaque heure avec leurs fichiers.
+- Application Android : permission micro (`RECORD_AUDIO`) et canal de notification « Nouveaux messages » ; l'APK est à reconstruire pour les messages vocaux.
+
 ## Application mobile
 
 ### PWA (tous les appareils)
