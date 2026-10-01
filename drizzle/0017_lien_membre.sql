@@ -1,0 +1,1 @@
+ALTER TABLE "membres" ADD COLUMN "lien" text;

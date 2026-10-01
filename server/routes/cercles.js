@@ -83,7 +83,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -217,6 +217,19 @@ router.put('/:cercleId/membres/:membreId/alertes', chargerCercle, exigerGestion,
   const alertes = lirePreferences(req.body)
   await db.update(utilisateurs).set({ alertes }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(alertes)
+})
+
+// Lien d'un membre avec la personne accompagnée (fils, petite-fille...) : chacun règle le sien,
+// les aidants celui de tous. Corps : { lien } (null pour l'effacer)
+router.put('/:cercleId/membres/:membreId/lien', chargerCercle, async (req, res) => {
+  const [membre] = await db.select().from(membres)
+    .where(and(eq(membres.id, req.params.membreId), eq(membres.cercleId, req.cercle.id)))
+  if (!membre) return res.status(404).json({ erreur: 'Membre introuvable' })
+  if (!req.peutGerer && membre.utilisateurId !== req.utilisateur.id) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
+  if (membre.role === 'accompagne') return res.status(400).json({ erreur: 'Pas de lien pour une personne accompagnée' })
+  const lien = valider.texte(req.body.lien, 'lien', { obligatoire: false, max: 60 })
+  await db.update(membres).set({ lien }).where(eq(membres.id, membre.id))
+  res.json({ lien })
 })
 
 // Téléphone, date de naissance et adresse d'une personne accompagnée, renseignés par un aidant

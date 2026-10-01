@@ -120,6 +120,13 @@
       "when": 1790848698503,
       "tag": "0016_email_invitation",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790852337188,
+      "tag": "0017_lien_membre",
+      "breakpoints": true
     }
   ]
 }

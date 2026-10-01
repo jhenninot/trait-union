@@ -36,3 +36,6 @@ export function estAnniversaire(date, d = new Date()) {
   const bissextile = (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0
   return date.slice(5) === jour || (jour === '02-28' && !bissextile && date.slice(5) === '02-29')
 }
+
+// Liens proposés avec la personne accompagnée ; tout autre lien se saisit en texte libre
+export const LIENS = ['Fils', 'Fille', 'Petit-fils', 'Petite-fille']

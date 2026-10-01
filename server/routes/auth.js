@@ -16,7 +16,7 @@ const limiteCode = limiteur({ max: 10, fenetreMs: 15 * 60 * 1000 })
 
 export async function mesCercles(utilisateurId) {
   return db
-    .select({ id: cercles.id, nom: cercles.nom, role: membres.role, membreId: membres.id })
+    .select({ id: cercles.id, nom: cercles.nom, role: membres.role, membreId: membres.id, lien: membres.lien })
     .from(membres)
     .innerJoin(cercles, eq(membres.cercleId, cercles.id))
     .where(eq(membres.utilisateurId, utilisateurId))

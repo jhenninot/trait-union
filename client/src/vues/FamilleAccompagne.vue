@@ -42,6 +42,7 @@ onMounted(async () => {
         <Avatar :src="p.avatar" :prenom="p.prenom" :taille="taille" />
         <span class="prenom">{{ p.prenom }}</span>
         <span v-if="p.nom" class="nom">{{ p.nom }}</span>
+        <span v-if="p.lien" class="lien">{{ p.lien }}</span>
       </button>
     </div>
 
@@ -50,6 +51,7 @@ onMounted(async () => {
         <BoutonIcone class="fermer" icone="fermer" libelle="Fermer" gros @click="fiche = null" />
         <Avatar :src="fiche.avatar" :prenom="fiche.prenom" :taille="petit ? 110 : 150" />
         <h2>{{ fiche.prenom }} <span v-if="fiche.nom" class="nom">{{ fiche.nom }}</span></h2>
+        <p v-if="fiche.lien" class="lien grand">{{ fiche.lien }}</p>
         <a v-if="fiche.telephone" class="appeler" :href="lienTelephone(fiche.telephone)">
           <Icone nom="telephone" class="em" />
           <span>Appeler<br /><span class="numero">{{ fiche.telephone }}</span></span>
@@ -85,6 +87,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0 0 24px; }
 }
 .prenom { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); }
 .nom { font-size: 1.3rem; color: var(--gris); font-weight: 400; }
+.lien { margin-top: 4px; padding: 4px 16px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-size: 1.3rem; font-weight: 700; }
+.lien.grand { margin: -6px 0 0; font-size: 1.6rem; padding: 6px 22px; }
 
 /* Fiche d'une personne, en gros caractères */
 .voile {
@@ -139,6 +143,8 @@ h2 .nom { font-size: 1.6rem; }
   .personne { padding: 16px 8px; border-radius: 18px; }
   .prenom { font-size: 1.4rem; }
   .nom { font-size: 1.05rem; }
+  .lien { font-size: 1.05rem; padding: 3px 12px; }
+  .lien.grand { font-size: 1.3rem; }
   .voile { padding: 0; }
   .fiche { border-radius: 0; height: 100%; padding: 24px 16px; gap: 14px; justify-content: center; }
   h2 { font-size: 2rem; }

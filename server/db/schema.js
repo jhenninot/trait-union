@@ -49,7 +49,10 @@ export const membres = pgTable('membres', {
   prenom: text('prenom').notNull(),
   nom: text('nom'),
   email: text('email'),
-  role: roleMembre('role').notNull().default('proche')
+  role: roleMembre('role').notNull().default('proche'),
+  // Lien avec la personne accompagnée : « Fils », « Fille », « Petit-fils », « Petite-fille »
+  // ou un texte libre (« Voisine », « Neveu »...). Propre au cercle.
+  lien: text('lien')
 }, (t) => [
   uniqueIndex('membres_cercle_email_idx').on(t.cercleId, t.email),
   uniqueIndex('membres_cercle_utilisateur_idx').on(t.cercleId, t.utilisateurId)

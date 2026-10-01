@@ -10,6 +10,7 @@ import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
 import Coordonnees from './Coordonnees.vue'
 import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
+import ChoixLien from './ChoixLien.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 
@@ -37,6 +38,13 @@ async function enregistrerCoordonnees(m, c) {
     erreurCoordonnees.value = e.message
   }
 }
+
+// Lien d'un aidant ou d'un proche avec la personne accompagnée, précisé par un aidant
+const lienOuvert = ref(null) // { id, lien }
+const enregistrerLien = (m) => action(async () => {
+  m.lien = (await api('PUT', `${url.value}/membres/${m.id}/lien`, { lien: lienOuvert.value.lien })).lien
+  lienOuvert.value = null
+})
 
 const inviter = (role) => action(async () => {
   const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations`, { role, email: emailInvite.value || undefined })
@@ -125,15 +133,26 @@ const rejoindre = () => action(async () => {
             <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" />
             <span>
               <strong>{{ m.prenom }} {{ m.nom }}</strong>
+              <span v-if="m.lien" class="lien-famille">{{ m.lien }}</span>
               <span v-if="m.email" class="aide"> · {{ m.email }}</span>
             </span>
           </span>
           <span class="liens">
             <span class="aide">{{ libellesRoles[m.role] }}</span>
+            <BoutonIcone
+              v-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire'"
+              :icone="lienOuvert?.id === m.id ? 'fermer' : 'famille'"
+              :libelle="lienOuvert?.id === m.id ? 'Fermer' : `Préciser le lien de ${m.prenom} avec la personne accompagnée`"
+              @click="lienOuvert = lienOuvert?.id === m.id ? null : { id: m.id, lien: m.lien ?? '' }"
+            />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
             <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
           </span>
         </div>
+        <form v-if="lienOuvert?.id === m.id" class="choix lien-form" @submit.prevent="enregistrerLien(m)">
+          <label>Lien de {{ m.prenom }} avec la personne accompagnée <ChoixLien v-model="lienOuvert.lien" /></label>
+          <div><button type="submit">Enregistrer</button></div>
+        </form>
         <Coordonnees v-if="aDesCoordonnees(m)" class="details" :personne="m" />
       </div>
 
@@ -168,6 +187,8 @@ const rejoindre = () => action(async () => {
 .surtitre { margin: 0; }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .personne { display: flex; align-items: center; gap: 12px; }
+.lien-famille { margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.lien-form { display: flex; flex-direction: column; gap: 8px; }
 .liens { display: flex; align-items: center; gap: 8px; }
 .details { margin: 10px 0 0 52px; }
 .choix { margin-top: 16px; border-top: 1px solid #ebe8e3; padding-top: 12px; }
