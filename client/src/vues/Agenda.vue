@@ -7,6 +7,7 @@ import { RECURRENCES, texteRecurrence, choixRappels, texteRappel, visibilites, v
 import Calendrier from './Calendrier.vue'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
+import { confirmer } from '../fenetre.js'
 
 // Agenda d'un cercle pour les aidants et les proches : vue mois, semaine ou liste
 // (à venir ou passés), ajout et modification. Chacun choisit qui peut voir le
@@ -192,9 +193,9 @@ const enregistrer = () => action(async () => {
 
 // Un rendez-vous répété demande quoi supprimer (choix affiché dans sa carte)
 const suppression = ref(null) // clé de la répétition dont on affiche le choix
-function supprimer(rdv) {
+async function supprimer(rdv) {
   if (rdv.recurrence !== 'aucune') return (suppression.value = rdv.cle)
-  if (confirm(`Supprimer « ${rdv.titre} » ?`)) confirmerSuppression(rdv, 'serie')
+  if (await confirmer(`Supprimer « ${rdv.titre} » ?`, { oui: 'Supprimer', danger: true, icone: 'effacer' })) confirmerSuppression(rdv, 'serie')
 }
 const confirmerSuppression = (rdv, portee) => action(async () => {
   await api('DELETE', `${url.value}/rendez-vous/${rdv.id}?portee=${portee}&occurrence=${rdv.occurrence}`)

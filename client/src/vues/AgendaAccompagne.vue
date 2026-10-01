@@ -7,6 +7,7 @@ import Calendrier from './Calendrier.vue'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
+import { confirmer } from '../fenetre.js'
 
 // « Mon agenda » sur la tablette de la personne accompagnée. Par défaut une liste :
 // ce qui est prévu aujourd'hui en grand, puis les prochains jours. Vues semaine et
@@ -223,9 +224,9 @@ async function ecouterAgenda() {
 
 // Un rendez-vous qui se répète demande : ce jour-là seulement, ou toutes les fois
 const effacement = ref(null)
-function supprimer(rdv) {
+async function supprimer(rdv) {
   if (rdv.recurrence !== 'aucune') return (effacement.value = rdv.cle)
-  if (confirm(`Effacer « ${rdv.titre} » ?`)) effacer(rdv, 'serie')
+  if (await confirmer(`Effacer « ${rdv.titre} » ?`, { oui: 'Oui, effacer', non: 'Non', danger: true, icone: 'effacer' })) effacer(rdv, 'serie')
 }
 async function effacer(rdv, portee) {
   effacement.value = null

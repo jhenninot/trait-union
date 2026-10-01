@@ -13,6 +13,7 @@ import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 import ChoixLien from './ChoixLien.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import { confirmer } from '../fenetre.js'
 
 // Page « Famille et aidants » d'un cercle : membres et invitations
 const router = useRouter()
@@ -53,7 +54,7 @@ const inviter = (role) => action(async () => {
 })
 
 const retirer = (m) => action(async () => {
-  if (!confirm(`Retirer ${m.prenom} du cercle ?`)) return
+  if (!await confirmer(`Retirer ${m.prenom} du cercle ?`, { oui: 'Retirer', danger: true })) return
   await api('DELETE', `${url.value}/membres/${m.id}`)
   await rafraichirSession()
   // Si l'on s'est retiré soi-même, le cercle n'est plus accessible

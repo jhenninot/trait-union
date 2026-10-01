@@ -10,6 +10,7 @@ import {
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Avatar from './Avatar.vue'
+import { confirmer } from '../fenetre.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -251,9 +252,9 @@ async function terminerVocal() {
 }
 
 // --- Actions sur un message
-const retirer = (m) => {
+const retirer = async (m) => {
   const question = m.deMoi ? 'Effacer ce message pour tout le monde ?' : `Retirer le message de ${m.auteur.prenom} ? Il restera la mention « Message retiré par ${session.utilisateur.prenom} ».`
-  if (!confirm(question)) return
+  if (!await confirmer(question, { oui: m.deMoi ? 'Effacer' : 'Retirer', danger: true, icone: 'effacer' })) return
   selection.value = null
   return action(() => api('DELETE', `/messagerie/messages/${m.id}`))
 }

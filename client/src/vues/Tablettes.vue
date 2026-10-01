@@ -5,6 +5,7 @@ import { utiliserCercle, heure, copier } from '../cercle.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
+import { confirmer } from '../fenetre.js'
 
 // Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
@@ -34,7 +35,7 @@ const genererCode = (m) => action(async () => {
 })
 
 const deconnecterAppareils = (m) => action(async () => {
-  if (!confirm(`Déconnecter tous les appareils de ${m.prenom} ?`)) return
+  if (!await confirmer(`Déconnecter tous les appareils de ${m.prenom} ?`, { oui: 'Déconnecter', danger: true, icone: 'deconnexion' })) return
   await api('POST', `${url.value}/membres/${m.id}/deconnecter`)
   await charger()
 })
@@ -59,7 +60,7 @@ function ajouterReponse(m) {
 }
 
 const retirer = (m) => action(async () => {
-  if (!confirm(`Retirer ${m.prenom} du cercle ?`)) return
+  if (!await confirmer(`Retirer ${m.prenom} du cercle ?`, { oui: 'Retirer', danger: true })) return
   await api('DELETE', `${url.value}/membres/${m.id}`)
   await charger()
 })

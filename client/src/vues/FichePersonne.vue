@@ -9,6 +9,7 @@ import Avatar from './Avatar.vue'
 import Coordonnees from './Coordonnees.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import { confirmer } from '../fenetre.js'
 
 // Fiche d'une personne de l'arbre généalogique (panneau à droite sur ordinateur, plein écran
 // sur téléphone) : informations, liens, et pour les aidants les actions sur l'arbre.
@@ -70,13 +71,13 @@ const relationsListe = computed(() => props.arbre.relations
     return { ...r, texte }
   }))
 const retirerLien = (r) => action(async () => {
-  if (!confirm(`Retirer le lien « ${r.texte} » ?`)) return
+  if (!await confirmer(`Retirer le lien « ${r.texte} » ?`, { oui: 'Retirer', danger: true })) return
   await api('DELETE', `${props.base}/arbre/relations/${r.id}`)
 })
 const changerSepares = (r) => action(() => api('PUT', `${props.base}/arbre/relations/${r.id}`, { separes: !r.separes }))
 const retirer = () => action(async () => {
   const membre = p.value.compte ? ` ${p.value.prenom} reste membre du cercle.` : ''
-  if (!confirm(`Retirer ${p.value.prenom} de l'arbre, avec ses liens ?${membre}`)) return
+  if (!await confirmer(`Retirer ${p.value.prenom} de l'arbre, avec ses liens ?${membre}`, { oui: 'Retirer', danger: true })) return
   await api('DELETE', `${props.base}/arbre/personnes/${p.value.id}`)
   emit('fermer')
 })

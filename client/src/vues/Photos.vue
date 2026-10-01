@@ -14,6 +14,7 @@ import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
+import { confirmer } from '../fenetre.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -106,7 +107,7 @@ const enregistrerAlbum = () => action(async () => {
 
 const supprimerAlbum = () => action(async () => {
   const a = albumCourant.value
-  if (!confirm(`Supprimer l'album « ${a.nom} » ? Ses ${a.nombre} photo(s) sont gardées, dans « Non classé ».`)) return
+  if (!await confirmer(`Supprimer l'album « ${a.nom} » ? Ses ${a.nombre} photo(s) sont gardées, dans « Non classé ».`, { oui: 'Supprimer', danger: true, icone: 'effacer' })) return
   await api('DELETE', `${url.value}/albums/${a.id}`)
   choisirFiltre('tous')
   await chargerAlbums()
@@ -230,7 +231,7 @@ function retirerDeLaListe() {
 }
 
 const supprimer = () => action(async () => {
-  if (!confirm('Supprimer cette photo pour tout le cercle ?')) return
+  if (!await confirmer('Supprimer cette photo pour tout le cercle ?', { oui: 'Supprimer', danger: true, icone: 'effacer' })) return
   await api('DELETE', `${url.value}/photos/${photo.value.id}`)
   retirerDeLaListe()
   chargerAlbums()

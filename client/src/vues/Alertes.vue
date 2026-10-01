@@ -6,6 +6,7 @@ import { estAuxiliaire } from '../roles.js'
 import { modeAlertes, autorisation, activerAlertes, desactiverAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
+import { confirmer } from '../fenetre.js'
 
 // « Mes alertes » : activer les alertes sur cet appareil, choisir ce que l'on reçoit
 // et voir les appareils qui les reçoivent.
@@ -60,7 +61,7 @@ const desactiver = () => action(async () => {
 }, 'Cet appareil ne recevra plus d\'alertes.')
 
 const retirer = (a) => action(async () => {
-  if (!confirm(`Ne plus envoyer d'alertes sur « ${a.libelle} » ?`)) return
+  if (!await confirmer(`Ne plus envoyer d'alertes sur « ${a.libelle} » ?`, { oui: 'Ne plus envoyer', danger: true, icone: 'cloche' })) return
   await api('POST', '/alertes/appareils/retirer', { id: a.id })
   await charger()
 })

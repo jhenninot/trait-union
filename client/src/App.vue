@@ -6,6 +6,7 @@ import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
 import BandeauApplication from './navigation/BandeauApplication.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
+import FenetreDialogue from './navigation/FenetreDialogue.vue'
 import { etatPartage } from './partage.js'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
@@ -33,6 +34,7 @@ const miseEnPage = computed(() => {
   </div>
   <RouterView v-else />
   <p v-if="etatPartage.message" class="bulle-partage" role="status">{{ etatPartage.message }}</p>
+  <FenetreDialogue />
 </template>
 
 <style>

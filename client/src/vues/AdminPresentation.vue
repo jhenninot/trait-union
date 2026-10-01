@@ -5,6 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '../api.js'
 import Icone from '../navigation/Icone.vue'
+import { confirmer } from '../fenetre.js'
 
 const TYPES = { email: 'Email', whatsapp: 'WhatsApp', url: 'Lien (https://…)' }
 const EXEMPLES = { email: 'contact@mondomaine.fr', whatsapp: '+33 6 12 34 56 78', url: 'https://…' }
@@ -47,13 +48,13 @@ async function action(fn, succes) {
 
 const enregistrer = () => action(() => api('PUT', '/admin/presentation', f.value), 'Réglages enregistrés.')
 
-const changerAdresse = () => {
-  if (!confirm('Créer une nouvelle adresse ? L\'ancien lien ne fonctionnera plus pour personne.')) return
+const changerAdresse = async () => {
+  if (!await confirmer('L\'ancien lien ne fonctionnera plus pour personne.', { titre: 'Créer une nouvelle adresse ?', oui: 'Créer', danger: true })) return
   action(() => api('POST', '/admin/presentation/nouvelle-adresse'), 'Nouvelle adresse créée : partagez le nouveau lien.')
 }
 
-const remettreAZero = () => {
-  if (!confirm('Remettre le compteur de visites à zéro ?')) return
+const remettreAZero = async () => {
+  if (!await confirmer('Remettre le compteur de visites à zéro ?', { oui: 'Remettre à zéro', danger: true })) return
   action(() => api('POST', '/admin/presentation/remise-a-zero'), 'Compteur remis à zéro.')
 }
 
