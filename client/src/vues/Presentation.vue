@@ -170,7 +170,6 @@ function contacter() {
 
         <div class="haut-grille">
           <div>
-            <span class="pastille">Alzheimer et maladies apparentées</span>
             <h1>Le lien entre toi et les tiens</h1>
             <p class="chapeau">Trait d'union réunit la personne accompagnée, ses aidants et toute la famille dans un même
               cercle : l'agenda, les photos, les nouvelles. Elle, elle n'a qu'un écran tout simple, sur tablette ou
@@ -224,7 +223,7 @@ function contacter() {
                 </div>
                 <div class="pave anniversaire">
                   <span class="pave-titre"><Icone nom="gateau" /> Anniversaire</span>
-                  <strong>Paul · 51 ans</strong>
+                  <strong>Paul · 86 ans</strong>
                 </div>
                 <div class="barre">
                   <span class="bouton actif"><Icone nom="accueil" /></span>
