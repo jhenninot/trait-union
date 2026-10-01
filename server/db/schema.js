@@ -129,6 +129,9 @@ export const rendezVous = pgTable('rendez_vous', {
   fin: timestamp('fin', { withTimezone: true }),
   journeeEntiere: boolean('journee_entiere').notNull().default(false),
   visibilite: visibiliteRendezVous('visibilite').notNull().default('tous'),
+  // Pour les niveaux « accompagne » et « accompagne_aidants » d'un cercle qui a plusieurs
+  // personnes accompagnées : la seule qui le voit (null : toutes celles du cercle)
+  accompagneId: uuid('accompagne_id').references(() => utilisateurs.id, { onDelete: 'cascade' }),
   recurrence: recurrenceRendezVous('recurrence').notNull().default('aucune'),
   intervalle: integer('intervalle').notNull().default(1), // tous les N jours, semaines...
   recurrenceFin: timestamp('recurrence_fin', { withTimezone: true }), // dernière répétition possible (incluse)

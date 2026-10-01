@@ -116,6 +116,8 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       dateNaissance: voitTout ? dateNaissance : undefined,
       adresse: voitTout ? adresse : undefined,
       moi: utilisateurId === req.utilisateur.id,
+      // Sert à choisir la personne accompagnée concernée par un rendez-vous (agenda)
+      utilisateurId: m.role === 'accompagne' ? utilisateurId : undefined,
       avatar: lienAvatar(utilisateurId, avatar),
       // Les aidants choisissent l'avatar des personnes accompagnées
       avatarChoix: req.peutGerer && m.role === 'accompagne' ? avatar : undefined,

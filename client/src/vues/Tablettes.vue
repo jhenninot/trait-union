@@ -46,7 +46,8 @@ const retirer = (m) => action(async () => {
     <template v-if="cercle">
       <p class="aide surtitre">{{ cercle.nom }}</p>
       <h1>Tablettes</h1>
-      <p class="aide">La personne accompagnée utilise une tablette (ou un téléphone) avec un écran très simple, sans mot de passe.</p>
+      <p class="aide">Chaque personne accompagnée utilise une tablette (ou un téléphone) avec un écran très simple, sans mot de passe.
+        Un cercle peut en réunir plusieurs, un couple par exemple : chaque appareil est configuré pour une seule personne.</p>
 
       <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
       <div v-for="m in accompagnes" :key="m.id" class="carte">

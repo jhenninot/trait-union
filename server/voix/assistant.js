@@ -3,6 +3,7 @@ import { db } from '../db/index.js'
 import { membres, rendezVous, albums, utilisateurs } from '../db/schema.js'
 import { occurrences } from '../agenda/recurrence.js'
 import { mesCercles } from '../routes/auth.js'
+import { filtreNiveaux } from '../routes/agenda.js'
 import { estAnniversaire, age } from '../anniversaires.js'
 
 // Assistant vocal de la personne accompagnée, sans IA : on cherche des mots-clés dans ce
@@ -54,7 +55,7 @@ async function donneesPersonne(utilisateur, jours = JOURS_AGENDA) {
       .from(membres).leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id)).where(inArray(membres.cercleId, ids)),
     db.select().from(rendezVous).where(and(
       inArray(rendezVous.cercleId, ids),
-      or(inArray(rendezVous.visibilite, ['tous', 'accompagne', 'accompagne_aidants']), eq(rendezVous.creeParId, utilisateur.id)),
+      or(filtreNiveaux({ utilisateurId: utilisateur.id, role: 'accompagne', peutGerer: false }), eq(rendezVous.creeParId, utilisateur.id)),
       lt(rendezVous.debut, fin),
       or(
         and(eq(rendezVous.recurrence, 'aucune'), or(gte(rendezVous.debut, debut), gte(rendezVous.fin, debut))),
@@ -64,7 +65,8 @@ async function donneesPersonne(utilisateur, jours = JOURS_AGENDA) {
     db.select({ id: albums.id, nom: albums.nom }).from(albums).where(inArray(albums.cercleId, ids))
   ])
   return {
-    famille: famille.filter((m) => m.role !== 'accompagne' && m.utilisateurId !== utilisateur.id),
+    // Les autres personnes accompagnées du cercle (un conjoint, par exemple) font partie de la famille
+    famille: famille.filter((m) => m.utilisateurId !== utilisateur.id),
     agenda: lignes.flatMap((r) => occurrences(r, debut, fin)).sort((a, b) => a.debut - b.debut),
     albums: listeAlbums
   }

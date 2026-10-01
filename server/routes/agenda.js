@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { and, eq, ne, or, gte, lt, inArray, isNull, asc } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
-import { rendezVous, utilisateurs } from '../db/schema.js'
+import { rendezVous, utilisateurs, membres } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { RECURRENCES, occurrences, occurrenceNumero } from '../agenda/recurrence.js'
@@ -29,20 +29,36 @@ export function niveauxVisibles({ role, peutGerer }) {
   return ['tous']
 }
 
+// Niveaux destinés aux personnes accompagnées : dans un cercle qui en a plusieurs, le
+// rendez-vous peut ne concerner que l'une d'elles (accompagneId), les autres ne le voient pas
+const NIVEAUX_ACCOMPAGNE = ['accompagne', 'accompagne_aidants']
+const estAccompagne = ({ role, peutGerer }) => !peutGerer && role === 'accompagne'
+
 // Vrai si la personne (utilisateurId, role, peutGerer) peut voir le rendez-vous ;
 // sert aussi à choisir qui reçoit son alerte (server/alertes/planificateur.js)
 export const peutVoir = ({ utilisateurId, role, peutGerer }, rdv) =>
-  niveauxVisibles({ role, peutGerer }).includes(rdv.visibilite) ||
+  (niveauxVisibles({ role, peutGerer }).includes(rdv.visibilite) &&
+    !(estAccompagne({ role, peutGerer }) && NIVEAUX_ACCOMPAGNE.includes(rdv.visibilite) && rdv.accompagneId && rdv.accompagneId !== utilisateurId)) ||
   (!peutGerer && role === 'auxiliaire' && rdv.auxiliaires) || rdv.creeParId === utilisateurId
 
 const qui = (req) => ({ utilisateurId: req.utilisateur.id, role: req.role, peutGerer: req.peutGerer })
 
+// Même règle que peutVoir, en SQL
+export function filtreNiveaux({ utilisateurId, role, peutGerer }) {
+  const niveaux = niveauxVisibles({ role, peutGerer })
+  if (!niveaux.length) return undefined
+  if (!estAccompagne({ role, peutGerer })) return inArray(rendezVous.visibilite, niveaux)
+  return or(
+    eq(rendezVous.visibilite, 'tous'),
+    and(inArray(rendezVous.visibilite, NIVEAUX_ACCOMPAGNE), or(isNull(rendezVous.accompagneId), eq(rendezVous.accompagneId, utilisateurId)))
+  )
+}
+
 function filtreVisibles(req) {
-  const niveaux = niveauxVisibles(req)
   return and(
     eq(rendezVous.cercleId, req.cercle.id),
     or(
-      niveaux.length ? inArray(rendezVous.visibilite, niveaux) : undefined,
+      filtreNiveaux(qui(req)),
       estAuxiliaire(req) ? eq(rendezVous.auxiliaires, true) : undefined,
       eq(rendezVous.creeParId, req.utilisateur.id)
     )
@@ -103,11 +119,27 @@ function lireSaisie(req) {
     fin,
     journeeEntiere,
     visibilite,
+    // Une personne accompagnée qui note un rendez-vous « pour moi » le garde pour elle seule
+    accompagneId: !NIVEAUX_ACCOMPAGNE.includes(visibilite) ? null
+      : estAccompagne(req) ? req.utilisateur.id
+        : body.accompagneId || null,
     auxiliaires: estAuxiliaire(req) || Boolean(body.auxiliaires)
   }
 }
 
+// La personne choisie doit être accompagnée dans ce cercle
+async function verifierAccompagne(req, saisie) {
+  if (!saisie.accompagneId || estAccompagne(req)) return saisie
+  if (!/^[0-9a-f-]{36}$/i.test(saisie.accompagneId)) throw new ErreurSaisie('Personne accompagnée inconnue')
+  const [m] = await db.select({ id: membres.id }).from(membres).where(and(
+    eq(membres.cercleId, req.cercle.id), eq(membres.utilisateurId, saisie.accompagneId), eq(membres.role, 'accompagne')
+  ))
+  if (!m) throw new ErreurSaisie('Personne accompagnée inconnue dans ce cercle')
+  return saisie
+}
+
 const modificateur = alias(utilisateurs, 'modificateur')
+const concerne = alias(utilisateurs, 'concerne')
 
 const colonnes = {
   id: rendezVous.id,
@@ -118,6 +150,8 @@ const colonnes = {
   fin: rendezVous.fin,
   journeeEntiere: rendezVous.journeeEntiere,
   visibilite: rendezVous.visibilite,
+  accompagneId: rendezVous.accompagneId,
+  accompagnePrenom: concerne.prenom,
   auxiliaires: rendezVous.auxiliaires,
   recurrence: rendezVous.recurrence,
   intervalle: rendezVous.intervalle,
@@ -166,10 +200,16 @@ router.get('/', async (req, res) => {
   const lignes = await db.select(colonnes).from(rendezVous)
     .leftJoin(utilisateurs, eq(rendezVous.creeParId, utilisateurs.id))
     .leftJoin(modificateur, eq(rendezVous.modifieParId, modificateur.id))
+    .leftJoin(concerne, eq(rendezVous.accompagneId, concerne.id))
     .where(and(eq(rendezVous.cercleId, req.cercle.id), or(and(...simples), and(...series))))
     .orderBy(asc(rendezVous.debut))
     .limit(1000)
+  // Une personne accompagnée ne voit pas du tout les rendez-vous destinés à une autre
+  // (pas de « Rendez-vous privé » qui l'inquiéterait sur sa tablette)
+  const pourUneAutre = (serie) => estAccompagne(req) && NIVEAUX_ACCOMPAGNE.includes(serie.visibilite) &&
+    serie.accompagneId && serie.accompagneId !== req.utilisateur.id && serie.creeParId !== req.utilisateur.id
   const liste = lignes
+    .filter((serie) => !pourUneAutre(serie))
     .flatMap((serie) => occurrences(serie, depuis, jusqua).map((o) => (estVisible(req, serie) ? presenter(req, serie)(o) : masquer(o))))
     .sort((a, b) => a.debut - b.debut)
     .slice(0, 2000)
@@ -177,11 +217,12 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const saisie = lireSaisie(req)
+  const saisie = await verifierAccompagne(req, lireSaisie(req))
   const [rdv] = await db.insert(rendezVous)
     .values({ ...saisie, rappel: saisie.rappel ?? null, cercleId: req.cercle.id, creeParId: req.utilisateur.id })
     .returning()
-  res.status(201).json(presenter(req)({ ...rdv, creeParPrenom: req.utilisateur.prenom }))
+  const [personne] = rdv.accompagneId ? await db.select({ prenom: utilisateurs.prenom }).from(utilisateurs).where(eq(utilisateurs.id, rdv.accompagneId)) : []
+  res.status(201).json(presenter(req)({ ...rdv, creeParPrenom: req.utilisateur.prenom, accompagnePrenom: personne?.prenom ?? null }))
 })
 
 async function chargerRendezVous(req, res, next) {
@@ -216,8 +257,9 @@ router.put('/:rdvId', chargerRendezVous, async (req, res) => {
   const saisie = lireSaisie(req)
   if (serie.creeParId !== req.utilisateur.id) {
     saisie.visibilite = serie.visibilite
+    saisie.accompagneId = serie.accompagneId
     saisie.auxiliaires = serie.auxiliaires
-  }
+  } else await verifierAccompagne(req, saisie)
   saisie.modifieParId = req.utilisateur.id
   if (saisie.rappel === undefined) saisie.rappel = serie.rappel
   const { portee, numero, occ } = lirePortee(req)

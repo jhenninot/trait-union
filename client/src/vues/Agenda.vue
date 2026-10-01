@@ -34,8 +34,14 @@ function naviguer(sens) {
   jourChoisi.value = valeurJour(choisi)
 }
 
-const niveaux = computed(() => visibilites(accompagnes.value.length === 1 ? accompagnes.value[0].prenom : null))
-const libelleNiveau = (v) => niveaux.value.find((n) => n.valeur === v)?.court
+// Avec plusieurs personnes accompagnées, un rendez-vous qui leur est destiné peut n'en
+// concerner qu'une (accompagneId) ; les autres ne le voient pas.
+const plusieurs = computed(() => accompagnes.value.length > 1)
+const prenomAccompagne = (id) => accompagnes.value.find((m) => m.utilisateurId === id)?.prenom
+const pourQui = (id) => (id && prenomAccompagne(id)) || (plusieurs.value ? 'Personnes accompagnées' : accompagnes.value[0]?.prenom)
+const niveaux = computed(() => visibilites(pourQui(formulaire.value?.accompagneId)))
+const pourAccompagne = (v) => v === 'accompagne' || v === 'accompagne_aidants'
+const libelleNiveau = (rdv) => visibilites(rdv.accompagnePrenom ?? pourQui(null)).find((n) => n.valeur === rdv.visibilite)?.court
 // Une auxiliaire de vie ne voit que les rendez-vous cochés « auxiliaires » (et les siens)
 const suisAuxiliaire = computed(() => !cercle.value?.peutGerer && cercle.value?.monRole === 'auxiliaire')
 
@@ -79,6 +85,7 @@ function nouveau() {
     recurrence: 'aucune', intervalle: 1, recurrenceFin: '',
     lieu: '', notes: '', rappel: null,
     visibilite: suisAuxiliaire.value ? 'aidants' : 'tous',
+    accompagneId: null,
     auxiliaires: suisAuxiliaire.value
   }
 }
@@ -114,6 +121,7 @@ function modifier(rdv) {
     notes: rdv.notes ?? '',
     rappel: rdv.rappel ?? null,
     visibilite: rdv.visibilite,
+    accompagneId: rdv.accompagneId ?? null,
     auxiliaires: rdv.auxiliaires
   }
 }
@@ -155,6 +163,7 @@ const enregistrer = () => action(async () => {
     notes: f.notes,
     rappel: f.rappel,
     visibilite: f.visibilite,
+    accompagneId: pourAccompagne(f.visibilite) ? f.accompagneId : null,
     auxiliaires: f.auxiliaires,
     journeeEntiere: f.journeeEntiere,
     debut: debut.toISOString(),
@@ -239,6 +248,12 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
           <label v-for="n in niveaux" :key="n.valeur" class="choix">
             <input v-model="formulaire.visibilite" type="radio" :value="n.valeur" /> {{ n.libelle }}
           </label>
+          <label v-if="plusieurs && pourAccompagne(formulaire.visibilite)" class="pour-qui">Pour qui
+            <select v-model="formulaire.accompagneId">
+              <option :value="null">Toutes</option>
+              <option v-for="m in accompagnes" :key="m.id" :value="m.utilisateurId">{{ m.prenom }} {{ m.nom }}</option>
+            </select>
+          </label>
           <label class="choix auxiliaires">
             <input v-model="formulaire.auxiliaires" type="checkbox" :disabled="suisAuxiliaire" /> Visible aussi par les auxiliaires de vie
           </label>
@@ -281,7 +296,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
             <span v-if="texteRappel(rdv)" class="aide"><Icone nom="cloche" class="en-ligne" /> {{ texteRappel(rdv) }}</span>
             <p v-if="rdv.notes" class="notes">{{ rdv.notes }}</p>
             <span class="aide">
-              <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>
+              <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv) }}</span>
               <span v-if="rdv.auxiliaires" class="pastille auxiliaire">Auxiliaires</span>
               Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}<template v-if="rdv.modifieParPrenom">, modifié par {{ rdv.modifieParPrenom }}</template>
             </span>
@@ -334,6 +349,10 @@ legend { font-weight: 500; padding: 0 4px; }
 .pastille.aidants { background: #fdf0dc; color: #8a5a00; }
 .pastille.accompagne, .pastille.accompagne_aidants { background: var(--vert-clair); color: var(--vert); }
 .pastille.auxiliaire { background: #f1e8f7; color: #6b3d8a; }
+.pour-qui { margin: 2px 0 6px; padding-left: 26px; }
+.pour-qui select { width: 100%; max-width: 100%; }
+/* Un fieldset s'élargit par défaut à son contenu (longue liste « Pour qui ») */
+fieldset { min-width: 0; }
 .choix.auxiliaires { border-top: 1px solid #ebe8e3; padding-top: 8px; margin-top: 2px; }
 @media (max-width: 480px) { .rdv { flex-direction: column; gap: 4px; } .heure { width: auto; } }
 </style>

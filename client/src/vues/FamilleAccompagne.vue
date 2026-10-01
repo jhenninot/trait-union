@@ -23,7 +23,8 @@ onMounted(async () => {
     const cercle = await api('GET', `/cercles/${c.id}`).catch(() => null)
     for (const m of cercle?.membres ?? []) {
       const cle = `${m.prenom} ${m.nom ?? ''}`
-      if (m.role === 'accompagne' || vus.has(cle)) continue
+      // Les autres personnes accompagnées du cercle (un conjoint, par exemple) y figurent aussi
+      if (m.moi || vus.has(cle)) continue
       vus.add(cle)
       personnes.value.push(m)
     }

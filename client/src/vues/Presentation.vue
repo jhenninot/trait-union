@@ -67,7 +67,7 @@ const AUSSI = [
 ]
 
 const ETAPES = [
-  { titre: 'Créer le cercle', texte: 'Un cercle par personne accompagnée, avec ses aidants.' },
+  { titre: 'Créer le cercle', texte: 'Un cercle par famille, avec une ou plusieurs personnes accompagnées et leurs aidants.' },
   { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé par email ou par message. Chacun choisit son mot de passe.' },
   { titre: 'Installer la tablette', texte: 'Un code à 6 chiffres sur sa tablette ou son téléphone, et c\'est prêt. Rien à retenir pour elle.' }
 ]
