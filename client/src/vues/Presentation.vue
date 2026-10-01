@@ -25,26 +25,26 @@ const ESSENTIEL = [
   {
     icone: 'tablette',
     couleur: 'vert',
-    titre: 'Un écran tout simple pour elle',
+    titre: 'Un écran tout simple, tablette ou smartphone',
     texte: 'La date et l\'heure en grand, le moment de la journée, ses rendez-vous, ses photos et sa famille : quatre gros boutons, rien d\'autre. Un bouton lui lit sa journée à voix haute.'
   },
   {
     icone: 'agenda',
     couleur: 'bleu',
     titre: 'Un agenda partagé par tous',
-    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens sur sa tablette, et le reste n\'encombre pas son écran.'
+    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens sur son écran, et le reste n\'encombre pas son écran.'
   },
   {
     icone: 'photo',
     couleur: 'orange',
     titre: 'Les photos de la famille',
-    texte: 'Les petits-enfants envoient leurs photos depuis leur téléphone, rangées en albums. Elles arrivent sur sa tablette, en grand et en diaporama, avec le prénom de qui les a envoyées.'
+    texte: 'Les petits-enfants envoient leurs photos depuis leur téléphone, rangées en albums. Elles arrivent sur sa tablette ou son smartphone, en grand et en diaporama, avec le prénom de qui les a envoyées.'
   }
 ]
 
 const ROLES = [
-  { icone: 'compte', nom: 'La personne accompagnée', texte: 'Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette, qui reste ensuite connectée.' },
-  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, tablette, coordonnées de la personne accompagnée, réglages de ses alertes.' },
+  { icone: 'compte', nom: 'La personne accompagnée', texte: 'Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette ou son smartphone, qui reste ensuite connecté.' },
+  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, appareils de la personne accompagnée, coordonnées de la personne accompagnée, réglages de ses alertes.' },
   { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos et gardent le contact, même de loin.' },
   { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun. Pas les photos de famille.' }
 ]
@@ -57,19 +57,19 @@ const RENDEZ_VOUS = [
 ]
 
 const AUSSI = [
-  { icone: 'cloche', titre: 'Des alertes qui arrivent', texte: 'Rappel avant un rendez-vous, nouvelles photos, anniversaire du jour : sur le téléphone de chacun et sur la tablette, même écran éteint.' },
-  { icone: 'gateau', titre: 'Les anniversaires', texte: 'Le matin, sa tablette lui rappelle à qui souhaiter son anniversaire, avec l\'âge. Toute la famille reçoit la même alerte.' },
+  { icone: 'cloche', titre: 'Des alertes qui arrivent', texte: 'Rappel avant un rendez-vous, nouvelles photos, anniversaire du jour : sur le téléphone de chacun, et sur la tablette ou le smartphone de la personne accompagnée, même écran éteint.' },
+  { icone: 'gateau', titre: 'Les anniversaires', texte: 'Le matin, son écran lui rappelle à qui souhaiter son anniversaire, avec l\'âge. Toute la famille reçoit la même alerte.' },
   { icone: 'telephone', titre: 'Les coordonnées de chacun', texte: 'Téléphone, adresse, âge : une fiche en gros caractères pour qu\'elle sache qui est qui, et qui appeler.' },
   { icone: 'compte', titre: 'Un visage pour chacun', texte: 'Une photo ou un avatar illustré pour chaque membre, pour reconnaître tout le monde d\'un coup d\'oeil.' },
   { icone: 'partager', titre: 'Partager depuis le téléphone', texte: 'Sur Android, « Partager » depuis la galerie envoie directement des photos dans un album du cercle.' },
-  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? » ou « Montre-moi les photos » : la tablette répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
+  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
   { icone: 'mobile', titre: 'Sur tous les écrans', texte: 'Ordinateur, téléphone ou tablette : application installable sur iPhone et Android, et application Android dédiée.' }
 ]
 
 const ETAPES = [
   { titre: 'Créer le cercle', texte: 'Un cercle par famille, avec une ou plusieurs personnes accompagnées et leurs aidants.' },
   { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé par email ou par message. Chacun choisit son mot de passe.' },
-  { titre: 'Installer la tablette', texte: 'Un code à 6 chiffres sur sa tablette ou son téléphone, et c\'est prêt. Rien à retenir pour elle.' }
+  { titre: 'Installer son appareil', texte: 'Un code à 6 chiffres sur sa tablette ou son smartphone, et c\'est prêt. Rien à retenir pour elle.' }
 ]
 
 onMounted(async () => {
@@ -118,8 +118,8 @@ function contacter() {
             <span class="pastille">Alzheimer et maladies apparentées</span>
             <h1>Le lien entre toi et les tiens</h1>
             <p class="chapeau">Trait d'union réunit la personne accompagnée, ses aidants et toute la famille dans un même
-              cercle : l'agenda, les photos, les nouvelles. Elle, elle n'a qu'un écran tout simple, avec de gros boutons
-              et une voix pour lui lire sa journée. Chez elle comme en EHPAD.</p>
+              cercle : l'agenda, les photos, les nouvelles. Elle, elle n'a qu'un écran tout simple, sur tablette ou
+              smartphone, avec de gros boutons et une voix pour lui lire sa journée. Chez elle comme en EHPAD.</p>
             <div class="appel">
               <button v-if="lienContact" type="button" class="bouton-contact" @click="contacter">
                 <Icone nom="message" /> Me contacter
@@ -128,32 +128,55 @@ function contacter() {
             </div>
           </div>
 
-          <!-- Tablette de la personne accompagnée (données d'exemple) -->
-          <div class="tablette" aria-hidden="true">
-            <div class="ecran">
-              <div class="ecran-haut">
-                <strong class="bonjour">Bonjour Jeanne</strong>
-                <span class="date">Nous sommes {{ aujourdhui }}</span>
-                <span class="heure">10:30</span>
-                <span class="moment">C'est le matin.</span>
-                <span class="ecouter"><Icone nom="son" /> Écouter ma journée</span>
+          <!-- Tablette et smartphone de la personne accompagnée (données d'exemple) -->
+          <div class="appareils" aria-hidden="true">
+            <div class="tablette">
+              <div class="ecran">
+                <div class="ecran-haut">
+                  <strong class="bonjour">Bonjour Jeanne</strong>
+                  <span class="date">Nous sommes {{ aujourdhui }}</span>
+                  <span class="heure">10:30</span>
+                  <span class="moment">C'est le matin.</span>
+                  <span class="ecouter"><Icone nom="son" /> Écouter ma journée</span>
+                </div>
+                <div class="paves">
+                  <div class="pave rdv">
+                    <span class="pave-titre"><Icone nom="agenda" /> Cet après-midi</span>
+                    <strong>15h00 · Visite de Claire et Lucas</strong>
+                  </div>
+                  <div class="pave anniversaire">
+                    <span class="pave-titre"><Icone nom="gateau" /> Anniversaire aujourd'hui</span>
+                    <strong><span class="rond">P</span> Paul · 51 ans</strong>
+                  </div>
+                </div>
+                <div class="barre">
+                  <span class="bouton actif"><Icone nom="accueil" />Accueil</span>
+                  <span class="bouton"><Icone nom="agenda" />Mon agenda</span>
+                  <span class="bouton"><Icone nom="photo" />Mes photos</span>
+                  <span class="bouton"><Icone nom="famille" />Ma famille</span>
+                  <span class="bouton parler"><Icone nom="micro" />Parler</span>
+                </div>
               </div>
-              <div class="paves">
-                <div class="pave rdv">
-                  <span class="pave-titre"><Icone nom="agenda" /> Cet après-midi</span>
-                  <strong>15h00 · Visite de Claire et Lucas</strong>
+            </div>
+            <div class="smartphone">
+              <div class="ecran">
+                <div class="ecran-haut">
+                  <strong class="bonjour">Bonjour Jeanne</strong>
+                  <span class="heure">10:30</span>
+                  <span class="moment">C'est le matin.</span>
+                  <span class="ecouter"><Icone nom="son" /> Écouter ma journée</span>
                 </div>
                 <div class="pave anniversaire">
-                  <span class="pave-titre"><Icone nom="gateau" /> Anniversaire aujourd'hui</span>
-                  <strong><span class="rond">P</span> Paul · 51 ans</strong>
+                  <span class="pave-titre"><Icone nom="gateau" /> Anniversaire</span>
+                  <strong>Paul · 51 ans</strong>
                 </div>
-              </div>
-              <div class="barre">
-                <span class="bouton actif"><Icone nom="accueil" />Accueil</span>
-                <span class="bouton"><Icone nom="agenda" />Mon agenda</span>
-                <span class="bouton"><Icone nom="photo" />Mes photos</span>
-                <span class="bouton"><Icone nom="famille" />Ma famille</span>
-                <span class="bouton parler"><Icone nom="micro" />Parler</span>
+                <div class="barre">
+                  <span class="bouton actif"><Icone nom="accueil" /></span>
+                  <span class="bouton"><Icone nom="agenda" /></span>
+                  <span class="bouton"><Icone nom="photo" /></span>
+                  <span class="bouton"><Icone nom="famille" /></span>
+                  <span class="bouton parler"><Icone nom="micro" /></span>
+                </div>
               </div>
             </div>
           </div>
@@ -185,7 +208,7 @@ function contacter() {
           <div>
             <span class="pastille">Chacun sa place</span>
             <h2>Chacun voit ce qui le concerne</h2>
-            <p>Un cercle réunit tous ceux qui entourent une personne, chacun avec son rôle. Pour chaque rendez-vous,
+            <p>Un cercle réunit tous ceux qui entourent une ou plusieurs personnes accompagnées, chacun avec son rôle. Pour chaque rendez-vous,
               celui qui l'ajoute choisit qui le voit : tout le cercle, les aidants seulement, la personne accompagnée
               et ses aidants, et s'il concerne les auxiliaires de vie.</p>
             <ul class="roles">
@@ -234,7 +257,7 @@ function contacter() {
             <span class="pictogramme orange"><Icone nom="maison" /></span>
             <div>
               <h3>À domicile ou en EHPAD</h3>
-              <p>Une tablette posée dans sa chambre suffit pour qu'une personne isolée continue de voir sa famille au quotidien.</p>
+              <p>Une tablette posée dans sa chambre, ou son smartphone, suffit pour qu'une personne isolée continue de voir sa famille au quotidien.</p>
             </div>
           </article>
         </div>
@@ -330,7 +353,7 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 }
 
 @media (min-width: 900px) {
-  .haut-grille { grid-template-columns: 1fr 1.05fr; }
+  .haut-grille { grid-template-columns: 0.95fr 1.1fr; }
 }
 
 .pastille {
@@ -382,9 +405,17 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .note { font-size: 0.9rem; color: var(--gris); }
 
 /* Tablette d'exemple */
-.tablette {
+.appareils {
   justify-self: center;
-  width: min(540px, 100%);
+  width: min(620px, 100%);
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.tablette {
+  flex: 1;
+  min-width: 0;
   padding: 14px;
   border-radius: 30px;
   background: var(--bleu-nuit);
@@ -491,6 +522,30 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .bouton .icone { width: 24px; height: 24px; }
 .bouton.actif { background: var(--vert); color: white; }
 .bouton.parler { background: var(--vert-clair); color: var(--vert); }
+
+/* Smartphone d'exemple, à côté de la tablette */
+.smartphone {
+  flex: none;
+  width: 140px;
+  margin-bottom: -24px;
+  padding: 7px;
+  border-radius: 24px;
+  background: #1b2547;
+  box-shadow: 0 20px 40px rgb(35 48 90 / 0.35);
+}
+
+.smartphone .ecran { border-radius: 18px; }
+.smartphone .ecran-haut { padding: 14px 6px 6px; }
+.smartphone .bonjour { font-size: 0.85rem; }
+.smartphone .heure { font-size: 1.5rem; }
+.smartphone .moment { font-size: 0.6rem; }
+.smartphone .ecouter { margin-top: 4px; padding: 4px 8px; font-size: 0.58rem; gap: 4px; }
+.smartphone .ecouter .icone { width: 11px; height: 11px; }
+.smartphone .pave { margin: 4px 6px 8px; padding: 6px 8px; font-size: 0.6rem; gap: 2px; }
+.smartphone .pave-titre .icone { width: 11px; height: 11px; }
+.smartphone .barre { gap: 3px; padding: 5px 4px; }
+.smartphone .bouton { padding: 5px 0; border-radius: 7px; }
+.smartphone .bouton .icone { width: 14px; height: 14px; }
 
 /* Questions */
 .questions {
@@ -746,6 +801,8 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 @media (max-width: 600px) {
   .vie-privee { flex-direction: column; }
   .paves { grid-template-columns: 1fr; }
-  .tablette { padding: 9px; border-radius: 22px; }
+  .appareils { flex-direction: column; align-items: center; gap: 20px; }
+  .tablette { width: 100%; padding: 9px; border-radius: 22px; }
+  .smartphone { width: 170px; margin: 0; }
 }
 </style>
