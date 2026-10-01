@@ -120,6 +120,21 @@ const blocs = computed(() => {
   return r
 })
 
+// --- Effacer un de ses messages (pour tout le monde)
+const aEffacer = ref(null)
+async function effacer(m) {
+  envoi.value = true
+  try {
+    await api('DELETE', `/messagerie/messages/${m.id}`)
+    aEffacer.value = null
+    await chargerFil(fil.value.conversation.id, { defiler: false })
+  } catch (e) {
+    erreur.value = e.message
+  } finally {
+    envoi.value = false
+  }
+}
+
 // --- Écouter un message
 
 const audio = ref(null) // { id, element }
@@ -287,7 +302,7 @@ async function terminerVocal() {
         <p v-if="!fil.messages.length" class="vide">Pas encore de message. Touchez « Répondre » pour écrire le premier.</p>
         <template v-for="b in blocs" :key="b.cle ?? b.id">
           <p v-if="b.separateur" class="jour"><span>{{ b.separateur }}</span></p>
-          <p v-else-if="b.retire" class="retire">Message retiré</p>
+          <p v-else-if="b.retire" class="retire">{{ b.retire.parAuteur ? 'Message effacé' : 'Message retiré' }}</p>
           <div v-else class="ligne" :class="{ moi: b.deMoi }">
             <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="56" />
             <div class="bulle" :class="{ rapide: b.type === 'rapide' }">
@@ -299,7 +314,16 @@ async function terminerVocal() {
                 <button v-if="b.vocal || lecture" class="ecouter" :aria-label="audio?.id === b.id ? 'Arrêter' : 'Écouter'" @click="audio?.id === b.id ? arreterAudio() : ecouter(b)">
                   <Icone :nom="audio?.id === b.id ? 'stop' : 'son'" class="en-ligne" /> {{ audio?.id === b.id ? 'Arrêter' : 'Écouter' }}
                 </button>
+                <button v-if="b.deMoi && b.peutRetirer && aEffacer !== b.id" class="effacer" @click="aEffacer = b.id"><Icone nom="effacer" class="en-ligne" /> Effacer</button>
                 <span class="heure">{{ heureMessage(b.creeLe) }}</span>
+              </div>
+              <!-- Effacer son message : on demande confirmation -->
+              <div v-if="aEffacer === b.id" class="confirmer">
+                <p>Effacer ce message pour tout le monde ?</p>
+                <div class="deux">
+                  <button class="secondaire" :disabled="envoi" @click="aEffacer = null">Non</button>
+                  <button class="danger" :disabled="envoi" @click="effacer(b)">Oui, effacer</button>
+                </div>
               </div>
             </div>
           </div>
@@ -424,9 +448,15 @@ h1 { font-size: 2.4rem; margin: 0; }
 .auteur { font-size: 1.25rem; font-weight: 700; color: var(--bleu-nuit); }
 .bulle .texte { margin: 4px 0 0; font-size: 1.6rem; }
 .bulle.rapide .texte { color: var(--vert); font-weight: 700; }
-.pied-bulle { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
+.pied-bulle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .ecouter { background: var(--vert-clair); color: var(--vert); font-size: 1.15rem; font-weight: 700; padding: 8px 16px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .heure { color: var(--gris); font-size: 1rem; }
+.effacer { background: #fbeceb; color: var(--rouge); font-size: 1.15rem; font-weight: 700; padding: 8px 16px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; }
+.confirmer { margin-top: 10px; }
+.confirmer p { font-size: 1.3rem; font-weight: 700; color: var(--bleu-nuit); }
+.confirmer .deux { display: flex; gap: 10px; margin-top: 8px; }
+.confirmer button { flex: 1; font-size: 1.3rem; font-weight: 700; padding: 12px; border-radius: 14px; }
+.confirmer .danger { background: var(--rouge); color: white; }
 .repondre { flex: none; font-size: 1.7rem; font-weight: 700; padding: 20px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
 .ecrire { font-size: 1.5rem; font-weight: 700; padding: 20px; border-radius: 20px; background: var(--bleu-nuit); display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 .retour { align-self: flex-start; font-size: 1.4rem; font-weight: 700; padding: 14px 24px; border-radius: 16px; }
@@ -481,7 +511,8 @@ h1 { font-size: 2.4rem; margin: 0; }
   .auteur { font-size: 1.05rem; }
   .bulle { padding: 10px 14px; }
   .bulle .texte { font-size: 1.25rem; }
-  .ecouter { font-size: 1rem; padding: 6px 12px; }
+  .ecouter, .effacer { font-size: 1rem; padding: 6px 12px; }
+  .confirmer p, .confirmer button { font-size: 1.05rem; }
   .repondre { font-size: 1.35rem; padding: 16px; }
   .messages-aide { padding: 18px 14px; gap: 14px; }
   h1 { font-size: 1.9rem; }
