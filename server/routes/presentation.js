@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { limiteur } from '../auth/securite.js'
+import { compter } from '../statistiques.js'
 import { lireConfiguration, enregistrerConfiguration, lienContact, cleValide } from '../presentation/config.js'
 
 // Page de présentation publique, à l'adresse secrète réglée par l'administrateur
@@ -17,6 +18,7 @@ router.get('/:cle', async (req, res) => {
   if (req.query.compter === '1') {
     await enregistrerConfiguration({ ...config, visites: (config.visites || 0) + 1, derniereVisite: new Date() })
       .catch((err) => console.error('[Présentation] Compteur :', err.message))
+    compter('presentation') // visites par jour (statistiques)
   }
   const lien = config.afficherContact ? lienContact(config.typeContact, config.contact) : null
   res.set('Cache-Control', 'no-store')

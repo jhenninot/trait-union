@@ -7,6 +7,7 @@ import { urlApplication } from '../url.js'
 import * as alertes from '../alertes/envoi.js'
 import * as presentation from '../presentation/config.js'
 import { listerComptes, apercuSuppression, supprimerCompte } from '../comptes.js'
+import { statistiques } from '../statistiques.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -211,6 +212,12 @@ router.get('/utilisateurs/:id/suppression', async (req, res) => {
 router.delete('/utilisateurs/:id', async (req, res) => {
   if (!await supprimerCompte(req.params.id, req.utilisateur)) return res.status(404).json({ erreur: 'Utilisateur introuvable' })
   res.status(204).end()
+})
+
+// --- Statistiques d'utilisation (nombres seulement, voir server/statistiques.js)
+
+router.get('/statistiques', async (req, res) => {
+  res.json(await statistiques())
 })
 
 export default router

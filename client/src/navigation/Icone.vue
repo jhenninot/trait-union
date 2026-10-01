@@ -53,7 +53,10 @@ const traces = {
   liste: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   haut: '<path d="m18 15-6-6-6 6"/>',
   bas: '<path d="m6 9 6 6 6-6"/>',
-  maison: '<path d="M2 20h20M4 20V9l8-6 8 6v11"/><path d="M9 20v-5h6v5"/><path d="M8 11h.01M16 11h.01"/>'
+  maison: '<path d="M2 20h20M4 20V9l8-6 8 6v11"/><path d="M9 20v-5h6v5"/><path d="M8 11h.01M16 11h.01"/>',
+  statistiques: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  hausse: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  baisse: '<path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>'
 }
 </script>
 

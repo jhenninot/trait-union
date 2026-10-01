@@ -4,6 +4,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { parametres, appareilsAlertes, utilisateurs } from '../db/schema.js'
 import { ErreurSaisie } from '../auth/validation.js'
+import { compter } from '../statistiques.js'
 
 // Envoi des alertes sur les appareils où elles sont activées :
 // - navigateurs et PWA par Web Push (norme du web, clés VAPID créées au premier démarrage et
@@ -202,6 +203,7 @@ export async function envoyerAux(appareils, alerte, options = { duree: 3600, urg
     }
   }))
   if (perimes.length) await db.delete(appareilsAlertes).where(inArray(appareilsAlertes.id, perimes))
+  compter('alertes', null, envoyes) // statistiques : alertes reçues par jour
   if (erreurs.length) console.error('Alertes :', [...new Set(erreurs)].join(' ; '))
   return { envoyes, perimes: perimes.length, erreurs: [...new Set(erreurs)] }
 }

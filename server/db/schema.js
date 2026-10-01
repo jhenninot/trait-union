@@ -290,3 +290,17 @@ export const anniversairesEnvoyes = pgTable('anniversaires_envoyes', {
   unique('anniversaires_envoyes_unique').on(t.utilisateurId, t.annee),
   unique('anniversaires_envoyes_personne_unique').on(t.personneId, t.annee)
 ])
+
+// Compteurs d'utilisation par jour, pour les statistiques de l'administration
+// (server/statistiques.js) : un nombre par canal, par jour et par cercle, jamais de contenu.
+// Canaux : « voix » (commandes vocales), « alertes » (alertes reçues par un appareil),
+// « presentation » (visites de la page de présentation, cercle null).
+export const compteurs = pgTable('compteurs', {
+  ...commun,
+  jour: date('jour').notNull(), // AAAA-MM-JJ (heure de Paris)
+  canal: text('canal').notNull(),
+  cercleId: uuid('cercle_id').references(() => cercles.id, { onDelete: 'cascade' }),
+  nombre: integer('nombre').notNull().default(0)
+}, (t) => [
+  unique('compteurs_unique').on(t.jour, t.canal, t.cercleId).nullsNotDistinct()
+])

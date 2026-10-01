@@ -141,6 +141,13 @@
       "when": 1790854818718,
       "tag": "0019_arbre_genealogique",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790870081414,
+      "tag": "0020_statistiques",
+      "breakpoints": true
     }
   ]
 }
