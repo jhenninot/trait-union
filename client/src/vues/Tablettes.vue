@@ -5,7 +5,7 @@ import { utiliserCercle, heure, copier } from '../cercle.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 
-// Page « Tablettes » d'un cercle : personnes accompagnées et configuration de leurs appareils
+// Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const nouvelAccompagne = ref({ prenom: '', nom: '' })
@@ -45,7 +45,7 @@ const retirer = (m) => action(async () => {
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-if="cercle">
       <p class="aide surtitre">{{ cercle.nom }}</p>
-      <h1>Tablettes</h1>
+      <h1>Personnes accompagnées</h1>
       <p class="aide">Chaque personne accompagnée utilise une tablette (ou un téléphone) avec un écran très simple, sans mot de passe.
         Un cercle peut en réunir plusieurs, un couple par exemple : chaque appareil est configuré pour une seule personne.</p>
 

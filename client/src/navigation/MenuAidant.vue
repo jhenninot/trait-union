@@ -52,7 +52,7 @@ watch(() => route.params.id, (id) => {
 }, { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
 
-// Changer de cercle garde la même rubrique (Famille, Agenda, Photos ou Tablettes)
+// Changer de cercle garde la même rubrique (Famille, Agenda, Photos ou Personnes accompagnées)
 function changerCercle(id) {
   let rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
   const cible = choix.value.find((c) => c.id === id)
@@ -100,7 +100,7 @@ const estActif = (chemin) => route.path === chemin
         <Icone nom="photo" /> Photos
       </RouterLink>
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
-        <Icone nom="tablette" /> Tablettes
+        <Icone nom="compte" /> Personnes accompagnées
       </RouterLink>
     </template>
 
@@ -124,7 +124,7 @@ const estActif = (chemin) => route.path === chemin
     </div>
   </nav>
 
-  <!-- Téléphone : onglets en bas (Tablettes reste accessible par « Plus ») -->
+  <!-- Téléphone : onglets en bas (Personnes accompagnées reste accessible par « Plus ») -->
   <nav class="onglets" aria-label="Raccourcis">
     <RouterLink to="/" :class="{ actif: estActif('/') }"><Icone nom="accueil" />Accueil</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>

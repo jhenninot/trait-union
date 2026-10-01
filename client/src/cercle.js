@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from './api.js'
 
-// Chargement du cercle de l'adresse /cercles/:id, partagé par les pages Famille et Tablettes.
+// Chargement du cercle de l'adresse /cercles/:id, partagé par les pages Famille et Personnes accompagnées.
 // Le cercle est rechargé quand on en change depuis le menu (la page reste la même).
 export function utiliserCercle() {
   const route = useRoute()
