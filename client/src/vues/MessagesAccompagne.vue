@@ -175,9 +175,11 @@ const enClair = (s) => [s.lieu, momentTexte(s)].filter(Boolean).join(', ')
 function texteSondage(m) {
   const s = m.sondage
   if (!s.ouvert) return `C'est décidé : ${s.titre}, ${jourLong(s.dateRetenue)}, ${momentTexte(s)}.`
-  return `${m.deMoi ? 'Vous cherchez' : `${m.auteur.prenom} cherche`} une date pour : ${s.titre}. ${enClair(s)}. Quels jours pouvez-vous venir ? Touchez « Choisir mes jours ».`
+  return `${m.deMoi ? 'Vous cherchez' : `${m.auteur.prenom} cherche`} une date pour : ${s.titre}. ${enClair(s)}. Quels jours pouvez-vous venir ? ${aCompleter(s) ? 'De nouveaux jours sont proposés. ' : ''}Touchez « ${boutonSondage(s)} ».`
 }
 const aRepondu = (s) => Object.keys(s.mesReponses ?? {}).length > 0
+const aCompleter = (s) => aRepondu(s) && s.dates.some((d) => !s.mesReponses[d])
+const boutonSondage = (s) => (aCompleter(s) ? 'Compléter mes réponses' : aRepondu(s) ? 'Changer mes réponses' : 'Choisir mes jours')
 function choisirJours(m) {
   arreterAudio()
   sondage.value = { ...m.sondage, reponses: { ...m.sondage.mesReponses } }
@@ -360,8 +362,9 @@ async function terminerVocal() {
                 <p class="titre-sondage">{{ b.sondage.titre }}</p>
                 <template v-if="b.sondage.ouvert">
                   <p class="sous-sondage">{{ enClair(b.sondage) }}. Quels jours pouvez-vous venir ?</p>
-                  <p v-if="aRepondu(b.sondage)" class="deja"><Icone nom="coche" class="en-ligne" /> Vous avez répondu</p>
-                  <button v-if="b.sondage.peutRepondre" class="choisir-jours" @click="choisirJours(b)"><Icone nom="agenda" class="en-ligne" /> {{ aRepondu(b.sondage) ? 'Changer mes réponses' : 'Choisir mes jours' }}</button>
+                  <p v-if="aCompleter(b.sondage)" class="deja"><Icone nom="agenda" class="en-ligne" /> De nouveaux jours sont proposés</p>
+                  <p v-else-if="aRepondu(b.sondage)" class="deja"><Icone nom="coche" class="en-ligne" /> Vous avez répondu</p>
+                  <button v-if="b.sondage.peutRepondre" class="choisir-jours" @click="choisirJours(b)"><Icone nom="agenda" class="en-ligne" /> {{ boutonSondage(b.sondage) }}</button>
                 </template>
                 <template v-else>
                   <p class="sous-sondage">{{ jourLong(b.sondage.dateRetenue) }}, {{ momentTexte(b.sondage) }}{{ b.sondage.lieu ? `, ${b.sondage.lieu}` : '' }}.</p>

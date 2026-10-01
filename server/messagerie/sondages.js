@@ -189,3 +189,29 @@ export async function relancerSondage(sondage, conversation, liste, { auteur = n
   })
   return attendus.map((m) => m.prenom)
 }
+
+// Ce qui change pour ceux qui ont déjà répondu quand un sondage est modifié : jours ajoutés,
+// jours retirés, horaire. null si rien de tout cela ne change (titre, lieu, date limite seuls).
+export function changementsSondage(avant, apres) {
+  const ajoutes = apres.dates.filter((d) => !avant.dates.includes(d))
+  const retires = avant.dates.filter((d) => !apres.dates.includes(d))
+  const horaire = avant.moment !== apres.moment || (apres.moment === 'heure' && avant.heure !== apres.heure)
+  if (!ajoutes.length && !retires.length && !horaire) return null
+  const liste = (dates) => dates.map(jourEnClair).join(', ')
+  const phrases = []
+  if (ajoutes.length) phrases.push(`${ajoutes.length > 1 ? 'Nouveaux jours proposés' : 'Nouveau jour proposé'} : ${liste(ajoutes)}.`)
+  if (retires.length) phrases.push(`${retires.length > 1 ? 'Jours retirés' : 'Jour retiré'} : ${liste(retires)}.`)
+  if (horaire) phrases.push(`Nouvel horaire : ${momentEnClair(apres) || 'toute la journée'}.`)
+  return { ajoutes, retires, horaire, texte: phrases.join(' ') }
+}
+
+// Alerte à ceux qui avaient déjà répondu (sauf l'auteur de la modification) : leurs réponses sont
+// peut-être à compléter. Les autres sont prévenus comme pour tout message du fil.
+export async function prevenirModification(sondage, conversation, dejaRepondu, changements) {
+  const corps = `${sondage.titre} : ${changements.texte}${changements.ajoutes.length ? ' Pensez à compléter vos réponses.' : ''}`
+  const tag = `sondage-${sondage.id}`
+  await envoyerAlerte(dejaRepondu.filter((m) => m.role === 'accompagne').map((m) => m.utilisateurId), { categorie: 'messages', titre: 'Le sondage a changé', corps, url: '/messages', tag })
+  await envoyerAlerte(dejaRepondu.filter((m) => m.role !== 'accompagne').map((m) => m.utilisateurId), {
+    categorie: 'messages', titre: 'Sondage modifié · Toute la famille', corps, url: `/cercles/${conversation.cercleId}/messages?c=${conversation.id}&sondage=${sondage.id}`, tag
+  })
+}

@@ -13,7 +13,7 @@ import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peu
 import { ouvrirFlux, signaler } from '../messagerie/flux.js'
 import { programmerAlertes, apercu } from '../messagerie/alertes.js'
 import { premierLien, apercuDe, imageDe } from '../messagerie/liens.js'
-import { lireSondage, nettoyerReponses, sondagesDesMessages, chargerSondage, presenterSondage, relancerSondage, jourEnClair, momentEnClair, dateValide } from '../messagerie/sondages.js'
+import { lireSondage, nettoyerReponses, sondagesDesMessages, chargerSondage, presenterSondage, relancerSondage, changementsSondage, prevenirModification, aRepondu, jourEnClair, momentEnClair, dateValide } from '../messagerie/sondages.js'
 import { VARIANTES_PHOTO, VOCAL_MAX, DUREE_VOCAL_MAX, FORMATS_VOCAL, DUREE_ENVOI, clePhoto, cleVocal, clesFichiers, lienLecture, supprimerFichiers } from '../messagerie/fichiers.js'
 
 // Messagerie : conversations de groupe du cercle, conversations privées, cahier de liaison
@@ -198,13 +198,13 @@ async function marquerLu(conversation, utilisateurId, jusqua = new Date()) {
 
 // Un message vient d'être publié : la conversation remonte, les pages ouvertes se rafraîchissent,
 // les alertes partent un peu plus tard pour ceux qui ne l'ont pas lu
-async function annoncer(req, message) {
+async function annoncer(req, message, { sansAlerte = [] } = {}) {
   const { conversation, liste, moi } = req
   await db.update(conversations).set({ dernierMessageLe: message.creeLe }).where(eq(conversations.id, conversation.id))
   await marquerLu(conversation, moi.utilisateurId, message.creeLe)
   const membresConv = participants(conversation, liste)
   signaler(membresConv.map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id, auteurId: moi.utilisateurId })
-  programmerAlertes(conversation, message, moi, membresConv.filter((m) => m.utilisateurId !== moi.utilisateurId))
+  programmerAlertes(conversation, message, moi, membresConv.filter((m) => m.utilisateurId !== moi.utilisateurId && !sansAlerte.includes(m.utilisateurId)))
 }
 
 // Aperçu du premier lien d'un message (après l'envoi, sans faire attendre l'auteur) : enregistré
@@ -480,20 +480,32 @@ router.get('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
 })
 
 // Modifie le sondage (titre, lieu, moment, dates, date limite) tant qu'il est ouvert. Les réponses
-// aux dates retirées disparaissent.
+// aux dates retirées disparaissent. Si les jours ou l'horaire changent, un message le dit dans le
+// fil et ceux qui avaient déjà répondu reçoivent une alerte dédiée (Julien, 2026-10-01).
 router.put('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
+  const { conversation, moi, liste } = req
   const { sondage, reponses } = req.sondage
   if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants modifient ce sondage' })
   if (sondage.dateRetenue) return res.status(400).json({ erreur: 'Ce sondage est clos' })
   const saisie = lireSondage(req.body)
-  await db.transaction(async (tx) => {
+  const changements = changementsSondage(sondage, saisie)
+  const message = await db.transaction(async (tx) => {
     await tx.update(sondages).set(saisie).where(eq(sondages.id, sondage.id))
     await tx.update(messages).set({ texte: saisie.titre }).where(eq(messages.id, sondage.messageId))
     for (const r of reponses) {
       await tx.update(sondageReponses).set({ reponses: nettoyerReponses(r.reponses, saisie.dates) }).where(eq(sondageReponses.id, r.id))
     }
+    if (!changements) return null
+    const texte = `Le sondage « ${saisie.titre} » a changé. ${changements.texte}${changements.ajoutes.length ? ' Si vous aviez déjà répondu, pensez à compléter vos réponses.' : ''}`
+    const [m] = await tx.insert(messages).values({ conversationId: conversation.id, cercleId: conversation.cercleId, auteurId: moi.utilisateurId, type: 'texte', texte }).returning()
+    return m
   })
-  rafraichir(req.conversation, req.liste)
+  if (message) {
+    const faites = new Map(reponses.map((r) => [r.utilisateurId, r]))
+    const dejaRepondu = participants(conversation, liste).filter((m) => m.utilisateurId !== moi.utilisateurId && aRepondu(faites.get(m.utilisateurId)))
+    await annoncer(req, message, { sansAlerte: dejaRepondu.map((m) => m.utilisateurId) })
+    await prevenirModification({ ...sondage, ...saisie }, conversation, dejaRepondu, changements)
+  } else rafraichir(conversation, liste)
   res.json(await detailSondage(req))
 })
 

@@ -12,6 +12,8 @@ const emit = defineEmits(['repondre', 'detail'])
 const s = computed(() => props.sondage)
 const max = computed(() => Math.max(1, s.value.nombre))
 const aRepondu = computed(() => Object.keys(s.value.mesReponses).length > 0)
+// Des jours ajoutés après sa réponse : il reste à les compléter
+const aCompleter = computed(() => aRepondu.value && s.value.dates.some((d) => !s.value.mesReponses[d]))
 </script>
 
 <template>
@@ -43,7 +45,7 @@ const aRepondu = computed(() => Object.keys(s.value.mesReponses).length > 0)
       <span class="aide">{{ s.repondu }} réponse{{ s.repondu > 1 ? 's' : '' }} sur {{ s.nombre }}<template v-if="s.ouvert && s.attendus.length && s.attendus.length <= 3"> · on attend {{ s.attendus.join(', ') }}</template></span>
     </div>
     <div class="boutons">
-      <button v-if="s.peutRepondre" @click.stop="emit('repondre')"><Icone nom="coche" class="en-ligne" /> {{ aRepondu ? 'Changer mes réponses' : 'Donner mes disponibilités' }}</button>
+      <button v-if="s.peutRepondre" @click.stop="emit('repondre')"><Icone nom="coche" class="en-ligne" /> {{ aCompleter ? 'Compléter mes réponses' : aRepondu ? 'Changer mes réponses' : 'Donner mes disponibilités' }}</button>
       <button class="secondaire" @click.stop="emit('detail')">{{ s.ouvert && s.peutGerer ? 'Voir les réponses et choisir' : 'Voir les réponses' }}</button>
     </div>
   </div>

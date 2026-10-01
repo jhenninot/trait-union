@@ -113,7 +113,7 @@ async function enregistrer() {
           {{ jourLong(d) }} <Icone nom="fermer" class="en-ligne" />
         </button>
       </div>
-      <p v-if="sondage" class="aide">Les réponses déjà données aux jours retirés seront effacées.</p>
+      <p v-if="sondage" class="aide">Les réponses déjà données aux jours retirés seront effacées. Si les jours ou l'horaire changent, un message le dira dans « Toute la famille » et ceux qui ont déjà répondu recevront une alerte.</p>
 
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <div class="actions">
