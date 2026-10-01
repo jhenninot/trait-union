@@ -1,179 +1,109 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { api } from '../api.js'
-import { session } from '../session.js'
-import { dateLongue, age, ans as nbAns, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
+import { ref, computed, onMounted } from 'vue'
+import { chargerFamille } from '../famille.js'
+import { GROUPES, titreConjoint } from '../arbre.js'
 import Avatar from './Avatar.vue'
-import BoutonIcone from '../navigation/BoutonIcone.vue'
+import FicheFamille from './FicheFamille.vue'
 import Icone from '../navigation/Icone.vue'
 
-// « Ma famille » pour la personne accompagnée : les visages et prénoms de son cercle.
-// Toucher une personne ouvre sa fiche : téléphone, date de naissance et âge, adresse.
+// « Ma famille » pour la personne accompagnée : les visages et prénoms de sa famille, rangés
+// par génération quand l'arbre généalogique est rempli (« Mes enfants », « Mes petits-enfants »…).
+// Toucher une personne ouvre sa fiche : lien, téléphone, âge, adresse, « À savoir ».
 const personnes = ref([])
+const arbres = ref([])
 const charge = ref(false)
 const fiche = ref(null)
-const ans = (date) => nbAns(age(date))
 // Visages plus petits sur smartphone (deux personnes par ligne)
 const petit = window.matchMedia('(max-width: 600px)').matches
-const taille = petit ? 88 : 132
+const taille = petit ? 88 : 120
 
 onMounted(async () => {
-  const vus = new Set()
-  for (const c of session.cercles) {
-    const cercle = await api('GET', `/cercles/${c.id}`).catch(() => null)
-    for (const m of cercle?.membres ?? []) {
-      const cle = `${m.prenom} ${m.nom ?? ''}`
-      // Les autres personnes accompagnées du cercle (un conjoint, par exemple) y figurent aussi
-      if (m.moi || vus.has(cle)) continue
-      vus.add(cle)
-      personnes.value.push(m)
-    }
-  }
+  const f = await chargerFamille()
+  personnes.value = f.personnes
+  arbres.value = f.arbres
   charge.value = true
 })
+
+const parNaissance = (a, b) => (a.dateNaissance ?? '9999').localeCompare(b.dateNaissance ?? '9999')
+const groupes = computed(() => {
+  if (!arbres.value.length) return [[null, personnes.value]]
+  const titres = [...GROUPES.map(([k, t]) => [k, t]), ['aide', 'Ceux qui m\'aident']]
+  const liste = []
+  for (const [cle, titre] of titres) {
+    const ps = personnes.value.filter((p) => (p.groupe ?? 'famille') === cle || (cle === 'famille' && p.groupe === 'allies'))
+    if (cle === 'allies' || !ps.length) continue
+    liste.push([cle === 'conjoint' ? titreConjoint(ps) : titre, ps.sort(parNaissance)])
+  }
+  return liste
+})
+// « Mon arbre » : seulement s'il y a des enfants à montrer
+const aUnArbre = computed(() => personnes.value.some((p) => p.groupe === 'enfants'))
+const pastille = (p) => p.decede ? `${p.genre === 'homme' ? 'Décédé' : 'Décédée'}${p.dateDeces ? ` en ${p.dateDeces.slice(0, 4)}` : ''}` : p.lien
 </script>
 
 <template>
   <main class="famille">
-    <h1>Ma famille</h1>
+    <div class="tete">
+      <h1>Ma famille</h1>
+      <RouterLink v-if="aUnArbre" to="/mon-arbre" class="gros-lien"><Icone nom="arbre" /> Mon arbre</RouterLink>
+    </div>
     <p v-if="charge && !personnes.length" class="vide">Personne pour l'instant.</p>
-    <div class="grille">
-      <button v-for="p in personnes" :key="p.id" type="button" class="personne" @click="fiche = p">
-        <Avatar :src="p.avatar" :prenom="p.prenom" :taille="taille" />
-        <span class="prenom">{{ p.prenom }}</span>
-        <span v-if="p.nom" class="nom">{{ p.nom }}</span>
-        <span v-if="p.lien" class="lien">{{ p.lien }}</span>
-      </button>
-    </div>
+    <template v-for="[titre, ps] in groupes" :key="titre ?? 'tous'">
+      <h2 v-if="titre" class="groupe">{{ titre }}</h2>
+      <div class="grille">
+        <button v-for="p in ps" :key="p.id" type="button" class="personne" :class="{ decede: p.decede }" @click="fiche = p">
+          <Avatar :src="p.avatar" :prenom="p.prenom" :taille="taille" :class="{ gris: p.decede }" />
+          <span class="prenom">{{ p.prenom }}</span>
+          <span v-if="p.nom && !titre" class="nom">{{ p.nom }}</span>
+          <span v-if="pastille(p)" class="lien">{{ pastille(p) }}</span>
+        </button>
+      </div>
+    </template>
 
-    <div v-if="fiche" class="voile" @click.self="fiche = null">
-      <section class="fiche" role="dialog" :aria-label="fiche.prenom">
-        <BoutonIcone class="fermer" icone="fermer" libelle="Fermer" gros @click="fiche = null" />
-        <Avatar :src="fiche.avatar" :prenom="fiche.prenom" :taille="petit ? 110 : 150" />
-        <h2>{{ fiche.prenom }} <span v-if="fiche.nom" class="nom">{{ fiche.nom }}</span></h2>
-        <p v-if="fiche.lien" class="lien grand">{{ fiche.lien }}</p>
-        <a v-if="fiche.telephone" class="appeler" :href="lienTelephone(fiche.telephone)">
-          <Icone nom="telephone" class="em" />
-          <span>Appeler<br /><span class="numero">{{ fiche.telephone }}</span></span>
-        </a>
-        <div v-if="fiche.telephone" class="ecrire">
-          <a :href="lienSms(fiche.telephone)"><Icone nom="sms" class="em" /> SMS</a>
-          <a :href="lienWhatsApp(fiche.telephone)" target="_blank" rel="noopener"><Icone nom="whatsapp" class="em" /> WhatsApp</a>
-        </div>
-        <p v-if="fiche.dateNaissance" class="info">
-          <Icone nom="gateau" class="em" />
-          <span>{{ dateLongue(fiche.dateNaissance) }}<br /><strong>{{ ans(fiche.dateNaissance) }}</strong></span>
-        </p>
-        <p v-if="fiche.adresse" class="info">
-          <Icone nom="lieu" class="em" />
-          <span class="adresse">{{ fiche.adresse }}</span>
-        </p>
-      </section>
-    </div>
+    <FicheFamille v-if="fiche" :personne="fiche" @fermer="fiche = null" />
   </main>
 </template>
 
 <style scoped>
 .famille { max-width: none; flex: 1; padding: 32px 24px; overflow-y: auto; }
-h1 { font-size: 2.6rem; text-align: center; margin: 0 0 24px; }
+.tete { position: relative; display: flex; justify-content: center; align-items: center; margin: 0 0 16px; min-height: 64px; }
+h1 { font-size: 2.6rem; text-align: center; margin: 0; }
+.gros-lien { position: absolute; right: 0; display: flex; align-items: center; gap: 10px; background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.3rem; border-radius: 18px; padding: 14px 20px; text-decoration: none; }
+.gros-lien .icone { font-size: 1.8rem; }
+.groupe { color: var(--bleu-nuit); font-size: 1.6rem; margin: 20px 0 12px; }
 .vide { font-size: 1.6rem; text-align: center; color: var(--gris); }
-.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
 .personne {
   background: white;
   color: inherit;
   border-radius: 24px;
-  padding: 24px 16px;
+  padding: 20px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.08);
 }
-.prenom { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); }
+.personne.decede { background: #f6f5f3; }
+.gris :deep(img) { filter: grayscale(1); opacity: 0.8; }
+.prenom { font-size: 1.9rem; font-weight: 700; color: var(--bleu-nuit); }
+.decede .prenom { color: var(--gris); }
 .nom { font-size: 1.3rem; color: var(--gris); font-weight: 400; }
-.lien { margin-top: 4px; padding: 4px 16px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-size: 1.3rem; font-weight: 700; }
-.lien.grand { margin: -6px 0 0; font-size: 1.6rem; padding: 6px 22px; }
+.lien { margin-top: 4px; padding: 4px 16px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-size: 1.2rem; font-weight: 700; text-align: center; }
+.decede .lien { background: #e9e7e3; color: var(--gris); }
 
-/* Fiche d'une personne, en gros caractères */
-.voile {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgb(35 48 90 / 0.45);
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-.fiche {
-  position: relative;
-  background: white;
-  border-radius: 28px;
-  padding: 32px;
-  width: min(560px, 100%);
-  max-height: 100%;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-}
-.fermer { position: absolute; top: 16px; right: 16px; }
-h2 { font-size: 2.4rem; margin: 0; color: var(--bleu-nuit); text-align: center; }
-h2 .nom { font-size: 1.6rem; }
-.appeler {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  width: 100%;
-  padding: 18px 24px;
-  border-radius: 20px;
-  background: var(--vert);
-  color: white;
-  text-decoration: none;
-  font-size: 1.8rem;
-  font-weight: 700;
-}
-.appeler .icone { font-size: 2.6rem; }
-.ecrire { display: flex; gap: 12px; width: 100%; }
-.ecrire a {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 14px 12px;
-  border-radius: 20px;
-  background: var(--vert-clair);
-  color: var(--vert);
-  text-decoration: none;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-.ecrire .icone { font-size: 2rem; }
-.numero { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.03em; }
-.info { display: flex; align-items: center; gap: 18px; width: 100%; margin: 0; font-size: 1.6rem; color: var(--bleu-nuit); }
-.info .icone { font-size: 2.4rem; color: var(--vert); flex: none; }
-.adresse { white-space: pre-line; }
-
-/* Smartphone : deux personnes par ligne, fiche en plein écran */
+/* Smartphone : deux personnes par ligne */
 @media (max-width: 600px) {
   .famille { padding: 20px 12px; }
-  h1 { font-size: 2rem; margin-bottom: 16px; }
+  .tete { flex-direction: column; gap: 10px; }
+  h1 { font-size: 2rem; }
+  .gros-lien { position: static; font-size: 1.1rem; padding: 10px 16px; }
+  .gros-lien .icone { font-size: 1.4rem; }
+  .groupe { font-size: 1.25rem; margin: 14px 0 8px; }
   .grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .personne { padding: 16px 8px; border-radius: 18px; }
+  .personne { padding: 14px 6px; border-radius: 18px; }
   .prenom { font-size: 1.4rem; }
   .nom { font-size: 1.05rem; }
-  .lien { font-size: 1.05rem; padding: 3px 12px; }
-  .lien.grand { font-size: 1.3rem; }
-  .voile { padding: 0; }
-  .fiche { border-radius: 0; height: 100%; padding: 24px 16px; gap: 14px; justify-content: center; }
-  h2 { font-size: 2rem; }
-  h2 .nom { font-size: 1.4rem; }
-  .appeler { font-size: 1.5rem; padding: 14px 18px; }
-  .numero { font-size: 1.3rem; }
-  .ecrire a { font-size: 1.2rem; padding: 12px 8px; gap: 8px; }
-  .ecrire .icone { font-size: 1.6rem; }
-  .info { font-size: 1.3rem; gap: 14px; }
-  .info .icone { font-size: 2rem; }
+  .lien { font-size: 0.95rem; padding: 3px 10px; }
 }
 </style>

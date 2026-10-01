@@ -139,8 +139,16 @@ const rejoindre = () => action(async () => {
           </span>
           <span class="liens">
             <span class="aide">{{ libellesRoles[m.role] }}</span>
+            <!-- Placé dans l'arbre généalogique : le lien est calculé, on va le voir dans l'arbre -->
+            <RouterLink
+              v-if="m.lienCalcule"
+              :to="`${url}/arbre?personne=${m.personneId}`"
+              class="bouton-icone"
+              :aria-label="`Voir ${m.prenom} dans l'arbre généalogique`"
+              :title="`Voir ${m.prenom} dans l'arbre généalogique`"
+            ><Icone nom="arbre" /></RouterLink>
             <BoutonIcone
-              v-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire'"
+              v-else-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire'"
               :icone="lienOuvert?.id === m.id ? 'fermer' : 'famille'"
               :libelle="lienOuvert?.id === m.id ? 'Fermer' : `Préciser le lien de ${m.prenom} avec la personne accompagnée`"
               @click="lienOuvert = lienOuvert?.id === m.id ? null : { id: m.id, lien: m.lien ?? '' }"

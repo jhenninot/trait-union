@@ -62,8 +62,9 @@ export async function preparerEnvoi(utilisateurId, taille) {
   return { photo: `photo:${jeton}`, envoi }
 }
 
-// Enregistre le nouvel avatar (null pour revenir à l'initiale) et supprime l'ancienne photo
-export async function changerAvatar(utilisateur, choix) {
+// Enregistre le nouvel avatar (null pour revenir à l'initiale) et supprime l'ancienne photo.
+// `table` : utilisateurs, ou personnes pour une fiche de l'arbre généalogique sans compte.
+export async function changerAvatar(utilisateur, choix, table = utilisateurs) {
   let avatar = null
   const stockage = await stockageActif()
   if (choix != null && choix !== '') {
@@ -77,7 +78,7 @@ export async function changerAvatar(utilisateur, choix) {
     }
     avatar = `${type}:${valeur}`
   }
-  await db.update(utilisateurs).set({ avatar }).where(eq(utilisateurs.id, utilisateur.id))
+  await db.update(table).set({ avatar }).where(eq(table.id, utilisateur.id))
   const ancienne = utilisateur.avatar?.startsWith('photo:') && utilisateur.avatar !== avatar ? utilisateur.avatar.slice(6) : null
   if (ancienne && stockage) {
     await supprimerObjet(stockage, cleObjet(utilisateur.id, ancienne)).catch((e) => console.error('Suppression d\'un ancien avatar :', e.message))

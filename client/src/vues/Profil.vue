@@ -55,7 +55,8 @@ async function terminer() {
 }
 
 // Lien avec la personne accompagnée, dans chaque cercle où l'on est aidant ou proche
-const cerclesLien = computed(() => (session.cercles ?? []).filter((c) => ['aidant', 'proche'].includes(c.role) && c.membreId))
+// (sauf si l'on est placé dans l'arbre généalogique : le lien y est calculé)
+const cerclesLien = computed(() => (session.cercles ?? []).filter((c) => ['aidant', 'proche'].includes(c.role) && c.membreId && !c.personneId))
 const liens = ref(Object.fromEntries(cerclesLien.value.map((c) => [c.id, c.lien ?? ''])))
 const messageLien = ref('')
 const erreurLien = ref('')

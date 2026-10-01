@@ -87,6 +87,53 @@ export const codesConnexion = pgTable('codes_connexion', {
   index('codes_connexion_code_idx').on(t.codeHash)
 ])
 
+// Arbre généalogique d'un cercle : les personnes de la famille, avec ou sans compte
+// (un jeune enfant, un conjoint qui n'utilise pas l'appli, un défunt). Quand la personne a un
+// compte (utilisateur_id), ses prénom, nom, coordonnées et avatar sont ceux du compte ; les
+// colonnes ci-dessous ne servent qu'en l'absence de compte (ou en secours).
+export const genrePersonne = pgEnum('genre_personne', ['homme', 'femme'])
+
+export const personnes = pgTable('personnes', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  prenom: text('prenom').notNull(),
+  nom: text('nom'),
+  genre: genrePersonne('genre'), // null : ne pas préciser (« enfant » plutôt que « fils » ou « fille »)
+  dateNaissance: date('date_naissance'),
+  decede: boolean('decede').notNull().default(false),
+  dateDeces: date('date_deces'),
+  telephone: text('telephone'),
+  adresse: text('adresse'),
+  // Même format que utilisateurs.avatar ; une photo est rangée sous avatars/<id de la personne>/
+  avatar: text('avatar'),
+  // Quelques mots pour aider la personne accompagnée à se souvenir (affichés sur sa fiche, lus à voix haute)
+  aSavoir: text('a_savoir'),
+  // Montrée dans « Ma famille » des personnes accompagnées (défunts compris, au choix des aidants)
+  visibleAide: boolean('visible_aide').notNull().default(true),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+}, (t) => [
+  index('personnes_cercle_idx').on(t.cercleId),
+  uniqueIndex('personnes_cercle_utilisateur_idx').on(t.cercleId, t.utilisateurId)
+])
+
+// Liens de l'arbre : « parent » (personne_a est un parent de personne_b) ou « conjoint »
+// (en couple, `fin` renseignée pour un couple séparé). Tous les autres liens (grands-parents,
+// frères et sœurs, gendres, neveux…) se déduisent de ces deux-là (server/arbre.js).
+export const typeRelation = pgEnum('type_relation', ['parent', 'conjoint'])
+
+export const relations = pgTable('relations', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  type: typeRelation('type').notNull(),
+  personneA: uuid('personne_a').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
+  personneB: uuid('personne_b').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
+  separes: boolean('separes').notNull().default(false)
+}, (t) => [
+  index('relations_cercle_idx').on(t.cercleId),
+  unique('relations_unique').on(t.type, t.personneA, t.personneB)
+])
+
 // Liens d'invitation pour rejoindre un cercle comme aidant ou proche.
 export const invitations = pgTable('invitations', {
   ...commun,
@@ -94,6 +141,8 @@ export const invitations = pgTable('invitations', {
   role: roleMembre('role').notNull(),
   // Adresse à laquelle le lien a été envoyé : proposée (modifiable) sur la page d'invitation
   email: text('email'),
+  // Fiche de l'arbre généalogique à rattacher au compte qui accepte l'invitation
+  personneId: uuid('personne_id').references(() => personnes.id, { onDelete: 'set null' }),
   creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
   jetonHash: text('jeton_hash').notNull().unique(),
   expireLe: timestamp('expire_le', { withTimezone: true }).notNull(),
@@ -230,11 +279,14 @@ export const rappelsEnvoyes = pgTable('rappels_envoyes', {
   unique('rappels_envoyes_unique').on(t.rendezVousId, t.occurrence, t.prevuLe)
 ])
 
-// Alertes d'anniversaire déjà envoyées : une par personne fêtée et par an
+// Alertes d'anniversaire déjà envoyées : une par personne fêtée et par an (un compte, ou une
+// personne de l'arbre généalogique qui n'a pas de compte)
 export const anniversairesEnvoyes = pgTable('anniversaires_envoyes', {
   ...commun,
-  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  personneId: uuid('personne_id').references(() => personnes.id, { onDelete: 'cascade' }),
   annee: integer('annee').notNull()
 }, (t) => [
-  unique('anniversaires_envoyes_unique').on(t.utilisateurId, t.annee)
+  unique('anniversaires_envoyes_unique').on(t.utilisateurId, t.annee),
+  unique('anniversaires_envoyes_personne_unique').on(t.personneId, t.annee)
 ])

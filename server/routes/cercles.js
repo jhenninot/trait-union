@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes } from '../db/schema.js'
+import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes } from '../db/schema.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
 import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
@@ -12,6 +12,8 @@ import { urlApplication } from '../url.js'
 import routesAgenda from './agenda.js'
 import routesPhotos from './photos.js'
 import routesAlbums from './albums.js'
+import routesArbre from './arbre.js'
+import { liensDesMembres } from '../arbre.js'
 import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { preferences, lirePreferences } from './alertes.js'
 import { derniereApkConnue } from '../application.js'
@@ -112,6 +114,10 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .groupBy(appareilsAlertes.utilisateurId)
   const alertesParUtilisateur = new Map(avecAlertes.map((a) => [a.utilisateurId, a.n]))
   const lienAvatar = await liensAvatars()
+  // Lien avec la personne accompagnée calculé par l'arbre généalogique, quand le membre y est
+  // placé (vu depuis la personne connectée si elle est accompagnée) ; sinon le lien saisi
+  const { g, liens } = await liensDesMembres(req.cercle.id, req.role === 'accompagne' ? req.utilisateur.id : null)
+  const personneDe = new Map(g.personnes.filter((p) => p.utilisateurId).map((p) => [p.utilisateurId, p.id]))
   // Les auxiliaires de vie ne voient que le téléphone des membres
   const voitTout = req.peutGerer || req.role !== 'auxiliaire'
   res.json({
@@ -120,6 +126,9 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     peutGerer: req.peutGerer,
     membres: liste.map(({ utilisateurId, email, avatar, alertes, dateNaissance, adresse, ...m }) => ({
       ...m,
+      lien: liens.get(utilisateurId) ?? m.lien,
+      lienCalcule: liens.has(utilisateurId),
+      personneId: voitTout ? personneDe.get(utilisateurId) ?? null : undefined,
       dateNaissance: voitTout ? dateNaissance : undefined,
       adresse: voitTout ? adresse : undefined,
       moi: utilisateurId === req.utilisateur.id,
@@ -152,10 +161,17 @@ router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, 
   if (!['aidant', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
   // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
   const destinataire = req.body.email ? valider.email(req.body.email) : null
+  // Invitation envoyée depuis une fiche de l'arbre généalogique : le compte y sera rattaché
+  let personneId = null
+  if (req.body.personneId) {
+    const [p] = await db.select().from(personnes).where(and(eq(personnes.id, req.body.personneId), eq(personnes.cercleId, req.cercle.id)))
+    if (!p || p.utilisateurId) return res.status(400).json({ erreur: 'Cette personne a déjà un compte' })
+    personneId = p.id
+  }
   if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
   const jeton = nouveauJeton()
   const expireLe = new Date(Date.now() + DUREE_INVITATION)
-  await db.insert(invitations).values({ cercleId: req.cercle.id, role, email: destinataire, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
+  await db.insert(invitations).values({ cercleId: req.cercle.id, role, email: destinataire, personneId, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
   let emailEnvoye = null
   let erreurEmail = null
   if (destinataire) {
@@ -284,5 +300,6 @@ router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, asyn
 router.use('/:cercleId/rendez-vous', chargerCercle, routesAgenda)
 router.use('/:cercleId/photos', chargerCercle, refuserAuxiliaires, routesPhotos)
 router.use('/:cercleId/albums', chargerCercle, refuserAuxiliaires, routesAlbums)
+router.use('/:cercleId/arbre', chargerCercle, routesArbre)
 
 export default router

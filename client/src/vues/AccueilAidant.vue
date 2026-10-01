@@ -30,6 +30,8 @@ const albums = ref([]) // albums où des photos sont arrivées depuis ma derniè
 const dernieres = ref([]) // dernières photos, quand il n'y a rien de nouveau
 const photosActives = ref(false)
 const vuesAccompagnes = ref([]) // photos pas encore regardées par chaque personne accompagnée
+// Personnes de l'arbre généalogique sans compte (un jeune enfant…) : pour leurs anniversaires
+const sansCompte = ref([])
 const autres = ref([]) // résumé de mes autres cercles
 
 const peutGerer = computed(() => Boolean(cercle.value?.peutGerer))
@@ -88,6 +90,7 @@ async function charger() {
   albums.value = []
   dernieres.value = []
   vuesAccompagnes.value = []
+  sansCompte.value = []
   if (!id) return
   try {
     const c = await api('GET', `/cercles/${id}`)
@@ -98,6 +101,7 @@ async function charger() {
       chargerRendezVous(id).then((l) => (rendezVous.value = l.slice(0, NB_RDV))),
       auxiliaire ? null : chargerPhotos(id).catch(() => (photosActives.value = false)),
       auxiliaire ? null : api('GET', `/cercles/${id}/albums/accompagnes`).then((l) => (vuesAccompagnes.value = l)).catch(() => {}),
+      auxiliaire ? null : api('GET', `/cercles/${id}/arbre`).then((a) => (sansCompte.value = a.personnes.filter((p) => !p.compte && !p.decede))).catch(() => {}),
       chargerAutres(id)
     ])
   } catch (e) {
@@ -145,7 +149,7 @@ function quand(d) {
 }
 
 // --- Anniversaires du jour (le sien compris), en tête de page ---
-const anniversaires = computed(() => (cercle.value?.membres ?? [])
+const anniversaires = computed(() => [...(cercle.value?.membres ?? []), ...sansCompte.value]
   .filter((m) => estAnniversaire(m.dateNaissance))
   .map((m) => ({ ...m, age: age(m.dateNaissance) }))
   .sort((a, b) => Number(b.moi) - Number(a.moi)))

@@ -134,6 +134,13 @@
       "when": 1790853388564,
       "tag": "0018_version_apk",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790854818718,
+      "tag": "0019_arbre_genealogique",
+      "breakpoints": true
     }
   ]
 }

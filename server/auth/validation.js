@@ -29,14 +29,16 @@ export function telephone(valeur) {
 }
 
 // Date de naissance facultative au format « AAAA-MM-JJ », entre 1900 et aujourd'hui
-export function dateNaissance(valeur) {
-  const v = texte(valeur, 'date de naissance', { obligatoire: false, max: 10 })
+// (l'arbre généalogique accepte des ancêtres plus anciens : `min`)
+export function dateNaissance(valeur, { champ = 'date de naissance', min = '1900-01-01' } = {}) {
+  const v = texte(valeur, champ, { obligatoire: false, max: 10 })
   if (v === null) return null
   const d = new Date(`${v}T00:00:00Z`)
+  const invalide = `${champ.charAt(0).toUpperCase()}${champ.slice(1)} invalide`
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(d) || d.toISOString().slice(0, 10) !== v) {
-    throw new ErreurSaisie('Date de naissance invalide')
+    throw new ErreurSaisie(invalide)
   }
-  if (v < '1900-01-01' || d > new Date()) throw new ErreurSaisie('Date de naissance invalide')
+  if (v < min || d > new Date()) throw new ErreurSaisie(invalide)
   return v
 }
 

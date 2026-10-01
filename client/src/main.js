@@ -21,6 +21,8 @@ import PhotosAccompagne from './vues/PhotosAccompagne.vue'
 import AdminPhotos from './vues/AdminPhotos.vue'
 import Recevoir from './vues/Recevoir.vue'
 import Profil from './vues/Profil.vue'
+import Arbre from './vues/Arbre.vue'
+import ArbreAccompagne from './vues/ArbreAccompagne.vue'
 import Alertes from './vues/Alertes.vue'
 import AdminAlertes from './vues/AdminAlertes.vue'
 import AdminPresentation from './vues/AdminPresentation.vue'
@@ -40,6 +42,8 @@ const router = createRouter({
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },
     { path: '/cercles/:id/agenda', component: Agenda, meta: { connecte: true } },
     { path: '/cercles/:id/photos', component: Photos, meta: { connecte: true } },
+    { path: '/cercles/:id/arbre', component: Arbre, meta: { connecte: true } },
+    { path: '/mon-arbre', component: ArbreAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
     { path: '/recevoir', component: Recevoir, meta: { connecte: true, appareil: true } },
     { path: '/profil', component: Profil, meta: { connecte: true } },

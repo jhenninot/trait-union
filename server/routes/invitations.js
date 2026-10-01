@@ -6,6 +6,7 @@ import { empreinte, hacherMotDePasse } from '../auth/securite.js'
 import { ouvrirSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { roleLePlusHaut } from '../auth/roles.js'
+import { rattacherCompte } from '../arbre.js'
 
 const router = Router()
 
@@ -53,6 +54,8 @@ export async function accepterInvitation(invitation, utilisateur, nouveau = null
         role: invitation.role
       }).onConflictDoNothing()
     }
+    // Invitation envoyée depuis une fiche de l'arbre généalogique : la fiche devient la sienne
+    if (invitation.personneId) await rattacherCompte(tx, invitation.personneId, utilisateur)
     return utilisateur
   })
 }

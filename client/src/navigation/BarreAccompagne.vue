@@ -1,4 +1,5 @@
 <script setup>
+import { useRoute } from 'vue-router'
 import { assistant, ecouteDisponible } from '../voix.js'
 import Icone from './Icone.vue'
 
@@ -9,15 +10,16 @@ const boutons = [
   { chemin: '/', icone: 'accueil', libelle: 'Accueil' },
   { chemin: '/agenda', icone: 'agenda', libelle: 'Mon agenda' },
   { chemin: '/photos', icone: 'photo', libelle: 'Mes photos' },
-  { chemin: '/famille', icone: 'famille', libelle: 'Ma famille' }
+  { chemin: '/famille', icone: 'famille', libelle: 'Ma famille', aussi: ['/mon-arbre'] }
 ]
+const route = useRoute()
 // « Parler » ouvre l'assistant vocal, si l'appareil sait reconnaître la voix
 const voix = ecouteDisponible()
 </script>
 
 <template>
   <nav class="barre" aria-label="Menu">
-    <RouterLink v-for="b in boutons" :key="b.chemin" :to="b.chemin" class="bouton" exact-active-class="actif">
+    <RouterLink v-for="b in boutons" :key="b.chemin" :to="b.chemin" class="bouton" exact-active-class="actif" :class="{ actif: b.aussi?.includes(route.path) }">
       <Icone :nom="b.icone" />
       {{ b.libelle }}
     </RouterLink>

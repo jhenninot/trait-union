@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, count, eq, gt, isNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { utilisateurs, codesConnexion, membres, cercles } from '../db/schema.js'
+import { utilisateurs, codesConnexion, membres, cercles, personnes } from '../db/schema.js'
 import { hacherMotDePasse, verifierMotDePasse, empreinteFactice, empreinte, limiteur } from '../auth/securite.js'
 import { ouvrirSession, fermerSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
@@ -16,9 +16,11 @@ const limiteCode = limiteur({ max: 10, fenetreMs: 15 * 60 * 1000 })
 
 export async function mesCercles(utilisateurId) {
   return db
-    .select({ id: cercles.id, nom: cercles.nom, role: membres.role, membreId: membres.id, lien: membres.lien })
+    .select({ id: cercles.id, nom: cercles.nom, role: membres.role, membreId: membres.id, lien: membres.lien, personneId: personnes.id })
     .from(membres)
     .innerJoin(cercles, eq(membres.cercleId, cercles.id))
+    // Fiche de l'arbre généalogique (le lien avec la personne accompagnée y est alors calculé)
+    .leftJoin(personnes, and(eq(personnes.cercleId, membres.cercleId), eq(personnes.utilisateurId, membres.utilisateurId)))
     .where(eq(membres.utilisateurId, utilisateurId))
     .orderBy(cercles.nom)
 }

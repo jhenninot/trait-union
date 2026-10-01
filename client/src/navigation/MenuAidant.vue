@@ -41,18 +41,18 @@ const cercleId = computed(() => {
 })
 const cercle = computed(() => choix.value.find((c) => c.id === cercleId.value) ?? null)
 const peutGerer = computed(() => session.utilisateur.estAdmin || aLesDroits(cercle.value?.role, 'aidant'))
-// Les auxiliaires de vie n'ont pas accès aux photos
+// Les auxiliaires de vie n'ont pas accès aux photos ni à l'arbre généalogique
 const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value?.role))
 
 watch(() => route.params.id, (id) => id && memoriserCercle(id), { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
 
-// Changer de cercle garde la même rubrique (Accueil, Famille, Agenda, Photos ou Personnes accompagnées)
+// Changer de cercle garde la même rubrique (Accueil, Famille, Arbre, Agenda, Photos ou Personnes accompagnées)
 function changerCercle(id) {
   if (route.path === '/') return memoriserCercle(id)
-  let rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
+  let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre)$/)?.[0] ?? ''
   const cible = choix.value.find((c) => c.id === id)
-  if (rubrique === '/photos' && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
+  if ((rubrique === '/photos' || rubrique === '/arbre') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -88,6 +88,9 @@ const estActif = (chemin) => route.path === chemin
     <template v-if="cercle">
       <RouterLink :to="`/cercles/${cercle.id}`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}`) }">
         <Icone nom="famille" /> Famille et aidants
+      </RouterLink>
+      <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/arbre`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/arbre`) }">
+        <Icone nom="arbre" /> Arbre généalogique
       </RouterLink>
       <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
         <Icone nom="agenda" /> Agenda

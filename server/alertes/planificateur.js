@@ -1,6 +1,6 @@
 import { and, eq, ne, or, lt, gte, isNull, isNotNull, inArray, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums, anniversairesEnvoyes, parametres, appareilsAlertes, sessions } from '../db/schema.js'
+import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums, anniversairesEnvoyes, parametres, appareilsAlertes, sessions, personnes } from '../db/schema.js'
 import { occurrences } from '../agenda/recurrence.js'
 import { peutVoir } from '../routes/agenda.js'
 import { lienAffichage } from '../routes/photos.js'
@@ -9,6 +9,7 @@ import { aLesDroits } from '../auth/roles.js'
 import { envoyerAlerte, envoyerAux } from './envoi.js'
 import { derniereApk } from '../application.js'
 import { joursFetes, age } from '../anniversaires.js'
+import { chargerArbre, parente } from '../arbre.js'
 
 // Tâche de fond lancée au démarrage du serveur : chaque minute, elle envoie
 // - les rappels de rendez-vous dont l'heure est arrivée ;
@@ -172,6 +173,7 @@ async function envoyerAnniversaires(maintenant) {
     ))
   const finDeJournee = new Date(maintenant)
   finDeJournee.setHours(23, 59, 59, 0)
+  const duree = Math.max(600, Math.round((finDeJournee - maintenant) / 1000))
   for (const fete of fetes) {
     // Une seule fois par an, même avec plusieurs serveurs ou après un redémarrage
     const [nouveau] = await db.insert(anniversairesEnvoyes)
@@ -197,7 +199,6 @@ async function envoyerAnniversaires(maintenant) {
       corps: `${nom} fête ses ${n} an${n > 1 ? 's' : ''} aujourd'hui.`,
       tag: `anniversaire-${fete.id}-${maintenant.getFullYear()}`
     }
-    const duree = Math.max(600, Math.round((finDeJournee - maintenant) / 1000))
     const liste = [...destinataires.values()]
     await envoyerAlerte(liste.filter((m) => m.role === 'accompagne').map((m) => m.utilisateurId), { ...alerte, url: '/' }, { duree })
     // Les aidants et la famille arrivent sur « Famille et aidants » du cercle
@@ -206,8 +207,43 @@ async function envoyerAnniversaires(maintenant) {
       await envoyerAlerte(ms.map((m) => m.utilisateurId), { ...alerte, url: `/cercles/${cercleId}` }, { duree })
     }
   }
+  await envoyerAnniversairesArbre(maintenant, duree)
   // Les traces des années passées ne servent plus
   await db.delete(anniversairesEnvoyes).where(lt(anniversairesEnvoyes.annee, maintenant.getFullYear() - 1))
+}
+
+// Anniversaires des personnes de l'arbre généalogique qui n'ont pas de compte (un jeune enfant) :
+// aux membres de leur cercle, sauf les auxiliaires de vie ; aux personnes accompagnées seulement
+// si la fiche leur est visible. Pas d'alerte pour un défunt.
+async function envoyerAnniversairesArbre(maintenant, duree) {
+  const fetes = await db.select().from(personnes).where(and(
+    isNull(personnes.utilisateurId),
+    eq(personnes.decede, false),
+    inArray(sql`to_char(${personnes.dateNaissance}, 'MM-DD')`, joursFetes(maintenant))
+  ))
+  for (const fete of fetes) {
+    const [nouveau] = await db.insert(anniversairesEnvoyes)
+      .values({ personneId: fete.id, annee: maintenant.getFullYear() })
+      .onConflictDoNothing()
+      .returning({ id: anniversairesEnvoyes.id })
+    if (!nouveau) continue
+    const n = age(fete.dateNaissance, maintenant)
+    const nom = [fete.prenom, fete.nom].filter(Boolean).join(' ')
+    const ans = `${n} an${n > 1 ? 's' : ''}`
+    const alerte = { categorie: 'anniversaires', titre: `Anniversaire de ${fete.prenom}`, tag: `anniversaire-${fete.id}-${maintenant.getFullYear()}` }
+    const ms = (await membresDuCercle(fete.cercleId)).filter((m) => m.peutGerer || m.role !== 'auxiliaire')
+    await envoyerAlerte(ms.filter((m) => m.role !== 'accompagne').map((m) => m.utilisateurId),
+      { ...alerte, corps: `${nom} fête ses ${ans} aujourd'hui.`, url: `/cercles/${fete.cercleId}/arbre` }, { duree })
+    if (!fete.visibleAide) continue
+    // La personne accompagnée lit le lien : « Léo, votre arrière-petit-fils, fête ses 4 ans aujourd'hui. »
+    const g = await chargerArbre(fete.cercleId)
+    for (const m of ms.filter((x) => x.role === 'accompagne')) {
+      const moi = g.personnes.find((p) => p.utilisateurId === m.utilisateurId)
+      const r = moi ? parente(g, moi.id, fete.id) : null
+      const lien = r && !/ de /.test(r.lien) ? `, votre ${r.lien.toLowerCase()},` : ''
+      await envoyerAlerte([m.utilisateurId], { ...alerte, corps: `${fete.prenom}${lien} fête ses ${ans} aujourd'hui.`, url: '/famille' }, { duree })
+    }
+  }
 }
 
 // Nouvelle APK publiée (vérifiée une fois par heure) : alerte sur les téléphones des aidants et de

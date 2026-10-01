@@ -5,6 +5,7 @@ import { occurrences } from '../agenda/recurrence.js'
 import { mesCercles } from '../routes/auth.js'
 import { filtreNiveaux } from '../routes/agenda.js'
 import { estAnniversaire, age } from '../anniversaires.js'
+import { chargerArbre, phrase as phraseArbre } from '../arbre.js'
 
 // Assistant vocal de la personne accompagnée, sans IA : on cherche des mots-clés dans ce
 // qu'elle a dit (reconnaissance vocale du téléphone ou du navigateur) et on répond par une
@@ -14,7 +15,7 @@ import { estAnniversaire, age } from '../anniversaires.js'
 // Alexa reconnaît elle-même l'intention (JourneeIntent, HeureIntent…) et n'aura qu'à appeler
 // repondre(utilisateur, intention, parametres) pour obtenir la phrase à dire.
 
-export const INTENTIONS = ['journee', 'demain', 'heure', 'date', 'agenda', 'photos', 'famille', 'personne', 'accueil', 'merci', 'inconnue']
+export const INTENTIONS = ['journee', 'demain', 'heure', 'date', 'agenda', 'photos', 'famille', 'personne', 'qui', 'accueil', 'merci', 'inconnue']
 
 const JOURS_AGENDA = 60
 
@@ -64,9 +65,27 @@ async function donneesPersonne(utilisateur, jours = JOURS_AGENDA) {
     )),
     db.select({ id: albums.id, nom: albums.nom }).from(albums).where(inArray(albums.cercleId, ids))
   ])
+  // Arbre généalogique : la phrase qui présente chaque personne (« Léo est votre arrière-petit-fils… »)
+  // et les personnes sans compte (jeunes enfants…) que la personne accompagnée peut voir
+  const autres = []
+  const phrases = new Map()
+  for (const id of ids) {
+    const g = await chargerArbre(id)
+    const moi = g.personnes.find((p) => p.utilisateurId === utilisateur.id)
+    if (!moi) continue
+    for (const p of g.personnes) {
+      if (p.id === moi.id || !p.visibleAide) continue
+      const texte = phraseArbre(g, moi.id, p.id)
+      if (p.utilisateurId) phrases.set(p.utilisateurId, texte)
+      else autres.push({ prenom: p.prenom, nom: p.nom, role: null, utilisateurId: null, personneId: p.id, dateNaissance: p.dateNaissance, decede: p.decede, phrase: texte })
+    }
+  }
   return {
     // Les autres personnes accompagnées du cercle (un conjoint, par exemple) font partie de la famille
-    famille: famille.filter((m) => m.utilisateurId !== utilisateur.id),
+    famille: [
+      ...famille.filter((m) => m.utilisateurId !== utilisateur.id).map((m) => ({ ...m, phrase: phrases.get(m.utilisateurId) ?? null })),
+      ...autres
+    ],
     agenda: lignes.flatMap((r) => occurrences(r, debut, fin)).sort((a, b) => a.debut - b.debut),
     albums: listeAlbums
   }
@@ -114,8 +133,9 @@ function anniversaires(utilisateur, famille, jour) {
   }
   const vus = new Set()
   const fetes = famille.filter((m) => {
-    if (!estAnniversaire(m.dateNaissance, jour) || vus.has(m.utilisateurId)) return false
-    vus.add(m.utilisateurId)
+    const cle = m.utilisateurId ?? m.personneId
+    if (m.decede || !estAnniversaire(m.dateNaissance, jour) || vus.has(cle)) return false
+    vus.add(cle)
     return true
   }).map((m) => {
     const n = age(m.dateNaissance, jour)
@@ -176,6 +196,13 @@ export async function repondre(utilisateur, intention, parametres = {}) {
     }
     case 'famille':
       return { texte: 'Voici votre famille.', lien: '/famille' }
+    case 'qui': {
+      const { famille } = await donneesPersonne(utilisateur, 0)
+      const cle = normaliser(parametres.prenom)
+      const p = famille.find((m) => normaliser(m.prenom) === cle && m.phrase) ?? famille.find((m) => normaliser(m.prenom) === cle)
+      if (!p) return { texte: 'Je ne connais pas cette personne. Voici votre famille.', lien: '/famille' }
+      return { texte: p.phrase ?? `${p.prenom} fait partie de votre entourage.`, lien: '/famille' }
+    }
     case 'accueil':
       return { texte: 'Je vous ramène à l\'accueil.', lien: '/' }
     case 'merci':
@@ -201,6 +228,8 @@ export async function comprendre(utilisateur, phrases) {
     if (album && (!intention || intention === 'photos')) return { intention: 'photos', parametres: { album } }
     // Un prénom de la famille : « quand vient Léa », « Léa »
     const proche = famille.find((p) => mots.includes(normaliser(p.prenom)))
+    // « Qui est Léo ? », « C'est qui Léo ? » : la phrase de l'arbre généalogique
+    if (proche && contient(phrase, ['qui est', 'c est qui', 'qui c est', 'parle moi de'])) return { intention: 'qui', parametres: { prenom: proche.prenom } }
     if (proche && (!intention || intention === 'agenda')) return { intention: 'personne', parametres: { prenom: proche.prenom } }
     if (intention) return { intention, parametres: {} }
   }

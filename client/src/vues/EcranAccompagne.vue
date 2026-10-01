@@ -9,6 +9,7 @@ import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import { estAnniversaire, age, ans } from '../coordonnees.js'
+import { chargerFamille } from '../famille.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
@@ -32,21 +33,12 @@ const nouvellesPhotos = computed(() => photos.value?.albums ?? [])
 const nombreNouvelles = computed(() => nouvellesPhotos.value.reduce((n, a) => n + a.nouvelles, 0))
 // Un seul album concerné : on l'ouvre directement ; sinon le choix des albums (avec pastilles)
 const lienPhotos = computed(() => nouvellesPhotos.value.length === 1 ? nouvellesPhotos.value[0].lien : '/photos')
-// Anniversaires du jour : le sien et ceux des membres de ses cercles
+// Anniversaires du jour : le sien et ceux de sa famille (membres de ses cercles et personnes de
+// l'arbre généalogique qui n'ont pas de compte, comme un jeune enfant)
 const fetes = ref([])
 const chargerAnniversaires = async () => {
-  const vus = new Set()
-  const liste = []
-  for (const c of session.cercles) {
-    const cercle = await api('GET', `/cercles/${c.id}`).catch(() => null)
-    for (const m of cercle?.membres ?? []) {
-      const cle = `${m.prenom} ${m.nom ?? ''}`
-      if (m.moi || vus.has(cle) || !estAnniversaire(m.dateNaissance)) continue
-      vus.add(cle)
-      liste.push(m)
-    }
-  }
-  fetes.value = liste
+  const { personnes } = await chargerFamille()
+  fetes.value = personnes.filter((p) => !p.decede && estAnniversaire(p.dateNaissance))
 }
 const monAnniversaire = computed(() => estAnniversaire(session.utilisateur.dateNaissance, maintenant.value))
 
@@ -132,7 +124,7 @@ const moment = () => {
       <span v-if="monAnniversaire && fetes.length" class="aussi">C'est aussi l'anniversaire de :</span>
       <span v-for="p in fetes" :key="p.id" class="ligne-anniversaire">
         <Avatar :src="p.avatar" :prenom="p.prenom" :taille="44" />
-        <span><strong>{{ p.prenom }}</strong> · {{ ans(age(p.dateNaissance)) }}</span>
+        <span><strong>{{ p.prenom }}</strong><template v-if="p.lienAide">, {{ p.lienAide.toLowerCase() }}</template> · {{ ans(age(p.dateNaissance)) }}</span>
       </span>
     </RouterLink>
     <RouterLink v-if="programme.length" to="/agenda" class="programme">
