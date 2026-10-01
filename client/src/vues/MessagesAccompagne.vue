@@ -24,7 +24,6 @@ const fil = ref(null) // { conversation, messages }
 const zoneFil = ref(null)
 const cible = ref(null) // { titre, prenom, avatar, lien, famille, conversationId, cercleId, utilisateurId }
 const envoi = ref(false)
-const clavier = ref(false)
 const texte = ref('')
 const enregistrement = ref(null) // { session, secondes }
 const enGrand = ref(null)
@@ -175,7 +174,6 @@ function repondre() {
   cible.value = c.type === 'famille'
     ? { titre: 'toute la famille', famille: true, conversationId: c.id }
     : { titre: c.titre, prenom: c.autre?.prenom ?? c.titre, avatar: c.autre?.avatar, lien: c.autre?.lien, conversationId: c.id }
-  clavier.value = false
   texte.value = ''
   erreur.value = ''
   ecran.value = 'repondre'
@@ -347,6 +345,11 @@ async function terminerVocal() {
         </div>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      <form class="formulaire-clavier" @submit.prevent="envoyerClavier">
+        <textarea v-model="texte" rows="2" maxlength="2000" placeholder="Écrire votre message ici" aria-label="Votre message" />
+        <button :disabled="envoi || !texte.trim()"><Icone nom="envoyer" class="en-ligne" /> Envoyer</button>
+      </form>
+      <p class="petit-gris ou">ou choisir :</p>
       <div class="rapides">
         <button v-for="r in reglages.reponses" :key="r" class="rapide-bouton" :disabled="envoi" @click="envoyerReponse(r)">
           <Icone v-if="/embrasse|bisou/i.test(r)" nom="coeur" class="en-ligne" />{{ r }}
@@ -361,11 +364,6 @@ async function terminerVocal() {
         </button>
         <input ref="choixPhoto" type="file" accept="image/*" hidden @change="photoChoisie" />
       </div>
-      <button v-if="!clavier" class="lien clavier" @click="clavier = true">Écrire avec le clavier</button>
-      <form v-else class="formulaire-clavier" @submit.prevent="envoyerClavier">
-        <textarea v-model="texte" rows="3" maxlength="2000" placeholder="Votre message" />
-        <button :disabled="envoi || !texte.trim()"><Icone nom="envoyer" class="en-ligne" /> Envoyer</button>
-      </form>
       <p v-if="envoi" class="envoi">Envoi en cours…</p>
     </template>
 
@@ -471,9 +469,11 @@ h1 { font-size: 2.4rem; margin: 0; }
 .tres-gros small { font-size: 1.05rem; font-weight: 400; opacity: 0.85; }
 .photo-bouton { background: var(--bleu-nuit); }
 .tres-gros.annuler { background: #f3f0ea; color: var(--rouge); }
-.clavier { align-self: center; font-size: 1.2rem; }
-.formulaire-clavier textarea { font: inherit; font-size: 1.5rem; padding: 14px; border-radius: 16px; border: 2px solid #ddd; }
-.formulaire-clavier button { font-size: 1.4rem; font-weight: 700; padding: 14px; border-radius: 16px; }
+.formulaire-clavier { display: flex; gap: 12px; align-items: stretch; }
+.formulaire-clavier textarea { flex: 1; min-width: 0; font: inherit; font-size: 1.6rem; padding: 16px; border-radius: 18px; border: 3px solid var(--vert); background: #fff; resize: none; }
+.formulaire-clavier textarea::placeholder { color: #7a8580; }
+.formulaire-clavier button { flex: none; font-size: 1.5rem; font-weight: 700; padding: 14px 24px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.ou { margin: -4px 0 -6px; }
 .envoi { font-size: 1.4rem; color: var(--gris); text-align: center; }
 .ecran-photo { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .apercu-grand { max-width: 100%; max-height: 42vh; border-radius: 20px; object-fit: contain; }
@@ -492,6 +492,9 @@ h1 { font-size: 2.4rem; margin: 0; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* Smartphone */
 @media (max-width: 600px) {
+  .formulaire-clavier { flex-direction: column; }
+  .formulaire-clavier textarea { font-size: 1.3rem; padding: 12px; }
+  .formulaire-clavier button { font-size: 1.3rem; padding: 12px; }
   .ecran-photo textarea { font-size: 1.15rem; }
   .apercu-grand { max-height: 34vh; }
   .conv { padding: 12px 14px; gap: 12px; border-radius: 18px; }
