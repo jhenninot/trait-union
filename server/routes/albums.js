@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { and, eq, or, gt, ne, isNull, desc, count, max, sql } from 'drizzle-orm'
+import { and, eq, or, gt, ne, isNull, isNotNull, desc, count, max, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { albums, photos, albumsVus } from '../db/schema.js'
+import { albums, photos, albumsVus, membres } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif } from '../stockage/s3.js'
@@ -14,6 +14,24 @@ const router = Router()
 
 const peutModifier = (req, album) => req.peutGerer || album.creeParId === req.utilisateur.id
 
+// Nombre de photos publiées qu'une personne n'a pas encore regardées, par album
+// (ses propres photos ne comptent pas)
+function nonVuesPar(cercleId, utilisateurId) {
+  return db.select({ albumId: photos.albumId, nombre: count() }).from(photos)
+    .leftJoin(albumsVus, and(
+      eq(albumsVus.utilisateurId, utilisateurId),
+      eq(albumsVus.cercleId, photos.cercleId),
+      sql`${albumsVus.albumId} is not distinct from ${photos.albumId}`
+    ))
+    .where(and(
+      eq(photos.cercleId, cercleId),
+      eq(photos.statut, 'publiee'),
+      or(isNull(albumsVus.vuLe), gt(photos.creeLe, albumsVus.vuLe)),
+      or(isNull(photos.creeParId), ne(photos.creeParId, utilisateurId))
+    ))
+    .groupBy(photos.albumId)
+}
+
 // Albums avec leur nombre de photos et leur couverture (la photo la plus récente),
 // plus le nombre total de photos et de photos sans album. `nouvelles` : photos arrivées depuis
 // la dernière fois que la personne connectée a regardé l'album (toutes si jamais regardé).
@@ -25,18 +43,7 @@ router.get('/', async (req, res) => {
     db.select({ albumId: photos.albumId, nombre: count(), derniere: max(photos.creeLe) }).from(photos).where(publiees).groupBy(photos.albumId),
     db.selectDistinctOn([photos.albumId], { id: photos.id, cercleId: photos.cercleId, albumId: photos.albumId })
       .from(photos).where(publiees).orderBy(photos.albumId, desc(photos.creeLe)),
-    db.select({ albumId: photos.albumId, nombre: count() }).from(photos)
-      .leftJoin(albumsVus, and(
-        eq(albumsVus.utilisateurId, req.utilisateur.id),
-        eq(albumsVus.cercleId, photos.cercleId),
-        sql`${albumsVus.albumId} is not distinct from ${photos.albumId}`
-      ))
-      .where(and(
-        publiees,
-        or(isNull(albumsVus.vuLe), gt(photos.creeLe, albumsVus.vuLe)),
-        or(isNull(photos.creeParId), ne(photos.creeParId, req.utilisateur.id)) // pas ses propres photos
-      ))
-      .groupBy(photos.albumId)
+    nonVuesPar(req.cercle.id, req.utilisateur.id)
   ])
   const compte = new Map(comptes.map((c) => [c.albumId, c]))
   const couverture = new Map(couvertures.map((p) => [p.albumId, p]))
@@ -65,6 +72,21 @@ router.get('/', async (req, res) => {
     sansAlbumCouverture: lienCouverture(null),
     sansAlbumDerniere: compte.get(null)?.derniere ?? null
   })
+})
+
+// Pour l'accueil des aidants et des proches : pour chaque personne accompagnée du cercle,
+// le nombre de photos qu'elle n'a pas encore regardées et sa dernière visite des photos.
+router.get('/accompagnes', async (req, res) => {
+  const liste = await db.select({ utilisateurId: membres.utilisateurId }).from(membres)
+    .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne'), isNotNull(membres.utilisateurId)))
+  res.json(await Promise.all(liste.map(async ({ utilisateurId }) => {
+    const [nonVues, [visite]] = await Promise.all([
+      nonVuesPar(req.cercle.id, utilisateurId),
+      db.select({ vuLe: max(albumsVus.vuLe) }).from(albumsVus)
+        .where(and(eq(albumsVus.utilisateurId, utilisateurId), eq(albumsVus.cercleId, req.cercle.id)))
+    ])
+    return { utilisateurId, nouvelles: nonVues.reduce((n, c) => n + c.nombre, 0), vuLe: visite?.vuLe ?? null }
+  })))
 })
 
 // La personne connectée vient de regarder des photos. Corps : { album: <id> | 'aucun' | 'tous' }

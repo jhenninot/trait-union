@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { session, deconnecter } from '../session.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
+import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
 import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
@@ -16,10 +17,6 @@ const router = useRouter()
 const ouvert = ref(false) // panneau du menu ouvert sur téléphone
 const tousLesCercles = ref([]) // pour un administrateur, y compris ceux dont il n'est pas membre
 
-const MEMOIRE = 'tu_cercle'
-function lireMemoire() {
-  try { return localStorage.getItem(MEMOIRE) } catch { return null }
-}
 
 async function chargerCercles() {
   if (session.utilisateur?.estAdmin) tousLesCercles.value = await api('GET', '/cercles').catch(() => [])
@@ -38,7 +35,7 @@ const choix = computed(() => {
 // Cercle courant : celui de l'adresse, sinon le dernier consulté, sinon le premier
 const cercleId = computed(() => {
   if (route.params.id) return route.params.id
-  const memoire = lireMemoire()
+  const memoire = cercleMemorise.value
   if (choix.value.some((c) => c.id === memoire)) return memoire
   return choix.value[0]?.id ?? null
 })
@@ -47,13 +44,12 @@ const peutGerer = computed(() => session.utilisateur.estAdmin || aLesDroits(cerc
 // Les auxiliaires de vie n'ont pas accès aux photos
 const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value?.role))
 
-watch(() => route.params.id, (id) => {
-  if (id) try { localStorage.setItem(MEMOIRE, id) } catch { /* stockage indisponible */ }
-}, { immediate: true })
+watch(() => route.params.id, (id) => id && memoriserCercle(id), { immediate: true })
 watch(() => route.fullPath, () => (ouvert.value = false))
 
-// Changer de cercle garde la même rubrique (Famille, Agenda, Photos ou Personnes accompagnées)
+// Changer de cercle garde la même rubrique (Accueil, Famille, Agenda, Photos ou Personnes accompagnées)
 function changerCercle(id) {
+  if (route.path === '/') return memoriserCercle(id)
   let rubrique = route.path.match(/\/(agenda|photos|tablettes)$/)?.[0] ?? ''
   const cible = choix.value.find((c) => c.id === id)
   if (rubrique === '/photos' && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''

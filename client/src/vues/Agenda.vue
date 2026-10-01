@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { utiliserCercle } from '../cercle.js'
 import { RECURRENCES, texteRecurrence, choixRappels, texteRappel, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
@@ -89,6 +90,15 @@ function nouveau() {
     auxiliaires: suisAuxiliaire.value
   }
 }
+
+// « Ajouter un rendez-vous » depuis l'accueil (?ajouter=1) : le formulaire s'ouvre une fois le cercle chargé
+const route = useRoute()
+const router = useRouter()
+watch([cercle, () => route.query.ajouter], ([c, ajouter]) => {
+  if (!c || !ajouter) return
+  nouveau()
+  router.replace({ query: { ...route.query, ajouter: undefined } })
+}, { immediate: true })
 
 // Le formulaire part de la date choisie. Pour un rendez-vous répété, on choisit ensuite
 // si la modification vaut pour cette date, cette date et les suivantes, ou toute la série.
