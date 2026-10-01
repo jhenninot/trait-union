@@ -26,7 +26,8 @@ const voitPhotos = computed(() => session.utilisateur.estAdmin || session.cercle
 
 const CATEGORIES = computed(() => [
   { valeur: 'rendezVous', icone: 'agenda', libelle: 'Rappels de rendez-vous', aide: 'Pour les rendez-vous de l\'agenda qui ont une alerte, au moment choisi.' },
-  ...(voitPhotos.value ? [{ valeur: 'photos', icone: 'photo', libelle: 'Nouvelles photos', aide: 'Quand quelqu\'un ajoute des photos dans un de vos cercles.' }] : [])
+  ...(voitPhotos.value ? [{ valeur: 'photos', icone: 'photo', libelle: 'Nouvelles photos', aide: 'Quand quelqu\'un ajoute des photos dans un de vos cercles.' }] : []),
+  ...(voitPhotos.value ? [{ valeur: 'anniversaires', icone: 'gateau', libelle: 'Anniversaires', aide: 'Le jour de l\'anniversaire d\'un membre de vos cercles, à 9 h.' }] : [])
 ])
 
 async function action(fn, succes = '') {

@@ -7,6 +7,8 @@ import { auRetour } from '../miseAJour.js'
 import { api } from '../api.js'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
+import Avatar from './Avatar.vue'
+import { estAnniversaire, age, ans } from '../coordonnees.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
@@ -30,6 +32,24 @@ const nouvellesPhotos = computed(() => photos.value?.albums ?? [])
 const nombreNouvelles = computed(() => nouvellesPhotos.value.reduce((n, a) => n + a.nouvelles, 0))
 // Un seul album concerné : on l'ouvre directement ; sinon le choix des albums (avec pastilles)
 const lienPhotos = computed(() => nouvellesPhotos.value.length === 1 ? nouvellesPhotos.value[0].lien : '/photos')
+// Anniversaires du jour : le sien et ceux des membres de ses cercles
+const fetes = ref([])
+const chargerAnniversaires = async () => {
+  const vus = new Set()
+  const liste = []
+  for (const c of session.cercles) {
+    const cercle = await api('GET', `/cercles/${c.id}`).catch(() => null)
+    for (const m of cercle?.membres ?? []) {
+      const cle = `${m.prenom} ${m.nom ?? ''}`
+      if (m.moi || vus.has(cle) || !estAnniversaire(m.dateNaissance)) continue
+      vus.add(cle)
+      liste.push(m)
+    }
+  }
+  fetes.value = liste
+}
+const monAnniversaire = computed(() => estAnniversaire(session.utilisateur.dateNaissance, maintenant.value))
+
 // Proposer les alertes sur cet appareil, si les aidants en ont laissé au moins une catégorie
 // et qu'elles ne sont ni actives, ni refusées ici
 const alertes = ref(null) // { clePublique, proposer, fait, erreur }
@@ -58,6 +78,7 @@ chargerAlertes()
 const recharger = () => {
   chargerProgramme()
   chargerPhotos()
+  chargerAnniversaires()
 }
 let minuterieProgramme
 let arreterRetour
@@ -104,6 +125,16 @@ const moment = () => {
       <Icone nom="son" class="en-ligne" /> Écouter ma journée
     </button>
     <div class="cartes">
+    <RouterLink v-if="monAnniversaire || fetes.length" to="/famille" class="anniversaires">
+      <span class="titre-anniversaires"><Icone nom="gateau" class="em" />
+        {{ monAnniversaire ? 'Joyeux anniversaire !' : 'Anniversaire aujourd\'hui' }}</span>
+      <span v-if="monAnniversaire" class="ligne-anniversaire">Vous avez {{ ans(age(session.utilisateur.dateNaissance)) }} aujourd'hui</span>
+      <span v-if="monAnniversaire && fetes.length" class="aussi">C'est aussi l'anniversaire de :</span>
+      <span v-for="p in fetes" :key="p.id" class="ligne-anniversaire">
+        <Avatar :src="p.avatar" :prenom="p.prenom" :taille="44" />
+        <span><strong>{{ p.prenom }}</strong> · {{ ans(age(p.dateNaissance)) }}</span>
+      </span>
+    </RouterLink>
     <RouterLink v-if="programme.length" to="/agenda" class="programme">
       <span class="titre-programme">Aujourd'hui</span>
       <span v-for="rdv in programme.slice(0, 3)" :key="rdv.cle" class="ligne-programme">
@@ -124,7 +155,7 @@ const moment = () => {
     </RouterLink>
     <div v-if="alertes?.proposer" class="alertes">
       <button class="activer" @click="accepterAlertes"><Icone nom="cloche" class="en-ligne" /> Recevoir les alertes</button>
-      <span class="explication">Mes rendez-vous et les nouvelles photos, même quand l'écran est éteint.</span>
+      <span class="explication">Mes rendez-vous, les nouvelles photos et les anniversaires, même quand l'écran est éteint.</span>
       <span v-if="alertes.erreur" class="erreur">{{ alertes.erreur }}</span>
       <button class="non" @click="refuser">Non merci</button>
     </div>
@@ -172,6 +203,23 @@ const moment = () => {
 }
 .cartes > * { min-width: 0; }
 .cartes .programme { align-self: stretch; justify-content: center; margin-top: 0; }
+/* Anniversaires du jour */
+.anniversaires {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fbe9ef;
+  border-radius: 24px;
+  padding: 16px 28px;
+  color: var(--bleu-nuit);
+  text-decoration: none;
+  font-size: 1.5rem;
+  text-align: left;
+}
+.titre-anniversaires { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #b0305c; font-size: 1.6rem; }
+.titre-anniversaires .icone { font-size: 2rem; }
+.ligne-anniversaire { display: flex; align-items: center; gap: 12px; }
+.aussi { font-size: 1.2rem; color: var(--gris); }
 /* Nouvelles photos : une seule ligne compacte, pour laisser la place aux autres éléments */
 .photos {
   align-self: center;
@@ -234,6 +282,9 @@ const moment = () => {
   .programme { align-self: stretch; padding: 14px 16px; font-size: 1.25rem; border-radius: 18px; }
   .ligne-programme strong { display: block; margin: 0; }
   .cartes { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px; }
+  .anniversaires { padding: 14px 16px; font-size: 1.25rem; border-radius: 18px; }
+  .titre-anniversaires { font-size: 1.35rem; }
+  .titre-anniversaires .icone { font-size: 1.6rem; }
   .photos { align-self: stretch; max-width: none; padding: 8px 12px 8px 8px; border-radius: 16px; gap: 10px; }
   .miniature { width: 60px; height: 45px; }
   .texte-photos strong { font-size: 1.2rem; }

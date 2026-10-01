@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
-import { dateLongue, age, lienTelephone } from '../coordonnees.js'
+import { dateLongue, age, ans as nbAns, lienTelephone } from '../coordonnees.js'
 import Avatar from './Avatar.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
@@ -12,7 +12,7 @@ import Icone from '../navigation/Icone.vue'
 const personnes = ref([])
 const charge = ref(false)
 const fiche = ref(null)
-const ans = (date) => { const n = age(date); return `${n} an${n > 1 ? 's' : ''}` }
+const ans = (date) => nbAns(age(date))
 // Visages plus petits sur smartphone (deux personnes par ligne)
 const petit = window.matchMedia('(max-width: 600px)').matches
 const taille = petit ? 88 : 132

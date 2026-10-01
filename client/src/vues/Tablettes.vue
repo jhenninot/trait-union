@@ -58,6 +58,7 @@ const retirer = (m) => action(async () => {
           <span class="titre-alertes"><Icone nom="cloche" class="en-ligne" /> Alertes</span>
           <label class="case"><input type="checkbox" :checked="m.alertes.rendezVous" @change="changerAlertes(m, 'rendezVous', $event.target.checked)" /> Rappels de rendez-vous</label>
           <label class="case"><input type="checkbox" :checked="m.alertes.photos" @change="changerAlertes(m, 'photos', $event.target.checked)" /> Nouvelles photos</label>
+          <label class="case"><input type="checkbox" :checked="m.alertes.anniversaires" @change="changerAlertes(m, 'anniversaires', $event.target.checked)" /> Anniversaires de la famille</label>
           <span class="aide">{{ m.alertes.appareils
             ? `Reçues sur ${m.alertes.appareils} appareil${m.alertes.appareils > 1 ? 's' : ''}.`
             : `Pas encore activées : sur l'appareil de ${m.prenom}, touchez « Recevoir les alertes » sur l'écran d'accueil.` }}</span>

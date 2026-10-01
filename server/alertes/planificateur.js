@@ -1,17 +1,19 @@
-import { and, eq, ne, or, lt, gte, isNull, isNotNull, sql } from 'drizzle-orm'
+import { and, eq, ne, or, lt, gte, isNull, isNotNull, inArray, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums } from '../db/schema.js'
+import { rendezVous, rappelsEnvoyes, membres, utilisateurs, photos, albums, anniversairesEnvoyes } from '../db/schema.js'
 import { occurrences } from '../agenda/recurrence.js'
 import { peutVoir } from '../routes/agenda.js'
 import { lienAffichage } from '../routes/photos.js'
 import { stockageActif } from '../stockage/s3.js'
 import { aLesDroits } from '../auth/roles.js'
 import { envoyerAlerte } from './envoi.js'
+import { joursFetes, age } from '../anniversaires.js'
 
 // Tâche de fond lancée au démarrage du serveur : chaque minute, elle envoie
 // - les rappels de rendez-vous dont l'heure est arrivée ;
 // - les alertes « nouvelles photos », une par personne qui a envoyé des photos, quand elle n'en
-//   a plus ajouté depuis 2 minutes (envoyer 20 photos ne fait qu'une alerte).
+//   a plus ajouté depuis 2 minutes (envoyer 20 photos ne fait qu'une alerte) ;
+// - les anniversaires du jour, à partir de 9 h, aux autres membres des cercles de la personne.
 const MINUTE = 60_000
 const JOUR = 1440 * MINUTE
 // Un rappel en retard (serveur arrêté) part encore s'il a moins de 15 minutes
@@ -155,6 +157,58 @@ async function envoyerPhotos(maintenant) {
   }
 }
 
+// Les alertes d'anniversaire partent entre 9 h et 21 h (rattrapage si le serveur était arrêté à 9 h)
+const HEURE_ANNIVERSAIRES = 9
+const FIN_ANNIVERSAIRES = 21
+
+async function envoyerAnniversaires(maintenant) {
+  if (maintenant.getHours() < HEURE_ANNIVERSAIRES || maintenant.getHours() >= FIN_ANNIVERSAIRES) return
+  const fetes = await db.select({ id: utilisateurs.id, prenom: utilisateurs.prenom, nom: utilisateurs.nom, dateNaissance: utilisateurs.dateNaissance })
+    .from(utilisateurs)
+    .where(and(
+      isNull(utilisateurs.desactiveLe),
+      inArray(sql`to_char(${utilisateurs.dateNaissance}, 'MM-DD')`, joursFetes(maintenant))
+    ))
+  const finDeJournee = new Date(maintenant)
+  finDeJournee.setHours(23, 59, 59, 0)
+  for (const fete of fetes) {
+    // Une seule fois par an, même avec plusieurs serveurs ou après un redémarrage
+    const [nouveau] = await db.insert(anniversairesEnvoyes)
+      .values({ utilisateurId: fete.id, annee: maintenant.getFullYear() })
+      .onConflictDoNothing()
+      .returning({ id: anniversairesEnvoyes.id })
+    if (!nouveau) continue
+    // Tous les autres membres de ses cercles, sauf les auxiliaires de vie (qui ne voient pas
+    // les dates de naissance) ; une seule alerte par personne même avec plusieurs cercles en commun
+    const destinataires = new Map()
+    const cercles = await db.select({ cercleId: membres.cercleId }).from(membres).where(eq(membres.utilisateurId, fete.id))
+    for (const { cercleId } of cercles) {
+      for (const m of await membresDuCercle(cercleId)) {
+        if (m.utilisateurId === fete.id || (!m.peutGerer && m.role === 'auxiliaire') || destinataires.has(m.utilisateurId)) continue
+        destinataires.set(m.utilisateurId, { ...m, cercleId })
+      }
+    }
+    const n = age(fete.dateNaissance, maintenant)
+    const nom = [fete.prenom, fete.nom].filter(Boolean).join(' ')
+    const alerte = {
+      categorie: 'anniversaires',
+      titre: `Anniversaire de ${fete.prenom}`,
+      corps: `${nom} fête ses ${n} an${n > 1 ? 's' : ''} aujourd'hui.`,
+      tag: `anniversaire-${fete.id}-${maintenant.getFullYear()}`
+    }
+    const duree = Math.max(600, Math.round((finDeJournee - maintenant) / 1000))
+    const liste = [...destinataires.values()]
+    await envoyerAlerte(liste.filter((m) => m.role === 'accompagne').map((m) => m.utilisateurId), { ...alerte, url: '/' }, { duree })
+    // Les aidants et la famille arrivent sur « Famille et aidants » du cercle
+    const parCercle = Map.groupBy(liste.filter((m) => m.role !== 'accompagne'), (m) => m.cercleId)
+    for (const [cercleId, ms] of parCercle) {
+      await envoyerAlerte(ms.map((m) => m.utilisateurId), { ...alerte, url: `/cercles/${cercleId}` }, { duree })
+    }
+  }
+  // Les traces des années passées ne servent plus
+  await db.delete(anniversairesEnvoyes).where(lt(anniversairesEnvoyes.annee, maintenant.getFullYear() - 1))
+}
+
 let enCours = false
 async function tour() {
   if (enCours) return
@@ -169,6 +223,11 @@ async function tour() {
     await envoyerPhotos(maintenant)
   } catch (e) {
     console.error('Alertes photos :', e)
+  }
+  try {
+    await envoyerAnniversaires(maintenant)
+  } catch (e) {
+    console.error('Alertes d\'anniversaire :', e)
   } finally {
     enCours = false
   }

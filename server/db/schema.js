@@ -28,7 +28,7 @@ export const utilisateurs = pgTable('utilisateurs', {
   dateNaissance: date('date_naissance'), // « AAAA-MM-JJ », sans fuseau horaire
   adresse: text('adresse'),
   // Catégories d'alertes reçues sur les appareils où elles sont activées (server/alertes/)
-  alertes: jsonb('alertes').$type().notNull().default({ rendezVous: true, photos: true }),
+  alertes: jsonb('alertes').$type().notNull().default({ rendezVous: true, photos: true, anniversaires: true }),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })
 })
 
@@ -218,4 +218,13 @@ export const rappelsEnvoyes = pgTable('rappels_envoyes', {
   prevuLe: timestamp('prevu_le', { withTimezone: true }).notNull()
 }, (t) => [
   unique('rappels_envoyes_unique').on(t.rendezVousId, t.occurrence, t.prevuLe)
+])
+
+// Alertes d'anniversaire déjà envoyées : une par personne fêtée et par an
+export const anniversairesEnvoyes = pgTable('anniversaires_envoyes', {
+  ...commun,
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  annee: integer('annee').notNull()
+}, (t) => [
+  unique('anniversaires_envoyes_unique').on(t.utilisateurId, t.annee)
 ])

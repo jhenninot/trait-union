@@ -1,8 +1,9 @@
 import { and, eq, or, ne, lt, gte, isNull, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { membres, rendezVous, albums } from '../db/schema.js'
+import { membres, rendezVous, albums, utilisateurs } from '../db/schema.js'
 import { occurrences } from '../agenda/recurrence.js'
 import { mesCercles } from '../routes/auth.js'
+import { estAnniversaire, age } from '../anniversaires.js'
 
 // Assistant vocal de la personne accompagnée, sans IA : on cherche des mots-clés dans ce
 // qu'elle a dit (reconnaissance vocale du téléphone ou du navigateur) et on répond par une
@@ -49,8 +50,8 @@ async function donneesPersonne(utilisateur, jours = JOURS_AGENDA) {
   const debut = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate())
   const fin = new Date(debut.getTime() + jours * 86_400_000)
   const [famille, lignes, listeAlbums] = await Promise.all([
-    db.select({ prenom: membres.prenom, nom: membres.nom, role: membres.role, utilisateurId: membres.utilisateurId })
-      .from(membres).where(inArray(membres.cercleId, ids)),
+    db.select({ prenom: membres.prenom, nom: membres.nom, role: membres.role, utilisateurId: membres.utilisateurId, dateNaissance: utilisateurs.dateNaissance })
+      .from(membres).leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id)).where(inArray(membres.cercleId, ids)),
     db.select().from(rendezVous).where(and(
       inArray(rendezVous.cercleId, ids),
       or(inArray(rendezVous.visibilite, ['tous', 'accompagne', 'accompagne_aidants']), eq(rendezVous.creeParId, utilisateur.id)),
@@ -103,6 +104,25 @@ function programme(agenda, jour, libelle, apres = null) {
   return `${libelle.charAt(0).toUpperCase()}${libelle.slice(1)}, vous avez : ${listeParlee(elements)}.${suite}`
 }
 
+// « C'est votre anniversaire : 85 ans aujourd'hui ! C'est aussi l'anniversaire de Claire, 25 ans. »
+function anniversaires(utilisateur, famille, jour) {
+  const phrases = []
+  if (estAnniversaire(utilisateur.dateNaissance, jour)) {
+    phrases.push(`Joyeux anniversaire ! Vous avez ${age(utilisateur.dateNaissance, jour)} ans aujourd'hui.`)
+  }
+  const vus = new Set()
+  const fetes = famille.filter((m) => {
+    if (!estAnniversaire(m.dateNaissance, jour) || vus.has(m.utilisateurId)) return false
+    vus.add(m.utilisateurId)
+    return true
+  }).map((m) => {
+    const n = age(m.dateNaissance, jour)
+    return `${m.prenom}, ${n} an${n > 1 ? 's' : ''}`
+  })
+  if (fetes.length) phrases.push(`C'est ${phrases.length ? 'aussi ' : ''}l'anniversaire de ${listeParlee(fetes)}.`)
+  return phrases.join(' ')
+}
+
 const MOTS_ALBUM_IGNORES = new Set(['photo', 'photos', 'album', 'albums', 'souvenirs', 'famille', 'avec', 'chez', 'dans'])
 
 const CHOIX = [
@@ -122,11 +142,12 @@ export async function repondre(utilisateur, intention, parametres = {}) {
     case 'date':
       return { texte: `Nous sommes ${dateParlee(maintenant)} ${maintenant.getFullYear()}.` }
     case 'journee': {
-      const { agenda } = await donneesPersonne(utilisateur, 1)
+      const { agenda, famille } = await donneesPersonne(utilisateur, 1)
       const h = maintenant.getHours()
       const moment = h < 6 || h >= 22 ? 'la nuit' : h < 12 ? 'le matin' : h < 18 ? 'l\'après-midi' : 'le soir'
+      const fete = anniversaires(utilisateur, famille, maintenant)
       return {
-        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`,
+        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${fete ? `${fete} ` : ''}${programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`,
         lien: '/'
       }
     }
