@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { index, disposer, dates, GROUPES } from '../arbre.js'
@@ -60,6 +60,53 @@ const lienDe = (p) => (vue.value && p.id !== vue.value ? p.liens?.[vue.value]?.l
 const L = 150
 const H = 172
 const disposition = computed(() => donnees.value ? disposer(donnees.value.personnes, donnees.value.relations, { L, H }) : null)
+
+// La toile défile dans les deux sens (barres de défilement ou glisser à la souris) et ramène
+// la personne choisie en vue, par exemple quand la fiche s'ouvre et rétrécit la toile.
+const toile = ref(null)
+let glisse = null
+function debutGlisse(e) {
+  if (e.button !== 0 || e.pointerType !== 'mouse') return
+  glisse = { x: e.clientX, y: e.clientY, l: toile.value.scrollLeft, t: toile.value.scrollTop, bouge: false }
+}
+function glisser(e) {
+  if (!glisse) return
+  const dx = e.clientX - glisse.x
+  const dy = e.clientY - glisse.y
+  if (!glisse.bouge && Math.hypot(dx, dy) < 6) return
+  glisse.bouge = true
+  toile.value.scrollLeft = glisse.l - dx
+  toile.value.scrollTop = glisse.t - dy
+}
+function finGlisse() {
+  // Un glisser ne doit pas ouvrir la fiche de la carte sous la souris
+  if (glisse?.bouge) toile.value.addEventListener('click', (e) => e.stopPropagation(), { capture: true, once: true })
+  glisse = null
+}
+async function montrer(id, centrer = false) {
+  await nextTick()
+  const t = toile.value
+  const pos = disposition.value?.pos.get(id)
+  if (!t || !pos) return
+  const offset = t.querySelector('.dessin').offsetLeft
+  const x = pos.x + 10 + offset
+  const y = pos.y + 10
+  const marge = 24
+  if (centrer) {
+    t.scrollLeft = x + L / 2 - t.clientWidth / 2
+    t.scrollTop = 0
+    return
+  }
+  const gauche = Math.min(t.scrollLeft, x - marge)
+  t.scrollTo({
+    left: Math.max(gauche, x + L + marge - t.clientWidth),
+    top: Math.max(Math.min(t.scrollTop, y - marge), y + H + marge - t.clientHeight),
+    behavior: 'smooth'
+  })
+}
+watch([choisie, ficheOuverte], () => { if (ficheOuverte.value) montrer(choisie.value) })
+let centre = false
+watch(disposition, () => { if (!centre && disposition.value && vue.value) { centre = true; montrer(vue.value, true) } })
 
 function choisir(id) {
   if (telephone.value && affichage.value === 'arbre' && id !== choisie.value) {
@@ -157,7 +204,7 @@ async function fini(id) {
       <div v-else class="contenu" :class="{ avecFiche: ficheOuverte && personneChoisie && !telephone }">
         <div class="gauche">
           <!-- Ordinateur : arbre entier -->
-          <div v-if="affichage === 'arbre' && !telephone" class="toile carte">
+          <div v-if="affichage === 'arbre' && !telephone" ref="toile" class="toile carte" @pointerdown="debutGlisse" @pointermove="glisser" @pointerup="finGlisse" @pointerleave="finGlisse">
             <div class="dessin" :style="{ width: `${disposition.largeur + 20}px`, height: `${disposition.hauteur + 20}px` }">
               <svg class="traits" :width="disposition.largeur + 20" :height="disposition.hauteur + 20" aria-hidden="true">
                 <path v-for="(t, i) in disposition.traits" :key="i" :d="t.d" :class="{ separes: t.separes }" />
@@ -292,7 +339,7 @@ async function fini(id) {
 </template>
 
 <style scoped>
-.arbre-page { max-width: 1240px; padding: 24px 28px; }
+.arbre-page { max-width: none; padding: 24px 28px; }
 .surtitre { margin: 0; }
 .titre { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .titre h1 { margin: 4px 0; }
@@ -308,8 +355,9 @@ async function fini(id) {
 .contenu { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
 .contenu.avecFiche { grid-template-columns: minmax(0, 1fr) 340px; }
 .droite { position: sticky; top: 16px; }
-.toile { overflow: auto; padding: 0; margin: 0 0 16px; }
-.dessin { position: relative; }
+.toile { position: relative; overflow: auto; padding: 0; margin: 0 0 16px; max-height: calc(100vh - 170px); cursor: grab; }
+.toile:active { cursor: grabbing; }
+.dessin { position: relative; margin: 0 auto; }
 .traits { position: absolute; left: 10px; top: 10px; }
 .traits path { fill: none; stroke: #c9c4bb; stroke-width: 2; }
 .traits path.separes { stroke-dasharray: 6 5; }
