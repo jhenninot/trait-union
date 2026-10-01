@@ -92,6 +92,7 @@ onUnmounted(() => {
   clearInterval(minuterieRechargement)
   arreterRetour?.()
   clearInterval(minuterieDiaporama)
+  clearTimeout(minuterieAide)
 })
 
 const photo = computed(() => liste.value[index.value])
@@ -120,14 +121,29 @@ function aller(sens) {
   if (n) index.value = (index.value + sens + n) % n
 }
 
-function basculerDiaporama() {
-  diaporama.value = !diaporama.value
+// Le diaporama passe en plein écran ; toucher la photo (ou le bouton retour) l'arrête et revient
+const { pleinEcran, entrer: entrerPleinEcran, sortir: sortirPleinEcran, basculer: basculerPleinEcran } = utiliserPleinEcran()
+const aideDiaporama = ref(false) // « Touchez l'écran pour arrêter », les premières secondes
+let minuterieAide
+function relancerMinuterie() {
   clearInterval(minuterieDiaporama)
   if (diaporama.value) minuterieDiaporama = setInterval(() => aller(1), DELAI_DIAPORAMA)
 }
+function basculerDiaporama() {
+  diaporama.value = !diaporama.value
+  relancerMinuterie()
+  clearTimeout(minuterieAide)
+  aideDiaporama.value = diaporama.value
+  if (diaporama.value) {
+    entrerPleinEcran()
+    minuterieAide = setTimeout(() => (aideDiaporama.value = false), 4000)
+  } else sortirPleinEcran()
+}
+watch(pleinEcran, (oui) => {
+  if (!oui && diaporama.value) basculerDiaporama()
+})
 
 // Toucher la photo : arrête le diaporama, sinon l'affiche en plein écran (ou revient)
-const { pleinEcran, basculer: basculerPleinEcran } = utiliserPleinEcran()
 function toucherPhoto() {
   if (diaporama.value) basculerDiaporama()
   else basculerPleinEcran()
@@ -137,6 +153,11 @@ function toucherPhoto() {
 function manuel(sens) {
   if (diaporama.value) basculerDiaporama()
   aller(sens)
+}
+// Glisser le doigt pendant le diaporama change de photo sans l'arrêter
+function glisser(sens) {
+  aller(sens)
+  relancerMinuterie()
 }
 </script>
 
@@ -165,20 +186,23 @@ function manuel(sens) {
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
         <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
       </div>
-      <div v-balayage="{ suivante: () => manuel(1), precedente: () => manuel(-1), duree: diaporama ? 900 : 450 }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
+      <div v-balayage="{ suivante: () => glisser(1), precedente: () => glisser(-1), duree: diaporama ? 900 : 450 }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
         <div class="piste">
           <div v-for="d in diapos(liste, index, true)" :key="d.cle" :data-role="d.role" :data-id="d.photo.id">
             <img :src="d.photo.ecran" :alt="d.photo.legende || 'Photo de famille'" />
           </div>
         </div>
+        <template v-if="diaporama && pleinEcran">
+          <p v-if="aideDiaporama" class="aide-diaporama">Touchez l'écran pour arrêter le diaporama</p>
+          <p v-if="photo.legende" class="legende-diaporama">{{ photo.legende }}</p>
+        </template>
       </div>
       <p v-if="photo.legende" class="legende">{{ photo.legende }}</p>
       <p class="envoi">
         <Avatar v-if="photo.creeParPrenom" :src="photo.creeParAvatar" :prenom="photo.creeParPrenom" :taille="44" />
         <span>Envoyée par {{ photo.creeParPrenom ?? 'la famille' }}, {{ dateEnvoi(photo.creeLe) }}</span>
       </p>
-      <p v-if="diaporama" class="envoi">Touchez la photo pour arrêter le diaporama</p>
-      <div v-else class="commandes">
+      <div class="commandes">
         <button class="fleche" aria-label="Photo précédente" :disabled="liste.length < 2" @click="manuel(-1)"><Icone nom="precedent" class="en-ligne" /></button>
         <button class="diaporama" @click="basculerDiaporama"><Icone nom="lecture" class="en-ligne" /> Diaporama</button>
         <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto"><Icone nom="son" class="en-ligne" /></button>
@@ -215,6 +239,11 @@ function manuel(sens) {
 /* Plein écran : la photo seule sur fond noir, par-dessus la barre de boutons ; toucher pour revenir */
 .cadre.plein-ecran { position: fixed; inset: 0; z-index: 60; background: black; overflow: hidden; }
 .cadre.plein-ecran img { border-radius: 0; box-shadow: none; }
+/* Diaporama en plein écran : légende en bas, sur la photo */
+.cadre { position: relative; }
+.aide-diaporama, .legende-diaporama { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; padding: 10px 22px; border-radius: 999px; background: rgb(0 0 0 / 0.55); color: white; text-align: center; pointer-events: none; max-width: calc(100% - 32px); }
+.aide-diaporama { top: 24px; font-size: 1.4rem; }
+.legende-diaporama { bottom: 28px; font-size: 1.8rem; font-weight: 700; }
 .plein .cadre img { border-radius: 0; box-shadow: none; }
 .plein .legende, .plein .envoi { color: white; }
 .legende { font-size: 2rem; font-weight: 700; color: var(--bleu-nuit); margin: 4px 0 0; text-align: center; }
