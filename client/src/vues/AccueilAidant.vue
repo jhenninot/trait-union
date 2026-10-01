@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
 import { visibilites, debutDuJour, ajouterJours, heureCourte, horaire, parJour } from '../agenda.js'
-import { lienTelephone, ans, age } from '../coordonnees.js'
+import { lienTelephone, ans, age, estAnniversaire } from '../coordonnees.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
@@ -14,7 +14,6 @@ import Avatar from './Avatar.vue'
 // (celui choisi dans le menu). Ce que chacun voit suit ses droits : une auxiliaire n'a ni
 // photos ni anniversaires, et seulement les rendez-vous où les auxiliaires sont attendues.
 const NB_RDV = 5
-const JOURS_ANNIVERSAIRES = 30
 
 // Cercles où l'on n'est pas la personne accompagnée ; un administrateur peut en consulter d'autres
 const mesCercles = computed(() => session.cercles.filter((c) => c.role !== 'accompagne'))
@@ -115,13 +114,13 @@ function changerCercle(id) {
 // Place des blocs : colonnes sur grand écran, ordre sur téléphone. Un proche voit d'abord
 // les personnes accompagnées et les photos ; une auxiliaire n'a ni photos ni anniversaires.
 const colonnes = computed(() => {
-  if (suisProche.value) return [['photos', 'rdv'], ['aides', 'anniv', 'autres']]
+  if (suisProche.value) return [['photos', 'rdv'], ['aides', 'autres']]
   if (suisAuxiliaire.value) return [['rdv'], ['aides', 'autres']]
-  return [['rdv', 'anniv'], ['aides', 'photos', 'autres']]
+  return [['rdv', 'autres'], ['aides', 'photos']]
 })
 const ordreTelephone = computed(() => (suisProche.value
-  ? ['aides', 'photos', 'rdv', 'anniv', 'autres']
-  : ['rdv', 'aides', 'photos', 'anniv', 'autres']))
+  ? ['aides', 'photos', 'rdv', 'autres']
+  : ['rdv', 'aides', 'photos', 'autres']))
 
 // --- Rendez-vous ---
 const groupes = computed(() => parJour(rendezVous.value))
@@ -145,27 +144,11 @@ function quand(d) {
   return `le ${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
 }
 
-// --- Anniversaires dans les 30 prochains jours (pas le sien) ---
-const anniversaires = computed(() => {
-  const auj = debutDuJour()
-  return (cercle.value?.membres ?? [])
-    .filter((m) => m.dateNaissance && !m.moi)
-    .map((m) => {
-      const [, mois, jour] = m.dateNaissance.split('-').map(Number)
-      let date = new Date(auj.getFullYear(), mois - 1, jour)
-      if (date < auj) date = new Date(auj.getFullYear() + 1, mois - 1, jour)
-      const dans = Math.round((date - auj) / 86_400_000)
-      return { ...m, date, dans, age: age(m.dateNaissance, date) }
-    })
-    .filter((m) => m.dans <= JOURS_ANNIVERSAIRES)
-    .sort((a, b) => a.dans - b.dans)
-})
-function quandAnniversaire(a) {
-  if (a.dans === 0) return 'Aujourd\'hui'
-  if (a.dans === 1) return 'Demain'
-  const texte = a.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-  return `${texte.charAt(0).toUpperCase()}${texte.slice(1)}${a.dans <= 7 ? `, dans ${a.dans} jours` : ''}`
-}
+// --- Anniversaires du jour (le sien compris), en tête de page ---
+const anniversaires = computed(() => (cercle.value?.membres ?? [])
+  .filter((m) => estAnniversaire(m.dateNaissance))
+  .map((m) => ({ ...m, age: age(m.dateNaissance) }))
+  .sort((a, b) => Number(b.moi) - Number(a.moi)))
 
 // --- Photos ---
 const totalNouvelles = computed(() => albums.value.reduce((n, a) => n + a.nouvelles, 0))
@@ -214,6 +197,19 @@ const aujourdhui = (() => {
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
     <template v-if="cercle">
+      <section v-if="anniversaires.length" class="anniversaires">
+        <div v-for="a in anniversaires" :key="a.id" class="anniversaire">
+          <Avatar :src="a.avatar" :prenom="a.prenom" :taille="52" />
+          <Icone nom="gateau" class="gateau" />
+          <div class="grandit">
+            <template v-if="a.moi"><strong>Joyeux anniversaire, {{ a.prenom }} !</strong></template>
+            <template v-else><strong>Anniversaire de {{ a.prenom }} aujourd'hui</strong></template>
+            <p v-if="a.age != null" class="aide">{{ a.moi ? `${ans(a.age)} aujourd'hui` : `${a.prenom} fête ses ${ans(a.age)}` }}</p>
+          </div>
+          <a v-if="!a.moi && a.telephone" :href="lienTelephone(a.telephone)" class="bouton petit appeler" :aria-label="`Appeler ${a.prenom}`"><Icone nom="telephone" class="en-ligne" /><span class="texte-appeler"> Appeler</span></a>
+        </div>
+      </section>
+
       <section v-if="sansAppareil.length || alertes" class="a-faire">
         <p class="titre-a-faire"><Icone nom="cloche" /> À faire</p>
         <div v-for="m in sansAppareil" :key="m.id" class="tache">
@@ -322,17 +318,6 @@ const aujourdhui = (() => {
           <RouterLink :to="`${base}/photos`" class="bouton petit" :class="{ secondaire: !suisProche }"><Icone nom="ajouter" class="en-ligne" /> Ajouter des photos</RouterLink>
         </section>
 
-        <section v-else-if="nom === 'anniv' && anniversaires.length" class="carte bloc" :style="{ order: ordreTelephone.indexOf(nom) }">
-          <div class="titre-bloc"><h2><Icone nom="gateau" /> Anniversaires à venir</h2></div>
-          <div v-for="a in anniversaires" :key="a.id" class="personne">
-            <Avatar :src="a.avatar" :prenom="a.prenom" :taille="40" />
-            <div class="grandit">
-              <span><strong>{{ a.prenom }}</strong> {{ a.dans === 0 ? 'fête ses' : 'aura' }} {{ ans(a.age) }}</span>
-              <p class="aide">{{ quandAnniversaire(a) }}</p>
-            </div>
-          </div>
-        </section>
-
         <section v-else-if="nom === 'autres' && autres.length" class="carte bloc" :style="{ order: ordreTelephone.indexOf(nom) }">
           <div class="titre-bloc"><h2><Icone nom="cercle" /> Vos autres cercles</h2></div>
           <button v-for="c in autres" :key="c.id" class="cercle-ligne" @click="changerCercle(c.id)">
@@ -393,6 +378,13 @@ button.petit { padding: 8px 14px; font-size: 0.92rem; }
 .vignettes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
 .vignette { display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #eef0f4; }
 .vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.anniversaires { background: #fdeef3; border: 1px solid #f6cfdc; border-radius: 12px; padding: 4px 16px; margin-bottom: 16px; }
+.anniversaire { display: flex; gap: 12px; align-items: center; padding: 10px 0; }
+.anniversaire + .anniversaire { border-top: 1px solid #f6d9e3; }
+.anniversaire p { margin: 2px 0 0; }
+.anniversaire .gateau { color: #b03a64; width: 24px; height: 24px; }
+.anniversaire strong { color: #8a2850; }
+.appeler { margin: 0; white-space: nowrap; }
 .a-faire { background: #fff7ec; border: 1px solid #f6dfc0; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
 .titre-a-faire { display: flex; gap: 8px; align-items: center; font-weight: 700; color: #9a5b1c; margin: 0 0 4px; }
 .tache { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid #f6e6cf; }
@@ -421,6 +413,8 @@ button.petit { padding: 8px 14px; font-size: 0.92rem; }
   h1 { font-size: 1.8rem; }
   .grille { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
   .colonne { display: contents; }
+  .anniversaire .gateau, .texte-appeler { display: none; }
+  .appeler { width: 44px; height: 44px; border-radius: 50%; padding: 0; justify-content: center; }
   .cercle-ligne { flex-wrap: wrap; }
   .cercle-ligne .aide { flex-basis: 100%; order: 3; }
 }
