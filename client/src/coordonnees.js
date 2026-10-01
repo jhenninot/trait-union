@@ -23,6 +23,21 @@ export function naissance(date) {
 // Lien d'appel : on garde le « + » et les chiffres
 export const lienTelephone = (tel) => `tel:${tel.replace(/[^\d+]/g, '')}`
 
+// Lien SMS : ouvre l'application de messages avec le numéro (sans effet sur une tablette sans carte SIM)
+export const lienSms = (tel) => `sms:${tel.replace(/[^\d+]/g, '')}`
+
+// Numéro international sans « + », comme l'attend WhatsApp : 06 12… → 336 12…, +32 4… → 324…
+export function numeroInternational(tel) {
+  const n = tel.replace(/[^\d+]/g, '')
+  if (n.startsWith('+')) return n.slice(1)
+  if (n.startsWith('00')) return n.slice(2)
+  if (/^0\d{9}$/.test(n)) return `33${n.slice(1)}` // numéro français à 10 chiffres
+  return n
+}
+
+// Lien WhatsApp : ouvre la conversation dans l'application (ou WhatsApp Web)
+export const lienWhatsApp = (tel) => `https://wa.me/${numeroInternational(tel)}`
+
 export const aDesCoordonnees = (p) => Boolean(p.telephone || p.dateNaissance || p.adresse)
 
 export const ans = (n) => `${n} an${n > 1 ? 's' : ''}`

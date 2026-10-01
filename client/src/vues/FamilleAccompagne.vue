@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
-import { dateLongue, age, ans as nbAns, lienTelephone } from '../coordonnees.js'
+import { dateLongue, age, ans as nbAns, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import Avatar from './Avatar.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
@@ -56,6 +56,10 @@ onMounted(async () => {
           <Icone nom="telephone" class="em" />
           <span>Appeler<br /><span class="numero">{{ fiche.telephone }}</span></span>
         </a>
+        <div v-if="fiche.telephone" class="ecrire">
+          <a :href="lienSms(fiche.telephone)"><Icone nom="sms" class="em" /> SMS</a>
+          <a :href="lienWhatsApp(fiche.telephone)" target="_blank" rel="noopener"><Icone nom="whatsapp" class="em" /> WhatsApp</a>
+        </div>
         <p v-if="fiche.dateNaissance" class="info">
           <Icone nom="gateau" class="em" />
           <span>{{ dateLongue(fiche.dateNaissance) }}<br /><strong>{{ ans(fiche.dateNaissance) }}</strong></span>
@@ -130,6 +134,22 @@ h2 .nom { font-size: 1.6rem; }
   font-weight: 700;
 }
 .appeler .icone { font-size: 2.6rem; }
+.ecrire { display: flex; gap: 12px; width: 100%; }
+.ecrire a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 12px;
+  border-radius: 20px;
+  background: var(--vert-clair);
+  color: var(--vert);
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.ecrire .icone { font-size: 2rem; }
 .numero { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.03em; }
 .info { display: flex; align-items: center; gap: 18px; width: 100%; margin: 0; font-size: 1.6rem; color: var(--bleu-nuit); }
 .info .icone { font-size: 2.4rem; color: var(--vert); flex: none; }
@@ -151,6 +171,8 @@ h2 .nom { font-size: 1.6rem; }
   h2 .nom { font-size: 1.4rem; }
   .appeler { font-size: 1.5rem; padding: 14px 18px; }
   .numero { font-size: 1.3rem; }
+  .ecrire a { font-size: 1.2rem; padding: 12px 8px; gap: 8px; }
+  .ecrire .icone { font-size: 1.6rem; }
   .info { font-size: 1.3rem; gap: 14px; }
   .info .icone { font-size: 2rem; }
 }

@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
 import { visibilites, debutDuJour, ajouterJours, heureCourte, horaire, parJour } from '../agenda.js'
-import { lienTelephone, ans, age, estAnniversaire } from '../coordonnees.js'
+import { lienTelephone, lienSms, lienWhatsApp, ans, age, estAnniversaire } from '../coordonnees.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
@@ -206,7 +206,11 @@ const aujourdhui = (() => {
             <template v-else><strong>Anniversaire de {{ a.prenom }} aujourd'hui</strong></template>
             <p v-if="a.age != null" class="aide">{{ a.moi ? `${ans(a.age)} aujourd'hui` : `${a.prenom} fête ses ${ans(a.age)}` }}</p>
           </div>
-          <a v-if="!a.moi && a.telephone" :href="lienTelephone(a.telephone)" class="bouton petit appeler" :aria-label="`Appeler ${a.prenom}`"><Icone nom="telephone" class="en-ligne" /><span class="texte-appeler"> Appeler</span></a>
+          <div v-if="!a.moi && a.telephone" class="contacts">
+            <a :href="lienTelephone(a.telephone)" class="bouton petit appeler" :aria-label="`Appeler ${a.prenom}`"><Icone nom="telephone" class="en-ligne" /><span class="texte-appeler"> Appeler</span></a>
+            <a :href="lienSms(a.telephone)" class="rond" :title="`SMS à ${a.prenom}`" :aria-label="`Envoyer un SMS à ${a.prenom}`"><Icone nom="sms" /></a>
+            <a :href="lienWhatsApp(a.telephone)" class="rond" target="_blank" rel="noopener" :title="`WhatsApp à ${a.prenom}`" :aria-label="`Écrire à ${a.prenom} sur WhatsApp`"><Icone nom="whatsapp" /></a>
+          </div>
         </div>
       </section>
 
@@ -283,7 +287,11 @@ const aujourdhui = (() => {
                 <Icone :nom="etatPhotos(m).vu ? 'coche' : 'photo'" class="en-ligne" /> {{ etatPhotos(m).texte }}
               </p>
             </div>
-            <a v-if="m.telephone" :href="lienTelephone(m.telephone)" class="rond" :title="`Appeler ${m.prenom}`" :aria-label="`Appeler ${m.prenom}`"><Icone nom="telephone" /></a>
+            <div v-if="m.telephone" class="contacts">
+              <a :href="lienTelephone(m.telephone)" class="rond" :title="`Appeler ${m.prenom}`" :aria-label="`Appeler ${m.prenom}`"><Icone nom="telephone" /></a>
+              <a :href="lienSms(m.telephone)" class="rond" :title="`SMS à ${m.prenom}`" :aria-label="`Envoyer un SMS à ${m.prenom}`"><Icone nom="sms" /></a>
+              <a :href="lienWhatsApp(m.telephone)" class="rond" target="_blank" rel="noopener" :title="`WhatsApp à ${m.prenom}`" :aria-label="`Écrire à ${m.prenom} sur WhatsApp`"><Icone nom="whatsapp" /></a>
+            </div>
           </div>
         </section>
 
@@ -371,6 +379,8 @@ button.petit { padding: 8px 14px; font-size: 0.92rem; }
 .grandit { flex: 1; min-width: 0; }
 .etat { font-size: 0.85rem; color: #b46a22; }
 .etat.ok { color: var(--vert); }
+.contacts { display: flex; gap: 6px; flex: none; }
+.anniversaire .rond { background: white; }
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .album + .album { margin-top: 10px; }
 .album-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; }
@@ -415,6 +425,10 @@ button.petit { padding: 8px 14px; font-size: 0.92rem; }
   .colonne { display: contents; }
   .anniversaire .gateau, .texte-appeler { display: none; }
   .appeler { width: 44px; height: 44px; border-radius: 50%; padding: 0; justify-content: center; }
+  /* Appel, SMS et WhatsApp passent sous le nom, alignés sur le texte */
+  .personne, .anniversaire { flex-wrap: wrap; }
+  .personne .grandit, .anniversaire .grandit { flex-basis: calc(100% - 64px); }
+  .personne .contacts, .anniversaire .contacts { margin-left: 64px; }
   .cercle-ligne { flex-wrap: wrap; }
   .cercle-ligne .aide { flex-basis: 100%; order: 3; }
 }
