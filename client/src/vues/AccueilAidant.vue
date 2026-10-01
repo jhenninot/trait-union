@@ -9,6 +9,7 @@ import { lienTelephone, lienSms, lienWhatsApp, ans, age, ageTexte, estAnniversai
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
+import { etatUtilisation } from '../utilisation.js'
 
 // Accueil des aidants, proches et auxiliaires de vie : tableau de bord du cercle courant
 // (celui choisi dans le menu). Ce que chacun voit suit ses droits : une auxiliaire n'a ni
@@ -30,6 +31,7 @@ const albums = ref([]) // albums où des photos sont arrivées depuis ma derniè
 const dernieres = ref([]) // dernières photos, quand il n'y a rien de nouveau
 const photosActives = ref(false)
 const vuesAccompagnes = ref([]) // photos pas encore regardées par chaque personne accompagnée
+const utilisationAides = ref([]) // utilisation de l'application par chaque personne accompagnée (aidants)
 // Personnes de l'arbre généalogique sans compte (un jeune enfant…) : pour leurs anniversaires
 const sansCompte = ref([])
 const autres = ref([]) // résumé de mes autres cercles
@@ -90,6 +92,7 @@ async function charger() {
   albums.value = []
   dernieres.value = []
   vuesAccompagnes.value = []
+  utilisationAides.value = []
   sansCompte.value = []
   if (!id) return
   try {
@@ -101,6 +104,7 @@ async function charger() {
       chargerRendezVous(id).then((l) => (rendezVous.value = l.slice(0, NB_RDV))),
       auxiliaire ? null : chargerPhotos(id).catch(() => (photosActives.value = false)),
       auxiliaire ? null : api('GET', `/cercles/${id}/albums/accompagnes`).then((l) => (vuesAccompagnes.value = l)).catch(() => {}),
+      c.peutGerer ? api('GET', `/cercles/${id}/utilisation`).then((l) => (utilisationAides.value = l)).catch(() => {}) : null,
       auxiliaire ? null : api('GET', `/cercles/${id}/arbre`).then((a) => (sansCompte.value = a.personnes.filter((p) => !p.compte && !p.decede))).catch(() => {}),
       chargerAutres(id)
     ])
@@ -139,6 +143,13 @@ function etatPhotos(m) {
   if (v.nouvelles > 0) return { vu: false, texte: `${v.nouvelles} photo${v.nouvelles > 1 ? 's' : ''} pas encore vue${v.nouvelles > 1 ? 's' : ''}` }
   if (!v.vuLe) return null
   return { vu: true, texte: `A regardé toutes les photos (${quand(v.vuLe)})` }
+}
+// Utilisation de l'application (aidants seulement) : dernier passage et les 7 derniers jours
+function usage(m) {
+  if (!peutGerer.value) return null
+  const u = utilisationAides.value.find((x) => x.utilisateurId === m.utilisateurId)
+  if (!u) return null
+  return { ...etatUtilisation(u, m.appareils), semaine: (u.frise ?? []).slice(-7) }
 }
 function quand(d) {
   const date = new Date(d)
@@ -287,6 +298,14 @@ const aujourdhui = (() => {
                 <span v-if="m.dateNaissance && m.telephone"> · </span>
                 <span v-if="m.telephone"><Icone nom="telephone" class="en-ligne" /> {{ m.telephone }}</span>
               </p>
+              <p v-if="usage(m)" class="usage" :class="usage(m).niveau">
+                <Icone :nom="usage(m).niveau === 'ok' ? 'coche' : usage(m).niveau === 'aucun' ? 'tablette' : 'attention'" class="en-ligne" />
+                <span>{{ usage(m).texte }}</span>
+                <span v-if="usage(m).niveau !== 'aucun'" class="semaine" :title="`${usage(m).semaine.filter((j) => j.ecrans).length} jours d'utilisation sur les 7 derniers`">
+                  <span v-for="j in usage(m).semaine" :key="j.jour" :class="{ plein: j.ecrans }" />
+                </span>
+                <RouterLink :to="`${base}/tablettes`" class="detail">Détail</RouterLink>
+              </p>
               <p v-if="etatPhotos(m)" class="etat" :class="{ ok: etatPhotos(m).vu }">
                 <Icone :nom="etatPhotos(m).vu ? 'coche' : 'photo'" class="en-ligne" /> {{ etatPhotos(m).texte }}
               </p>
@@ -383,6 +402,16 @@ button.petit { padding: 8px 14px; font-size: 0.92rem; }
 .grandit { flex: 1; min-width: 0; }
 .etat { font-size: 0.85rem; color: #b46a22; }
 .etat.ok { color: var(--vert); }
+.usage { font-size: 0.85rem; font-weight: 500; line-height: 1.5; }
+.usage > * { margin-right: 6px; }
+.usage.ok { color: var(--vert); }
+.usage.attention { color: #a35a12; }
+.usage.alerte { color: var(--rouge); }
+.usage.aucun { color: var(--gris); font-weight: 400; }
+.semaine { display: inline-flex; gap: 2px; vertical-align: 0; white-space: nowrap; }
+.semaine span { width: 8px; height: 8px; border-radius: 2px; background: #e3e1db; }
+.semaine span.plein { background: var(--vert); }
+.usage .detail { font-weight: 400; font-size: 0.82rem; }
 .contacts { display: flex; gap: 6px; flex: none; }
 .anniversaire .rond { background: white; }
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }

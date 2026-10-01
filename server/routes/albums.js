@@ -16,7 +16,7 @@ const peutModifier = (req, album) => req.peutGerer || album.creeParId === req.ut
 
 // Nombre de photos publiées qu'une personne n'a pas encore regardées, par album
 // (ses propres photos ne comptent pas)
-function nonVuesPar(cercleId, utilisateurId) {
+export function nonVuesPar(cercleId, utilisateurId) {
   return db.select({ albumId: photos.albumId, nombre: count() }).from(photos)
     .leftJoin(albumsVus, and(
       eq(albumsVus.utilisateurId, utilisateurId),

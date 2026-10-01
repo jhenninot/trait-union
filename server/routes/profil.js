@@ -5,6 +5,7 @@ import { utilisateurs, membres } from '../db/schema.js'
 import { exigerConnexion, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { presenterAvatar, preparerEnvoi, changerAvatar } from '../avatars.js'
+import { noterUtilisation } from '../utilisation.js'
 
 // « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée
 const router = Router()
@@ -12,6 +13,13 @@ router.use(exigerConnexion)
 
 router.get('/', async (req, res) => {
   res.json({ ...profilPublic(req.utilisateur), ...await presenterAvatar(req.utilisateur) })
+})
+
+// Écran ouvert sur l'appareil d'une personne accompagnée (suivi d'utilisation montré à ses aidants).
+// Corps : { ecran: accueil | photos | agenda | famille | arbre }
+router.post('/utilisation', (req, res) => {
+  noterUtilisation(req, String(req.body.ecran ?? ''))
+  res.status(204).end()
 })
 
 router.patch('/', async (req, res) => {

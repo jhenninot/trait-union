@@ -11,12 +11,13 @@ import { emailActif, envoyerEmail, gabarit } from '../email/brevo.js'
 import { urlApplication } from '../url.js'
 import routesAgenda from './agenda.js'
 import routesPhotos from './photos.js'
-import routesAlbums from './albums.js'
+import routesAlbums, { nonVuesPar } from './albums.js'
 import routesArbre from './arbre.js'
 import { liensDesMembres } from '../arbre.js'
 import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { preferences, lirePreferences } from './alertes.js'
 import { derniereApkConnue } from '../application.js'
+import { resumeUtilisation } from '../utilisation.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -144,6 +145,19 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined
     }))
   })
+})
+
+// Utilisation de l'application par les personnes accompagnées du cercle (réservé aux aidants) :
+// dernier passage, jours d'utilisation, frise des 30 derniers jours, écrans ouverts, photos pas vues
+router.get('/:cercleId/utilisation', chargerCercle, exigerGestion, async (req, res) => {
+  const liste = await db.select({ utilisateurId: membres.utilisateurId }).from(membres)
+    .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne')))
+  const ids = liste.map((m) => m.utilisateurId).filter(Boolean)
+  const resume = await resumeUtilisation(ids)
+  res.json(await Promise.all(ids.map(async (utilisateurId) => {
+    const nonVues = await nonVuesPar(req.cercle.id, utilisateurId)
+    return { utilisateurId, ...resume.get(utilisateurId), photosNonVues: nonVues.reduce((n, c) => n + c.nombre, 0) }
+  })))
 })
 
 // Un administrateur qui n'est pas membre (ou seulement proche) devient aidant du cercle

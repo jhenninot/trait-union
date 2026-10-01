@@ -1,12 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import UtilisationAccompagne from './UtilisationAccompagne.vue'
 
 // Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
+
+// Utilisation de l'application par chaque personne accompagnée (aidants seulement)
+const utilisation = ref([])
+watch(() => cercle.value?.id, async (id) => {
+  utilisation.value = []
+  if (!id || !cercle.value.peutGerer) return
+  try {
+    utilisation.value = await api('GET', `${url.value}/utilisation`)
+  } catch { /* bloc laissé vide */ }
+}, { immediate: true })
+const utilisationDe = (m) => utilisation.value.find((u) => u.utilisateurId === m.utilisateurId) ?? null
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const nouvelAccompagne = ref({ prenom: '', nom: '' })
 
@@ -63,6 +75,7 @@ const adresseApk = `${location.host}/apk`
           sur l'appareil de {{ m.prenom }}, ouvrez Chrome à l'adresse <strong>{{ adresseApk }}</strong>,
           puis ouvrez le fichier téléchargé et touchez « Mettre à jour ».
         </p>
+        <UtilisationAccompagne v-if="cercle.peutGerer" :utilisation="utilisationDe(m)" :prenom="m.prenom" :appareils="m.appareils" />
         <div v-if="m.alertes" class="alertes">
           <span class="titre-alertes"><Icone nom="cloche" class="en-ligne" /> Alertes</span>
           <label class="case"><input type="checkbox" :checked="m.alertes.rendezVous" @change="changerAlertes(m, 'rendezVous', $event.target.checked)" /> Rappels de rendez-vous</label>

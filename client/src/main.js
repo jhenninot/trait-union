@@ -33,6 +33,7 @@ import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
 import { surveillerPartages } from './partage.js'
 import { rafraichirAlertes } from './alertes.js'
+import { suivreUtilisation } from './utilisation.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -85,6 +86,7 @@ router.beforeEach(async (to) => {
 preparerInstallation()
 surveillerMisesAJour(router)
 surveillerPartages(router)
+suivreUtilisation(router)
 // Abonnement aux alertes renvoyé au serveur à chaque connexion (il suit la session)
 watch(() => session.utilisateur?.id, (id) => id && rafraichirAlertes())
 createApp(App).use(router).mount('#app')

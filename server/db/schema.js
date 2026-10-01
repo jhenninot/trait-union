@@ -304,3 +304,17 @@ export const compteurs = pgTable('compteurs', {
 }, (t) => [
   unique('compteurs_unique').on(t.jour, t.canal, t.cercleId).nullsNotDistinct()
 ])
+
+// Utilisation de l'application par chaque personne accompagnée, jour par jour (montrée à ses
+// aidants, server/utilisation.js) : des nombres de visites par écran, jamais ce qui a été vu ou dit.
+// ecrans : { accueil, photos, agenda, famille, arbre, voix } → nombre de fois dans la journée.
+export const utilisationJour = pgTable('utilisation_jour', {
+  ...commun,
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  jour: date('jour').notNull(), // AAAA-MM-JJ (heure de Paris)
+  ecrans: jsonb('ecrans').$type().notNull().default({}),
+  // Dernière utilisation ce jour-là (la date de modification change aussi quand rien n'est compté)
+  derniereLe: timestamp('derniere_le', { withTimezone: true }).notNull().defaultNow()
+}, (t) => [
+  unique('utilisation_jour_unique').on(t.utilisateurId, t.jour)
+])
