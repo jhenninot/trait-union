@@ -83,7 +83,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -105,12 +105,16 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .groupBy(appareilsAlertes.utilisateurId)
   const alertesParUtilisateur = new Map(avecAlertes.map((a) => [a.utilisateurId, a.n]))
   const lienAvatar = await liensAvatars()
+  // Les auxiliaires de vie ne voient que le téléphone des membres
+  const voitTout = req.peutGerer || req.role !== 'auxiliaire'
   res.json({
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, avatar, alertes, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, alertes, dateNaissance, adresse, ...m }) => ({
       ...m,
+      dateNaissance: voitTout ? dateNaissance : undefined,
+      adresse: voitTout ? adresse : undefined,
       moi: utilisateurId === req.utilisateur.id,
       avatar: lienAvatar(utilisateurId, avatar),
       // Les aidants choisissent l'avatar des personnes accompagnées
@@ -211,6 +215,13 @@ router.put('/:cercleId/membres/:membreId/alertes', chargerCercle, exigerGestion,
   const alertes = lirePreferences(req.body)
   await db.update(utilisateurs).set({ alertes }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(alertes)
+})
+
+// Téléphone, date de naissance et adresse d'une personne accompagnée, renseignés par un aidant
+router.put('/:cercleId/membres/:membreId/coordonnees', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const coordonnees = valider.coordonnees(req.body)
+  await db.update(utilisateurs).set(coordonnees).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  res.json(coordonnees)
 })
 
 // Avatar d'une personne accompagnée, choisi par un aidant (même fonctionnement que « Mon profil »)

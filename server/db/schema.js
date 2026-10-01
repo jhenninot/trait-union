@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
 // côté mobile) et dates utiles à la future synchronisation hors ligne.
@@ -22,6 +22,11 @@ export const utilisateurs = pgTable('utilisateurs', {
   // Avatar : « modele:<id> » (image fournie avec l'application, client/public/avatars/)
   // ou « photo:<jeton> » (photo stockée chez l'hébergeur S3, voir server/avatars.js)
   avatar: text('avatar'),
+  // Coordonnées facultatives, affichées à la famille (« Famille et aidants », « Ma famille »).
+  // Les auxiliaires de vie ne voient que le téléphone.
+  telephone: text('telephone'),
+  dateNaissance: date('date_naissance'), // « AAAA-MM-JJ », sans fuseau horaire
+  adresse: text('adresse'),
   // Catégories d'alertes reçues sur les appareils où elles sont activées (server/alertes/)
   alertes: jsonb('alertes').$type().notNull().default({ rendezVous: true, photos: true }),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })

@@ -17,6 +17,38 @@ export function email(valeur) {
   return v
 }
 
+// Numéro de téléphone facultatif : chiffres, espaces, points, tirets, parenthèses et « + » initial
+export function telephone(valeur) {
+  const v = texte(valeur, 'téléphone', { obligatoire: false, max: 30 })
+  if (v === null) return null
+  const chiffres = v.replace(/\D/g, '')
+  if (!/^\+?[\d\s.\-()]+$/.test(v) || chiffres.length < 4 || chiffres.length > 15) {
+    throw new ErreurSaisie('Numéro de téléphone invalide')
+  }
+  return v
+}
+
+// Date de naissance facultative au format « AAAA-MM-JJ », entre 1900 et aujourd'hui
+export function dateNaissance(valeur) {
+  const v = texte(valeur, 'date de naissance', { obligatoire: false, max: 10 })
+  if (v === null) return null
+  const d = new Date(`${v}T00:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(d) || d.toISOString().slice(0, 10) !== v) {
+    throw new ErreurSaisie('Date de naissance invalide')
+  }
+  if (v < '1900-01-01' || d > new Date()) throw new ErreurSaisie('Date de naissance invalide')
+  return v
+}
+
+// Téléphone, date de naissance et adresse d'un profil (tous facultatifs)
+export function coordonnees(corps) {
+  return {
+    telephone: telephone(corps.telephone),
+    dateNaissance: dateNaissance(corps.dateNaissance),
+    adresse: texte(corps.adresse, 'adresse', { obligatoire: false, max: 300 })
+  }
+}
+
 // Règles du mot de passe : aussi affichées dans le front (client/src/motDePasse.js)
 export function motDePasse(valeur) {
   if (typeof valeur !== 'string' || valeur.length < 10) {

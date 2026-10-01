@@ -92,6 +92,13 @@
       "when": 1790835731217,
       "tag": "0012_alertes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790840733145,
+      "tag": "0013_coordonnees",
+      "breakpoints": true
     }
   ]
 }

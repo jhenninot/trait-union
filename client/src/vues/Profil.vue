@@ -3,8 +3,9 @@ import { ref } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
 import ChoixAvatar from './ChoixAvatar.vue'
+import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 
-// « Mon profil » : prénom, nom et avatar de la personne connectée
+// « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée
 const prenom = ref(session.utilisateur.prenom)
 const nom = ref(session.utilisateur.nom ?? '')
 const message = ref('')
@@ -18,6 +19,21 @@ async function enregistrer() {
     message.value = 'Enregistré'
   } catch (e) {
     erreur.value = e.message
+  }
+}
+
+const messageCoordonnees = ref('')
+const erreurCoordonnees = ref('')
+
+async function enregistrerCoordonnees(c) {
+  messageCoordonnees.value = erreurCoordonnees.value = ''
+  try {
+    const { prenom, nom } = session.utilisateur
+    const u = await api('PATCH', '/profil', { prenom, nom, ...c })
+    Object.assign(session.utilisateur, { telephone: u.telephone, dateNaissance: u.dateNaissance, adresse: u.adresse })
+    messageCoordonnees.value = 'Enregistré'
+  } catch (e) {
+    erreurCoordonnees.value = e.message
   }
 }
 
@@ -49,6 +65,15 @@ const avatarChange = (a) => Object.assign(session.utilisateur, a)
         <span v-if="erreur" class="erreur">{{ erreur }}</span>
       </div>
     </form>
+    <div class="carte">
+      <strong>Mes coordonnées</strong>
+      <p class="aide">Facultatives. Elles s'affichent pour les membres de vos cercles dans « Famille et aidants » et sur la tablette.
+        Les auxiliaires de vie ne voient que le téléphone.</p>
+      <FormulaireCoordonnees :personne="session.utilisateur" @enregistrer="enregistrerCoordonnees">
+        <span v-if="messageCoordonnees" class="aide">{{ messageCoordonnees }}</span>
+        <span v-if="erreurCoordonnees" class="erreur">{{ erreurCoordonnees }}</span>
+      </FormulaireCoordonnees>
+    </div>
   </main>
 </template>
 

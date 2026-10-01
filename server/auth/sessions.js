@@ -80,5 +80,8 @@ export const profilPublic = (u) => ({
   prenom: u.prenom,
   nom: u.nom,
   email: u.email,
-  estAdmin: u.estAdmin
+  estAdmin: u.estAdmin,
+  telephone: u.telephone,
+  dateNaissance: u.dateNaissance,
+  adresse: u.adresse
 })

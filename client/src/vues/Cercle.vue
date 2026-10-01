@@ -5,8 +5,11 @@ import { api } from '../api.js'
 import { session, rafraichirSession } from '../session.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
+import { aDesCoordonnees } from '../coordonnees.js'
 import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
+import Coordonnees from './Coordonnees.vue'
+import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 
@@ -16,6 +19,24 @@ const { url, cercle, erreur, charger, action, accompagnes, autres } = utiliserCe
 const invitation = ref(null) // { role, lien, expireLe, emailEnvoye, erreurEmail }
 const emailInvite = ref('')
 const avatarOuvert = ref(null) // personne accompagnée dont on choisit l'avatar
+const coordonneesOuvertes = ref(null) // personne accompagnée dont on modifie les coordonnées
+const erreurCoordonnees = ref('')
+
+const ouvrir = (quoi, id) => {
+  avatarOuvert.value = quoi === 'avatar' && avatarOuvert.value !== id ? id : null
+  coordonneesOuvertes.value = quoi === 'coordonnees' && coordonneesOuvertes.value !== id ? id : null
+  erreurCoordonnees.value = ''
+}
+
+async function enregistrerCoordonnees(m, c) {
+  erreurCoordonnees.value = ''
+  try {
+    Object.assign(m, await api('PUT', `${url.value}/membres/${m.id}/coordonnees`, c))
+    coordonneesOuvertes.value = null
+  } catch (e) {
+    erreurCoordonnees.value = e.message
+  }
+}
 
 const inviter = (role) => action(async () => {
   const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations`, { role, email: emailInvite.value || undefined })
@@ -65,13 +86,27 @@ const rejoindre = () => action(async () => {
           </span>
           <span v-if="cercle.peutGerer" class="liens">
             <BoutonIcone
+              :icone="coordonneesOuvertes === m.id ? 'fermer' : 'modifier'"
+              :libelle="coordonneesOuvertes === m.id ? 'Fermer' : 'Modifier ses coordonnées'"
+              @click="ouvrir('coordonnees', m.id)"
+            />
+            <BoutonIcone
               :icone="avatarOuvert === m.id ? 'fermer' : 'compte'"
               :libelle="avatarOuvert === m.id ? 'Fermer' : 'Changer son avatar'"
-              @click="avatarOuvert = avatarOuvert === m.id ? null : m.id"
+              @click="ouvrir('avatar', m.id)"
             />
             <RouterLink :to="`${url}/tablettes`" class="bouton-icone" aria-label="Gérer sa tablette" title="Gérer sa tablette"><Icone nom="tablette" /></RouterLink>
           </span>
         </div>
+        <Coordonnees v-if="coordonneesOuvertes !== m.id && aDesCoordonnees(m)" class="details" :personne="m" />
+        <FormulaireCoordonnees
+          v-else
+          class="choix"
+          :personne="m"
+          @enregistrer="enregistrerCoordonnees(m, $event)"
+        >
+          <span v-if="erreurCoordonnees" class="erreur">{{ erreurCoordonnees }}</span>
+        </FormulaireCoordonnees>
         <ChoixAvatar
           v-if="avatarOuvert === m.id"
           class="choix"
@@ -84,19 +119,22 @@ const rejoindre = () => action(async () => {
       </div>
 
       <h2>Aidants, proches et auxiliaires</h2>
-      <div v-for="m in autres" :key="m.id" class="carte ligne">
-        <span class="personne">
-          <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" />
-          <span>
-            <strong>{{ m.prenom }} {{ m.nom }}</strong>
-            <span v-if="m.email" class="aide"> · {{ m.email }}</span>
-            <RouterLink v-if="m.moi" to="/profil" class="aide"> · modifier mon avatar</RouterLink>
+      <div v-for="m in autres" :key="m.id" class="carte">
+        <div class="ligne">
+          <span class="personne">
+            <Avatar :src="m.avatar" :prenom="m.prenom" :taille="40" />
+            <span>
+              <strong>{{ m.prenom }} {{ m.nom }}</strong>
+              <span v-if="m.email" class="aide"> · {{ m.email }}</span>
+            </span>
           </span>
-        </span>
-        <span class="liens">
-          <span class="aide">{{ libellesRoles[m.role] }}</span>
-          <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
-        </span>
+          <span class="liens">
+            <span class="aide">{{ libellesRoles[m.role] }}</span>
+            <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
+            <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
+          </span>
+        </div>
+        <Coordonnees v-if="aDesCoordonnees(m)" class="details" :personne="m" />
       </div>
 
       <div v-if="cercle.peutGerer" class="carte">
@@ -131,6 +169,7 @@ const rejoindre = () => action(async () => {
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .personne { display: flex; align-items: center; gap: 12px; }
 .liens { display: flex; align-items: center; gap: 8px; }
+.details { margin: 10px 0 0 52px; }
 .choix { margin-top: 16px; border-top: 1px solid #ebe8e3; padding-top: 12px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }

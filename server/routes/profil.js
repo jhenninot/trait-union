@@ -6,7 +6,7 @@ import { exigerConnexion, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { presenterAvatar, preparerEnvoi, changerAvatar } from '../avatars.js'
 
-// « Mon profil » : prénom, nom et avatar de la personne connectée
+// « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée
 const router = Router()
 router.use(exigerConnexion)
 
@@ -19,10 +19,15 @@ router.patch('/', async (req, res) => {
     prenom: valider.texte(req.body.prenom, 'prénom'),
     nom: valider.texte(req.body.nom, 'nom', { obligatoire: false })
   }
+  // Les coordonnées ne sont modifiées que si la requête les contient
+  const coordonnees = valider.coordonnees(req.body)
+  for (const champ of Object.keys(coordonnees)) {
+    if (champ in req.body) modifs[champ] = coordonnees[champ]
+  }
   await db.transaction(async (tx) => {
     await tx.update(utilisateurs).set(modifs).where(eq(utilisateurs.id, req.utilisateur.id))
     // Les cercles gardent une copie du nom affichée à la famille
-    await tx.update(membres).set(modifs).where(eq(membres.utilisateurId, req.utilisateur.id))
+    await tx.update(membres).set({ prenom: modifs.prenom, nom: modifs.nom }).where(eq(membres.utilisateurId, req.utilisateur.id))
   })
   const u = { ...req.utilisateur, ...modifs }
   res.json({ ...profilPublic(u), ...await presenterAvatar(u) })
