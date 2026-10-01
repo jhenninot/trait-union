@@ -106,7 +106,7 @@ const enregistrerAlbum = () => action(async () => {
 
 const supprimerAlbum = () => action(async () => {
   const a = albumCourant.value
-  if (!confirm(`Supprimer l'album « ${a.nom} » ? Ses ${a.nombre} photo(s) sont gardées, sans album.`)) return
+  if (!confirm(`Supprimer l'album « ${a.nom} » ? Ses ${a.nombre} photo(s) sont gardées, dans « Non classé ».`)) return
   await api('DELETE', `${url.value}/albums/${a.id}`)
   choisirFiltre('tous')
   await chargerAlbums()
@@ -276,7 +276,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           </button>
           <button v-if="albums.length && compteurs.sansAlbum" class="carte-album" :class="{ choisi: filtre === 'aucun' }" @click="choisirFiltre('aucun')">
             <span class="couverture vide"><Icone nom="photo" class="em" /></span>
-            <span class="nom">Sans album</span>
+            <span class="nom">Non classé</span>
             <span class="aide">{{ compteurs.sansAlbum }}</span>
           </button>
           <button class="carte-album nouveau" @click="nomAlbum = { id: null, nom: '' }">
@@ -311,7 +311,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </div>
         <label v-if="actif" class="choix-album">Ranger dans l'album
           <select v-model="albumEnvoi" :disabled="envoiEnCours">
-            <option value="">Sans album</option>
+            <option value="">Non classé</option>
             <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
             <option :value="NOUVEL_ALBUM">+ Nouvel album…</option>
           </select>
@@ -381,7 +381,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
         <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
-            <option value="">Sans album</option>
+            <option value="">Non classé</option>
             <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
           </select>
         </label>

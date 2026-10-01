@@ -113,7 +113,7 @@ async function envoyer() {
         </div>
         <h2>Dans quel album ?</h2>
         <div class="choix-albums">
-          <button :class="{ choisi: albumChoisi === '' }" :disabled="etat === 'envoi'" @click="albumChoisi = ''">Sans album</button>
+          <button :class="{ choisi: albumChoisi === '' }" :disabled="etat === 'envoi'" @click="albumChoisi = ''">Non classé</button>
           <button v-for="a in albums" :key="a.id" :class="{ choisi: albumChoisi === a.id }" :disabled="etat === 'envoi'" @click="albumChoisi = a.id">{{ a.nom }}</button>
           <button :class="{ choisi: albumChoisi === 'nouveau' }" :disabled="etat === 'envoi'" @click="albumChoisi = 'nouveau'"><Icone nom="ajouter" class="en-ligne" /> Nouvel album</button>
         </div>

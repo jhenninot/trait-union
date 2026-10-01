@@ -67,21 +67,39 @@ export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
   return api('POST', `/cercles/${cercleId}/photos/${id}/publier`)
 }
 
+// Pseudo-album des photos rangées dans aucun album (tous cercles confondus)
+export const NON_CLASSE = 'aucun'
+const cerclesDe = (cercles, album) => (album?.cercleId ? cercles.filter((c) => c.id === album.cercleId) : cercles)
+
 // Photos de tous les cercles de la personne accompagnée (en général un seul), les plus récentes
-// d'abord. `album` : { cercleId, id } pour un seul album.
+// d'abord. `album` : { cercleId, id } pour un seul album, ou l'album « Non classé ».
 export async function photosAccompagne(cercles, album = null) {
-  const cibles = album ? cercles.filter((c) => c.id === album.cercleId) : cercles
   const filtre = album ? `&album=${album.id}` : ''
-  const listes = await Promise.all(cibles.map((c) => api('GET', `/cercles/${c.id}/photos?limite=200${filtre}`).catch(() => ({ photos: [] }))))
+  const listes = await Promise.all(cerclesDe(cercles, album).map((c) => api('GET', `/cercles/${c.id}/photos?limite=200${filtre}`).catch(() => ({ photos: [] }))))
   return listes.flatMap((l) => l.photos).sort((a, b) => new Date(b.creeLe) - new Date(a.creeLe))
 }
 
-// Albums de tous les cercles de la personne accompagnée, avec le cercle de chacun
+// Albums de tous les cercles de la personne accompagnée, avec le cercle de chacun. S'il y a des
+// albums, les photos rangées nulle part forment l'album « Non classé », en dernier.
 export async function albumsAccompagne(cercles) {
-  const listes = await Promise.all(cercles.map((c) => api('GET', `/cercles/${c.id}/albums`)
-    .then((r) => r.albums.map((a) => ({ ...a, cercleId: c.id })))
-    .catch(() => [])))
-  return listes.flat().filter((a) => a.nombre > 0).sort((a, b) => new Date(b.derniere) - new Date(a.derniere))
+  const reponses = (await Promise.all(cercles.map((c) => api('GET', `/cercles/${c.id}/albums`)
+    .then((r) => ({ ...r, cercleId: c.id }))
+    .catch(() => null)))).filter(Boolean)
+  const albums = reponses.flatMap((r) => r.albums.map((a) => ({ ...a, cercleId: r.cercleId })))
+    .filter((a) => a.nombre > 0)
+    .sort((a, b) => new Date(b.derniere) - new Date(a.derniere))
+  const nombre = reponses.reduce((n, r) => n + r.sansAlbum, 0)
+  if (albums.length && nombre) {
+    albums.push({
+      id: NON_CLASSE,
+      cercleId: null,
+      nom: 'Non classé',
+      nombre,
+      nouvelles: reponses.reduce((n, r) => n + (r.sansAlbumNouvelles ?? 0), 0),
+      couverture: reponses.filter((r) => r.sansAlbumCouverture).sort((a, b) => new Date(b.sansAlbumDerniere) - new Date(a.sansAlbumDerniere))[0]?.sansAlbumCouverture ?? null
+    })
+  }
+  return albums
 }
 
 export const dateEnvoi = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -96,9 +114,9 @@ export async function nouveautesPhotos(cercles) {
   const avecAlbums = listes.some((r) => r.albums.some((a) => a.nombre > 0))
   const albums = listes.flatMap((r) => [
     ...r.albums.filter((a) => a.nouvelles > 0).map((a) => ({ ...a, cercleId: r.cercleId, lien: `/photos?album=${a.id}` })),
-    // Photos sans album : on ouvre toutes les photos
+    // Photos non classées : leur album « Non classé » s'il y a des albums, sinon toutes les photos
     ...(r.sansAlbumNouvelles > 0
-      ? [{ id: `aucun-${r.cercleId}`, nom: avecAlbums ? 'Autres photos' : 'Mes photos', nouvelles: r.sansAlbumNouvelles, couverture: r.sansAlbumCouverture, derniere: r.sansAlbumDerniere, lien: '/photos?album=tous' }]
+      ? [{ id: `aucun-${r.cercleId}`, nom: avecAlbums ? 'Non classé' : 'Mes photos', nouvelles: r.sansAlbumNouvelles, couverture: r.sansAlbumCouverture, derniere: r.sansAlbumDerniere, lien: `/photos?album=${avecAlbums ? NON_CLASSE : 'tous'}` }]
       : [])
   ])
   return {
@@ -109,6 +127,6 @@ export async function nouveautesPhotos(cercles) {
 
 // La personne connectée vient de regarder un album (null : toutes les photos)
 export function marquerVu(cercles, album) {
-  const cibles = album ? cercles.filter((c) => c.id === album.cercleId) : cercles
+  const cibles = cerclesDe(cercles, album)
   return Promise.all(cibles.map((c) => api('POST', `/cercles/${c.id}/albums/vus`, { album: album ? album.id : 'tous' }).catch(() => {})))
 }
