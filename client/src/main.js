@@ -30,6 +30,7 @@ import AdminUtilisateurs from './vues/AdminUtilisateurs.vue'
 import AdminStatistiques from './vues/AdminStatistiques.vue'
 import Presentation from './vues/Presentation.vue'
 import Messages from './vues/Messages.vue'
+import Sondages from './vues/Sondages.vue'
 import MessagesAccompagne from './vues/MessagesAccompagne.vue'
 import AdminMessagerie from './vues/AdminMessagerie.vue'
 import { preparerInstallation } from './installation.js'
@@ -50,6 +51,7 @@ const router = createRouter({
     { path: '/cercles/:id/agenda', component: Agenda, meta: { connecte: true } },
     { path: '/cercles/:id/photos', component: Photos, meta: { connecte: true } },
     { path: '/cercles/:id/messages', component: Messages, meta: { connecte: true } },
+    { path: '/cercles/:id/sondages', component: Sondages, meta: { connecte: true } },
     { path: '/messages', component: MessagesAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/arbre', component: Arbre, meta: { connecte: true } },
     { path: '/mon-arbre', component: ArbreAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },

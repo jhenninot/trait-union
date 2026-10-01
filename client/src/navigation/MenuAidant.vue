@@ -46,6 +46,8 @@ const peutGerer = computed(() => session.utilisateur.estAdmin || aLesDroits(cerc
 const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value?.role))
 // La messagerie est réservée aux membres du cercle (pas à un administrateur qui n'en fait pas partie)
 const voitMessages = computed(() => Boolean(cercle.value?.role))
+// Sondages de dates : comme le fil « Toute la famille », sans les auxiliaires
+const voitSondages = computed(() => voitMessages.value && !estAuxiliaire(cercle.value?.role))
 const nonLus = computed(() => etatMessagerie.parCercle[cercleId.value] ?? 0)
 
 watch(() => route.params.id, (id) => id && memoriserCercle(id), { immediate: true })
@@ -54,9 +56,9 @@ watch(() => route.fullPath, () => (ouvert.value = false))
 // Changer de cercle garde la même rubrique (Accueil, Famille, Arbre, Agenda, Photos ou Personnes accompagnées)
 function changerCercle(id) {
   if (route.path === '/') return memoriserCercle(id)
-  let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre|messages)$/)?.[0] ?? ''
+  let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre|messages|sondages)$/)?.[0] ?? ''
   const cible = choix.value.find((c) => c.id === id)
-  if ((rubrique === '/photos' || rubrique === '/arbre') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
+  if ((rubrique === '/photos' || rubrique === '/arbre' || rubrique === '/sondages') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -92,6 +94,9 @@ const estActif = (chemin) => route.path === chemin
     <template v-if="cercle">
       <RouterLink v-if="voitMessages" :to="`/cercles/${cercle.id}/messages`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/messages`) }">
         <Icone nom="message" /> Messages<span v-if="nonLus" class="badge">{{ nonLus }}</span>
+      </RouterLink>
+      <RouterLink v-if="voitSondages" :to="`/cercles/${cercle.id}/sondages`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/sondages`) }">
+        <Icone nom="sondage" /> Sondages
       </RouterLink>
       <RouterLink :to="`/cercles/${cercle.id}`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}`) }">
         <Icone nom="famille" /> Famille et aidants

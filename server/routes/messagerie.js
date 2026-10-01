@@ -523,6 +523,32 @@ router.post('/conversations/:id/sondages', chargerConversation, async (req, res)
   res.status(201).json({ id: sondage.id, messageId: message.id })
 })
 
+// Page « Sondages » d'un cercle : les sondages de « Toute la famille », en cours puis terminés
+// (date retenue). Les auxiliaires n'y ont pas accès, comme au fil.
+router.get('/cercles/:cercleId/sondages', async (req, res) => {
+  const { liste, moi } = await vueCercle(req, req.params.cercleId)
+  const [famille] = moi ? await db.select().from(conversations).where(and(eq(conversations.cercleId, req.params.cercleId), eq(conversations.type, 'famille'))) : []
+  if (!famille || !participants(famille, liste).some((m) => m.utilisateurId === moi.utilisateurId)) {
+    return res.status(403).json({ erreur: 'Les sondages sont réservés à la famille et aux aidants' })
+  }
+  const lignes = await db.select({ id: messages.id, creeLe: messages.creeLe, auteurId: messages.auteurId }).from(messages)
+    .where(and(eq(messages.conversationId, famille.id), eq(messages.type, 'sondage'), sql`${messages.retireLe} is null`))
+  const tous = await sondagesDesMessages(lignes.map((m) => m.id))
+  const repondants = participants(famille, liste)
+  const lienAvatar = await liensAvatars()
+  const resultat = lignes.filter((m) => tous.has(m.id)).map((m) => ({
+    ...presenterSondage(tous.get(m.id), { moi, repondants, lienAvatar }),
+    creeLe: m.creeLe,
+    auteur: liste.find((x) => x.utilisateurId === m.auteurId)?.prenom ?? null
+  }))
+  res.json({
+    conversationId: famille.id,
+    peutSonder: ['aidant', 'proche'].includes(moi.role) && peutEcrire(famille, moi, liste),
+    enCours: resultat.filter((x) => x.ouvert).sort((a, b) => b.creeLe - a.creeLe),
+    termines: resultat.filter((x) => !x.ouvert).sort((a, b) => (a.dateRetenue < b.dateRetenue ? 1 : -1))
+  })
+})
+
 // Détail : une ligne par personne (tableau des réponses)
 router.get('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
   res.json(await detailSondage(req))
@@ -647,6 +673,23 @@ router.post('/sondages/:sondageId/rouvrir', chargerLeSondage, async (req, res) =
   })
   await annoncer(req, message)
   res.json(await detailSondage(req))
+})
+
+// Supprime un sondage terminé (son auteur et les aidants) : sa carte devient « Message effacé »
+// dans le fil. Avec ?agenda=1, le rendez-vous créé à la date retenue est retiré aussi.
+router.delete('/sondages/:sondageId', chargerLeSondage, async (req, res) => {
+  const { conversation, moi, liste } = req
+  const { sondage } = req.sondage
+  if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants suppriment ce sondage' })
+  if (!sondage.dateRetenue) return res.status(400).json({ erreur: 'Seul un sondage terminé peut être supprimé' })
+  const avecAgenda = req.query.agenda === '1'
+  await db.transaction(async (tx) => {
+    if (avecAgenda && sondage.rendezVousId) await tx.delete(rendezVous).where(eq(rendezVous.id, sondage.rendezVousId))
+    await tx.delete(sondages).where(eq(sondages.id, sondage.id))
+    await tx.update(messages).set({ retireLe: new Date(), retireParId: moi.utilisateurId, texte: null }).where(eq(messages.id, sondage.messageId))
+  })
+  rafraichir(conversation, liste)
+  res.status(204).end()
 })
 
 // --- Personne accompagnée : tous les messages qui lui sont adressés, sur de grandes cartes

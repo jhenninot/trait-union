@@ -55,3 +55,5 @@ export const repondreSondage = (id, reponses, { commentaire = '', pour = null } 
 export const relancerSondage = (id) => api('POST', `/messagerie/sondages/${id}/relancer`)
 export const retenirDate = (id, donnees) => api('POST', `/messagerie/sondages/${id}/retenir`, donnees)
 export const rouvrirSondage = (id) => api('POST', `/messagerie/sondages/${id}/rouvrir`)
+export const listeSondages = (cercleId) => api('GET', `/messagerie/cercles/${cercleId}/sondages`)
+export const supprimerSondage = (id, { agenda = false } = {}) => api('DELETE', `/messagerie/sondages/${id}${agenda ? '?agenda=1' : ''}`)
