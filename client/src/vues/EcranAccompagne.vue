@@ -7,6 +7,7 @@ import { auRetour } from '../miseAJour.js'
 import { api } from '../api.js'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
+import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
@@ -29,6 +30,31 @@ const nouvellesPhotos = computed(() => photos.value?.albums ?? [])
 const nombreNouvelles = computed(() => nouvellesPhotos.value.reduce((n, a) => n + a.nouvelles, 0))
 // Un seul album concerné : on l'ouvre directement ; sinon le choix des albums (avec pastilles)
 const lienPhotos = computed(() => nouvellesPhotos.value.length === 1 ? nouvellesPhotos.value[0].lien : '/photos')
+// Proposer les alertes sur cet appareil, si les aidants en ont laissé au moins une catégorie
+// et qu'elles ne sont ni actives, ni refusées ici
+const alertes = ref(null) // { clePublique, proposer, fait, erreur }
+async function chargerAlertes() {
+  const mode = modeAlertes()
+  if (!['web', 'android'].includes(mode) || alertesArretees() || autorisation() === 'refusee') return
+  const d = await api('GET', '/alertes').catch(() => null)
+  if (!d || d.appareils.some((a) => a.ceAppareil) || !Object.values(d.preferences).some(Boolean)) return
+  alertes.value = { clePublique: d.clePublique, proposer: true }
+}
+async function accepterAlertes() {
+  try {
+    await activerAlertes(alertes.value.clePublique)
+    alertes.value = { fait: true }
+    setTimeout(() => (alertes.value = null), 8000)
+  } catch (e) {
+    alertes.value = { ...alertes.value, erreur: e.message }
+  }
+}
+function refuser() {
+  refuserAlertes()
+  alertes.value = null
+}
+chargerAlertes()
+
 const recharger = () => {
   chargerProgramme()
   chargerPhotos()
@@ -96,6 +122,13 @@ const moment = () => {
     <RouterLink v-else-if="photos?.total" to="/photos" class="photos calme">
       <Icone nom="photo" class="en-ligne" /> Pas de nouvelle photo
     </RouterLink>
+    <div v-if="alertes?.proposer" class="alertes">
+      <button class="activer" @click="accepterAlertes"><Icone nom="cloche" class="en-ligne" /> Recevoir les alertes</button>
+      <span class="explication">Mes rendez-vous et les nouvelles photos, même quand l'écran est éteint.</span>
+      <span v-if="alertes.erreur" class="erreur">{{ alertes.erreur }}</span>
+      <button class="non" @click="refuser">Non merci</button>
+    </div>
+    <p v-else-if="alertes?.fait" class="alertes fait"><Icone nom="coche" class="en-ligne" /> Les alertes arriveront sur cet appareil.</p>
     </div>
   </main>
 </template>
@@ -171,6 +204,25 @@ const moment = () => {
 }
 .ligne-programme strong { color: var(--vert); margin-right: 8px; }
 .suite { color: var(--gris); font-size: 1.3rem; }
+/* Proposition des alertes : discrète, sous le reste */
+.alertes {
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 14px;
+  max-width: 560px;
+  background: #eef0f6;
+  border-radius: 20px;
+  padding: 12px 18px;
+  color: var(--bleu-nuit);
+}
+.alertes .activer { font-size: 1.4rem; font-weight: 700; padding: 12px 22px; border-radius: 16px; background: var(--bleu-nuit); }
+.alertes .explication { font-size: 1.15rem; color: var(--gris); flex: 1 1 200px; text-align: left; }
+.alertes .non { background: none; color: var(--gris); font-size: 1.1rem; text-decoration: underline; }
+.alertes .erreur { flex-basis: 100%; font-size: 1.1rem; }
+.alertes.fait { font-size: 1.3rem; color: var(--vert); background: var(--vert-clair); margin: 0; }
 /* Smartphone */
 @media (max-width: 600px) {
   .accompagne { padding: 16px 12px; }
@@ -187,5 +239,8 @@ const moment = () => {
   .texte-photos strong { font-size: 1.2rem; }
   .noms { font-size: 1rem; }
   .photos.calme { font-size: 1.15rem; justify-content: center; }
+  .alertes { align-self: stretch; max-width: none; padding: 10px 12px; border-radius: 16px; }
+  .alertes .activer { font-size: 1.2rem; width: 100%; }
+  .alertes .explication { font-size: 1rem; text-align: center; }
 }
 </style>

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, isNull, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions } from '../db/schema.js'
+import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes } from '../db/schema.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
 import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
@@ -13,6 +13,7 @@ import routesAgenda from './agenda.js'
 import routesPhotos from './photos.js'
 import routesAlbums from './albums.js'
 import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
+import { preferences, lirePreferences } from './alertes.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -82,7 +83,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -95,19 +96,29 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne'), eq(sessions.type, 'appareil')))
     .groupBy(sessions.utilisateurId)
   const parUtilisateur = new Map(appareils.map((a) => [a.utilisateurId, a.n]))
+  // Appareils des personnes accompagnées qui reçoivent les alertes
+  const avecAlertes = await db
+    .select({ utilisateurId: appareilsAlertes.utilisateurId, n: count() })
+    .from(appareilsAlertes)
+    .innerJoin(membres, eq(membres.utilisateurId, appareilsAlertes.utilisateurId))
+    .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'accompagne')))
+    .groupBy(appareilsAlertes.utilisateurId)
+  const alertesParUtilisateur = new Map(avecAlertes.map((a) => [a.utilisateurId, a.n]))
   const lienAvatar = await liensAvatars()
   res.json({
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, avatar, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, alertes, ...m }) => ({
       ...m,
       moi: utilisateurId === req.utilisateur.id,
       avatar: lienAvatar(utilisateurId, avatar),
       // Les aidants choisissent l'avatar des personnes accompagnées
       avatarChoix: req.peutGerer && m.role === 'accompagne' ? avatar : undefined,
       email: req.peutGerer ? email : undefined,
-      appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId) ?? 0) : undefined
+      appareils: m.role === 'accompagne' ? (parUtilisateur.get(utilisateurId) ?? 0) : undefined,
+      // Les aidants choisissent les alertes des personnes accompagnées
+      alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined
     }))
   })
 })
@@ -193,6 +204,13 @@ router.post('/:cercleId/membres/:membreId/code', chargerCercle, exigerGestion, c
 router.post('/:cercleId/membres/:membreId/deconnecter', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
   await db.delete(sessions).where(and(eq(sessions.utilisateurId, req.membre.utilisateurId), eq(sessions.type, 'appareil')))
   res.status(204).end()
+})
+
+// Alertes reçues par une personne accompagnée (rappels de rendez-vous, nouvelles photos)
+router.put('/:cercleId/membres/:membreId/alertes', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const alertes = lirePreferences(req.body)
+  await db.update(utilisateurs).set({ alertes }).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  res.json(alertes)
 })
 
 // Avatar d'une personne accompagnée, choisi par un aidant (même fonctionnement que « Mon profil »)

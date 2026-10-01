@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Petite icône des alertes : les deux personnes et le trait d'union du logo, en blanc -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <group android:translateX="-10" android:translateY="-13">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M20,46a10,10 0 1,0 20,0a10,10 0 1,0 -20,0z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M16,80a14,14 0 0,1 28,0z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M80,46a10,10 0 1,0 20,0a10,10 0 1,0 -20,0z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M76,80a14,14 0 0,1 28,0z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M50.5,56h19a4.5,4.5 0 0,1 0,9h-19a4.5,4.5 0 0,1 0,-9z" />
+    </group>
+</vector>

@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle } from '../cercle.js'
-import { RECURRENCES, texteRecurrence, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
+import { RECURRENCES, texteRecurrence, choixRappels, texteRappel, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
@@ -77,7 +77,7 @@ function nouveau() {
     id: null, titre: '', journeeEntiere: false,
     jour, heure: '09:00', jourFin: jour, heureFin: '10:00',
     recurrence: 'aucune', intervalle: 1, recurrenceFin: '',
-    lieu: '', notes: '',
+    lieu: '', notes: '', rappel: null,
     visibilite: suisAuxiliaire.value ? 'aidants' : 'tous',
     auxiliaires: suisAuxiliaire.value
   }
@@ -112,6 +112,7 @@ function modifier(rdv) {
     recurrenceFin: rdv.recurrenceFin ? valeurJour(new Date(rdv.recurrenceFin)) : '',
     lieu: rdv.lieu ?? '',
     notes: rdv.notes ?? '',
+    rappel: rdv.rappel ?? null,
     visibilite: rdv.visibilite,
     auxiliaires: rdv.auxiliaires
   }
@@ -129,6 +130,15 @@ watch(() => formulaire.value?.heure, (heure, avant) => {
   if (f.heureFin === uneHeureApres(avant) || f.heureFin <= heure) f.heureFin = uneHeureApres(heure)
 })
 
+// Journée entière : l'alerte part à 9 h (le matin même, la veille...)
+const rappels = computed(() => formulaire.value ? choixRappels(formulaire.value.journeeEntiere, formulaire.value.rappel) : [])
+watch(() => [formulaire.value, formulaire.value?.journeeEntiere], ([f, journee], [avant]) => {
+  // Seulement quand on change le choix, pas en ouvrant le formulaire
+  if (!f || f !== avant || f.rappel == null) return
+  if (journee) f.rappel = f.rappel >= 1440 ? f.rappel : 0
+  else if (!rappels.value.some((r) => r.valeur === f.rappel)) f.rappel = 60
+})
+
 const uniteIntervalle = computed(() => {
   const r = RECURRENCES.find((x) => x.valeur === formulaire.value?.recurrence)
   return r?.unite?.[formulaire.value.intervalle > 1 ? 1 : 0] ?? ''
@@ -143,6 +153,7 @@ const enregistrer = () => action(async () => {
     titre: f.titre,
     lieu: f.lieu,
     notes: f.notes,
+    rappel: f.rappel,
     visibilite: f.visibilite,
     auxiliaires: f.auxiliaires,
     journeeEntiere: f.journeeEntiere,
@@ -214,6 +225,12 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
           </template>
         </div>
         <p v-if="formulaire.portee !== 'occurrence' && formulaire.recurrence !== 'aucune'" class="aide">Sans date, la répétition continue indéfiniment.</p>
+        <label>Alerte
+          <select v-model="formulaire.rappel">
+            <option v-for="r in rappels" :key="String(r.valeur)" :value="r.valeur">{{ r.libelle }}</option>
+          </select>
+          <span class="aide">Envoyée sur le téléphone de chaque personne qui voit ce rendez-vous et a activé les alertes (<RouterLink to="/alertes">Mes alertes</RouterLink>).</span>
+        </label>
         <label>Lieu <input v-model="formulaire.lieu" maxlength="200" /></label>
         <label>Notes <textarea v-model="formulaire.notes" rows="3" maxlength="2000" /></label>
         <fieldset :disabled="formulaire.id && !formulaire.visibiliteModifiable">
@@ -261,6 +278,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
             <strong>{{ rdv.titre }}</strong>
             <span v-if="rdv.lieu" class="aide">{{ rdv.lieu }}</span>
             <span v-if="texteRecurrence(rdv)" class="aide"><Icone nom="repeter" class="en-ligne" /> {{ texteRecurrence(rdv) }}</span>
+            <span v-if="texteRappel(rdv)" class="aide"><Icone nom="cloche" class="en-ligne" /> {{ texteRappel(rdv) }}</span>
             <p v-if="rdv.notes" class="notes">{{ rdv.notes }}</p>
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv.visibilite) }}</span>

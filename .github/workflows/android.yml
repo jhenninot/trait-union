@@ -45,6 +45,18 @@ jobs:
 
       - run: npx cap sync android
 
+      # Alertes (Firebase Cloud Messaging) : fichier google-services.json du projet Firebase,
+      # dans le secret GOOGLE_SERVICES_JSON. Sans lui, l'APK fonctionne mais sans alertes.
+      - name: Configuration Firebase (alertes)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          else
+            echo "::warning::Secret GOOGLE_SERVICES_JSON absent : l'APK ne pourra pas recevoir les alertes (voir Administration, Alertes)"
+          fi
+
       # Clé de signature privée (secrets du dépôt) : sans elle, pas d'APK publiée
       - name: Clé de signature
         env:

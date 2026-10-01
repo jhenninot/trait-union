@@ -83,6 +83,20 @@ const REPETITION = [
   { valeur: 'hebdomadaire', libelle: 'Chaque semaine' },
   { valeur: 'mensuelle', libelle: 'Chaque mois' }
 ]
+// Alerte sur l'appareil (minutes avant ; pour une journée entière, avant 9 h le premier jour)
+const RAPPEL = [
+  { valeur: null, libelle: 'Non' },
+  { valeur: 15, libelle: '15 minutes avant' },
+  { valeur: 60, libelle: '1 heure avant' },
+  { valeur: 1440, libelle: 'La veille' }
+]
+const RAPPEL_JOURNEE = [
+  { valeur: null, libelle: 'Non' },
+  { valeur: 0, libelle: 'Le matin même' },
+  { valeur: 1440, libelle: 'La veille' }
+]
+const rappels = computed(() => (saisie.value?.journeeEntiere ? RAPPEL_JOURNEE : RAPPEL))
+
 const QUI = [
   { valeur: 'tous', icone: 'famille', libelle: 'Toute ma famille' },
   { valeur: 'accompagne_aidants', icone: 'coeur', libelle: 'Moi et mes aidants' },
@@ -99,7 +113,7 @@ function ajouter() {
     titre: '', quand, autreJour: jour ?? valeurJour(ajouterJours(new Date(), 2)),
     plusieursJours: false, jourFin: '',
     journeeEntiere: false, heure: '10:00', heureFin: '11:00',
-    recurrence: 'aucune', visibilite: 'tous'
+    recurrence: 'aucune', visibilite: 'tous', rappel: null
   }
 }
 
@@ -131,13 +145,22 @@ function modifierRdv(rdv) {
     recurrenceOrigine: rdv.recurrence,
     intervalle: rdv.intervalle,
     recurrenceFin: rdv.recurrenceFin,
-    visibilite: rdv.visibilite
+    visibilite: rdv.visibilite,
+    rappel: rdv.rappel ?? null
   }
 }
 const PORTEES = [
   { valeur: 'occurrence', libelle: 'Ce jour-là seulement' },
   { valeur: 'serie', libelle: 'Toutes les fois' }
 ]
+
+// Le rappel suit le choix « toute la journée » / « à une heure précise »
+watch(() => [saisie.value, saisie.value?.journeeEntiere], ([s, journee], [avant]) => {
+  // Seulement quand on change le choix, pas en ouvrant le formulaire
+  if (!s || s !== avant || s.rappel == null || s.rappel >= 1440) return
+  if (journee && s.rappel > 0) s.rappel = 0
+  if (!journee && s.rappel === 0) s.rappel = 60
+})
 
 // L'heure de fin suit l'heure de début (une heure plus tard)
 watch(() => saisie.value?.heure, (heure) => {
@@ -167,7 +190,8 @@ async function enregistrer() {
     journeeEntiere: s.journeeEntiere,
     debut: debut.toISOString(),
     fin: fin.toISOString(),
-    recurrence: s.recurrence
+    recurrence: s.recurrence,
+    rappel: s.rappel
   }
   try {
     if (s.id) {
@@ -254,6 +278,13 @@ async function effacer(rdv, portee) {
       <div v-if="saisie.portee !== 'occurrence'" class="choix quatre">
         <button v-for="q in REPETITION" :key="q.valeur" type="button" :class="{ choisi: saisie.recurrence === q.valeur }" @click="saisie.recurrence = q.valeur">
           {{ q.libelle }}
+        </button>
+      </div>
+
+      <p class="question">Me le rappeler ?</p>
+      <div class="choix" :class="saisie.journeeEntiere ? '' : 'quatre'">
+        <button v-for="q in rappels" :key="String(q.valeur)" type="button" :class="{ choisi: saisie.rappel === q.valeur }" @click="saisie.rappel = q.valeur">
+          <Icone :nom="q.valeur == null ? 'fermer' : 'cloche'" class="emoji em" />{{ q.libelle }}
         </button>
       </div>
 

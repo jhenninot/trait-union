@@ -4,6 +4,7 @@ import * as valider from '../auth/validation.js'
 import { lireConfiguration, enregistrerConfiguration, verifierCompte, envoyerEmail, gabarit } from '../email/brevo.js'
 import * as stockage from '../stockage/s3.js'
 import { urlApplication } from '../url.js'
+import * as alertes from '../alertes/envoi.js'
 
 const router = Router()
 router.use(exigerAdmin)
@@ -105,6 +106,40 @@ router.put('/stockage', async (req, res) => {
   if (config.actif) Object.assign(config, await stockage.verifierStockage(config, urlApplication(req)))
   await stockage.enregistrerConfiguration(config)
   res.json(stockagePublic(config))
+})
+
+// --- Alertes : Firebase Cloud Messaging pour l'application Android
+// (le Web Push des navigateurs et des PWA fonctionne sans configuration)
+
+// La clé privée ne repart jamais vers le navigateur
+const firebasePublic = (c) => ({
+  actif: c.actif,
+  projet: c.compte?.project_id ?? null,
+  compte: c.compte?.client_email ?? null
+})
+
+router.get('/alertes', async (req, res) => {
+  res.json(firebasePublic(await alertes.lireFirebase()))
+})
+
+// Corps : { actif, compteService } (contenu du fichier JSON ; vide = garder celui enregistré)
+async function lireSaisieFirebase(body) {
+  const actuelle = await alertes.lireFirebase()
+  const compte = body.compteService ? alertes.lireCompteService(body.compteService) : actuelle.compte
+  if (body.actif && !compte) throw new valider.ErreurSaisie('Collez le fichier JSON du compte de service Firebase')
+  return { actif: Boolean(body.actif), compte }
+}
+
+router.post('/alertes/verifier', async (req, res) => {
+  const { compte } = await lireSaisieFirebase({ ...req.body, actif: true })
+  res.json(await alertes.verifierFirebase(compte))
+})
+
+router.put('/alertes', async (req, res) => {
+  const config = await lireSaisieFirebase(req.body)
+  if (config.actif) await alertes.verifierFirebase(config.compte)
+  await alertes.enregistrerFirebase(config)
+  res.json(firebasePublic(config))
 })
 
 export default router

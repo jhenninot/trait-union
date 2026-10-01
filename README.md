@@ -51,6 +51,14 @@ Les photos d'un cercle (page **Photos** des aidants et proches, **Mes photos** s
 
 Un administrateur configure l'hébergeur dans « Stockage des photos » (`/admin/photos`) : adresse, région, conteneur, clé d'accès et clé secrète (stockées en base, table `parametres`, clé secrète jamais renvoyée au navigateur). Hébergeur conseillé : OVHcloud Object Storage, classe Standard, Paris 3-AZ (`https://s3.eu-west-par.io.cloud.ovh.net`, région `eu-west-par`), conteneur privé. Le bouton « Vérifier » teste l'accès, l'écriture et la suppression, puis règle le CORS du conteneur pour l'adresse de l'application (`APP_URL`, sinon l'adresse de la page) : à refaire si cette adresse change.
 
+## Alertes
+
+Chaque rendez-vous peut avoir une alerte (colonne `rendez_vous.rappel`, en minutes avant le début ; pour une journée entière, avant 9 h le premier jour). Quand quelqu'un publie des photos, une alerte « nouvelles photos » part 2 minutes après sa dernière photo (une seule pour tout un envoi). La tâche de fond `server/alertes/planificateur.js` tourne chaque minute ; les destinataires suivent les règles de l'agenda (visibilité, auxiliaires) et des photos (pas les auxiliaires), et leurs préférences (`utilisateurs.alertes`, page **Mes alertes** `/alertes` ; pour une personne accompagnée, réglées par les aidants dans **Tablettes**).
+
+- Navigateurs et PWA : Web Push (`web-push`), clés VAPID créées en base au premier démarrage (`parametres`, clé `push`), affichage dans `client/public/sw.js`. Sur iPhone, seulement une fois la PWA ajoutée à l'écran d'accueil.
+- Application Android : Firebase Cloud Messaging (une WebView ne reçoit pas le Web Push). Il faut un projet Firebase avec une application Android `fr.traitunion.app` : son `google-services.json` va dans le secret de dépôt `GOOGLE_SERVICES_JSON` (lu par le workflow Android ; sans lui l'APK marche mais sans alertes), et la clé du compte de service se colle dans **Administration, Alertes** (`/admin/alertes`). Code natif : `AlertesService.java` et l'objet `window.TraitUnionAlertes` de `MainActivity.java`.
+- Les appareils (`appareils_alertes`) sont rattachés à la session : se déconnecter arrête leurs alertes.
+
 ## Application mobile
 
 ### PWA (tous les appareils)

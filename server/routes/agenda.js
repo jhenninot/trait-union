@@ -12,6 +12,8 @@ import { RECURRENCES, occurrences, occurrenceNumero } from '../agenda/recurrence
 const router = Router()
 
 const VISIBILITES = ['tous', 'aidants', 'accompagne', 'accompagne_aidants']
+// Alerte au plus une semaine avant (en minutes)
+const RAPPEL_MAX = 7 * 24 * 60
 
 // Niveaux visibles selon le rôle. Les aidants (et les administrateurs) ont une vue
 // d'aidant ; un proche ne voit que « tous ». La personne qui a créé un rendez-vous le
@@ -19,12 +21,21 @@ const VISIBILITES = ['tous', 'aidants', 'accompagne', 'accompagne_aidants']
 // cochés « auxiliaires », quel que soit leur niveau.
 const estAuxiliaire = (req) => !req.peutGerer && req.role === 'auxiliaire'
 
-function niveauxVisibles(req) {
-  if (req.peutGerer) return ['tous', 'aidants', 'accompagne_aidants']
-  if (req.role === 'accompagne') return ['tous', 'accompagne', 'accompagne_aidants']
-  if (estAuxiliaire(req)) return []
+// Niveaux visibles pour un rôle dans le cercle (peutGerer : aidant ou administrateur)
+export function niveauxVisibles({ role, peutGerer }) {
+  if (peutGerer) return ['tous', 'aidants', 'accompagne_aidants']
+  if (role === 'accompagne') return ['tous', 'accompagne', 'accompagne_aidants']
+  if (role === 'auxiliaire') return []
   return ['tous']
 }
+
+// Vrai si la personne (utilisateurId, role, peutGerer) peut voir le rendez-vous ;
+// sert aussi à choisir qui reçoit son alerte (server/alertes/planificateur.js)
+export const peutVoir = ({ utilisateurId, role, peutGerer }, rdv) =>
+  niveauxVisibles({ role, peutGerer }).includes(rdv.visibilite) ||
+  (!peutGerer && role === 'auxiliaire' && rdv.auxiliaires) || rdv.creeParId === utilisateurId
+
+const qui = (req) => ({ utilisateurId: req.utilisateur.id, role: req.role, peutGerer: req.peutGerer })
 
 function filtreVisibles(req) {
   const niveaux = niveauxVisibles(req)
@@ -74,7 +85,14 @@ function lireSaisie(req) {
   if (!Number.isInteger(intervalle) || intervalle < 1 || intervalle > 99) throw new ErreurSaisie('L\'intervalle de répétition doit être entre 1 et 99')
   const recurrenceFin = recurrence === 'aucune' ? null : date(body.recurrenceFin, 'fin de la répétition', { obligatoire: false })
   if (recurrenceFin && recurrenceFin < debut) throw new ErreurSaisie('La répétition doit s\'arrêter après le premier rendez-vous')
+  // Absent : inchangé lors d'une modification (la tablette ne propose pas tous les délais)
+  let rappel
+  if ('rappel' in body) {
+    rappel = body.rappel == null || body.rappel === '' ? null : Number(body.rappel)
+    if (rappel != null && (!Number.isInteger(rappel) || rappel < 0 || rappel > RAPPEL_MAX)) throw new ErreurSaisie('Délai d\'alerte invalide')
+  }
   return {
+    rappel,
     recurrence,
     intervalle,
     recurrenceFin,
@@ -104,6 +122,7 @@ const colonnes = {
   recurrence: rendezVous.recurrence,
   intervalle: rendezVous.intervalle,
   recurrenceFin: rendezVous.recurrenceFin,
+  rappel: rendezVous.rappel,
   creeParId: rendezVous.creeParId,
   creeParPrenom: utilisateurs.prenom,
   modifieParId: rendezVous.modifieParId,
@@ -112,8 +131,7 @@ const colonnes = {
   modifieLe: rendezVous.modifieLe
 }
 
-const estVisible = (req, rdv) => niveauxVisibles(req).includes(rdv.visibilite) ||
-  (estAuxiliaire(req) && rdv.auxiliaires) || rdv.creeParId === req.utilisateur.id
+const estVisible = (req, rdv) => peutVoir(qui(req), rdv)
 
 // Une occurrence garde l'identifiant de sa série ; `cle` la distingue des autres
 // et serieDebut / serieFin servent à modifier la série entière.
@@ -159,8 +177,9 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
+  const saisie = lireSaisie(req)
   const [rdv] = await db.insert(rendezVous)
-    .values({ ...lireSaisie(req), cercleId: req.cercle.id, creeParId: req.utilisateur.id })
+    .values({ ...saisie, rappel: saisie.rappel ?? null, cercleId: req.cercle.id, creeParId: req.utilisateur.id })
     .returning()
   res.status(201).json(presenter(req)({ ...rdv, creeParPrenom: req.utilisateur.prenom }))
 })
@@ -200,6 +219,7 @@ router.put('/:rdvId', chargerRendezVous, async (req, res) => {
     saisie.auxiliaires = serie.auxiliaires
   }
   saisie.modifieParId = req.utilisateur.id
+  if (saisie.rappel === undefined) saisie.rappel = serie.rappel
   const { portee, numero, occ } = lirePortee(req)
   const copie = { ...saisie, cercleId: serie.cercleId, creeParId: serie.creeParId }
   await db.transaction(async (tx) => {

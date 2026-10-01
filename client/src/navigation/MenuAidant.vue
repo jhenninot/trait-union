@@ -109,9 +109,11 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink to="/admin/cercles" class="lien" :class="{ actif: estActif('/admin/cercles') }"><Icone nom="cercle" /> Tous les cercles</RouterLink>
       <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
       <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
+      <RouterLink to="/admin/alertes" class="lien" :class="{ actif: estActif('/admin/alertes') }"><Icone nom="cloche" /> Alertes</RouterLink>
     </template>
 
     <div class="bas-menu">
+      <RouterLink to="/alertes" class="lien" :class="{ actif: estActif('/alertes') }"><Icone nom="cloche" /> Mes alertes</RouterLink>
       <RouterLink to="/application" class="lien" :class="{ actif: estActif('/application') }"><Icone nom="mobile" /> Application mobile</RouterLink>
       <RouterLink to="/profil" class="lien qui" :class="{ actif: estActif('/profil') }" title="Mon profil">
         <Avatar :src="session.utilisateur.avatar" :prenom="session.utilisateur.prenom" :taille="28" />

@@ -22,6 +22,8 @@ export const utilisateurs = pgTable('utilisateurs', {
   // Avatar : « modele:<id> » (image fournie avec l'application, client/public/avatars/)
   // ou « photo:<jeton> » (photo stockée chez l'hébergeur S3, voir server/avatars.js)
   avatar: text('avatar'),
+  // Catégories d'alertes reçues sur les appareils où elles sont activées (server/alertes/)
+  alertes: jsonb('alertes').$type().notNull().default({ rendezVous: true, photos: true }),
   desactiveLe: timestamp('desactive_le', { withTimezone: true })
 })
 
@@ -130,7 +132,10 @@ export const rendezVous = pgTable('rendez_vous', {
   // Numéros des répétitions supprimées ou détachées de la série (« cette date seulement »)
   exclusions: jsonb('exclusions').$type().notNull().default([]),
   // Dernière personne à l'avoir modifié (affiché « Modifié par … » si ce n'est pas l'auteur)
-  modifieParId: uuid('modifie_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+  modifieParId: uuid('modifie_par_id').references(() => utilisateurs.id, { onDelete: 'set null' }),
+  // Alerte envoyée N minutes avant le début (null : pas d'alerte). Pour une journée entière,
+  // l'heure de référence est 9 h le premier jour (0 = le matin même, 1440 = la veille).
+  rappel: integer('rappel')
 }, (t) => [
   index('rendez_vous_cercle_debut_idx').on(t.cercleId, t.debut)
 ])
@@ -161,7 +166,9 @@ export const photos = pgTable('photos', {
   largeur: integer('largeur').notNull(), // de la version plein écran
   hauteur: integer('hauteur').notNull(),
   taille: integer('taille').notNull(), // octets, toutes versions comprises
-  statut: statutPhoto('statut').notNull().default('envoi')
+  statut: statutPhoto('statut').notNull().default('envoi'),
+  // Alerte « nouvelles photos » envoyée (null : pas encore, voir server/alertes/planificateur.js)
+  alerteLe: timestamp('alerte_le', { withTimezone: true })
 }, (t) => [
   index('photos_cercle_cree_idx').on(t.cercleId, t.creeLe),
   index('photos_album_idx').on(t.albumId)
@@ -178,4 +185,32 @@ export const albumsVus = pgTable('albums_vus', {
   vuLe: timestamp('vu_le', { withTimezone: true }).notNull().defaultNow()
 }, (t) => [
   unique('albums_vus_unique').on(t.utilisateurId, t.cercleId, t.albumId).nullsNotDistinct()
+])
+
+// Appareils qui reçoivent les alertes : navigateur ou PWA (Web Push, adresse = endpoint)
+// ou application Android (Firebase Cloud Messaging, adresse = jeton FCM). Rattachés à la
+// session : se déconnecter ou déconnecter un appareil arrête ses alertes.
+export const typeAppareil = pgEnum('type_appareil', ['web', 'android'])
+
+export const appareilsAlertes = pgTable('appareils_alertes', {
+  ...commun,
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'cascade' }),
+  type: typeAppareil('type').notNull(),
+  adresse: text('adresse').notNull().unique(),
+  cles: jsonb('cles'), // Web Push : { p256dh, auth }
+  libelle: text('libelle') // ex. « Android · Chrome »
+}, (t) => [
+  index('appareils_alertes_utilisateur_idx').on(t.utilisateurId)
+])
+
+// Rappels de rendez-vous déjà envoyés (une ligne par répétition et heure prévue : si le
+// rendez-vous est déplacé, l'alerte repart pour la nouvelle heure)
+export const rappelsEnvoyes = pgTable('rappels_envoyes', {
+  ...commun,
+  rendezVousId: uuid('rendez_vous_id').notNull().references(() => rendezVous.id, { onDelete: 'cascade' }),
+  occurrence: integer('occurrence').notNull(),
+  prevuLe: timestamp('prevu_le', { withTimezone: true }).notNull()
+}, (t) => [
+  unique('rappels_envoyes_unique').on(t.rendezVousId, t.occurrence, t.prevuLe)
 ])

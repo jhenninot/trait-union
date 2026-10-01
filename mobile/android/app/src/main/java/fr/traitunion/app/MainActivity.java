@@ -1,8 +1,12 @@
 package fr.traitunion.app;
 
+import android.Manifest;
 import android.content.ClipData;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
 import android.speech.RecognizerIntent;
@@ -12,11 +16,15 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -41,7 +49,13 @@ import org.json.JSONObject;
 // la Galerie ou une autre appli (événement « tu-partage »). Voir client/src/partage.js.
 // Et window.TraitUnionEcran masque les barres d'Android pour voir une photo en plein écran
 // (client/src/pleinEcran.js).
+// Enfin window.TraitUnionAlertes donne à la page le jeton Firebase Cloud Messaging de l'appareil
+// pour recevoir les alertes (événement « tu-alertes », voir client/src/alertes.js et AlertesService).
 public class MainActivity extends BridgeActivity {
+
+    // Page à ouvrir quand on touche une alerte (adresse complète sur le serveur de la famille)
+    static final String EXTRA_URL = "tu_url";
+    private ActivityResultLauncher<String> autorisationNotifications;
 
     private TextToSpeech synthese;
     private boolean syntheseOk = false;
@@ -74,13 +88,36 @@ public class MainActivity extends BridgeActivity {
         getBridge().getWebView().addJavascriptInterface(new Voix(), "TraitUnionVoix");
         getBridge().getWebView().addJavascriptInterface(new Partage(), "TraitUnionPartage");
         getBridge().getWebView().addJavascriptInterface(new Ecran(), "TraitUnionEcran");
+        autorisationNotifications = registerForActivityResult(new ActivityResultContracts.RequestPermission(), (accordee) -> {
+            JSONObject detail = new JSONObject();
+            try {
+                detail.put("autorisation", accordee ? "accordee" : "refusee");
+            } catch (Exception e) {
+                return;
+            }
+            envoyer("tu-alertes", detail);
+        });
+        getBridge().getWebView().addJavascriptInterface(new Alertes(), "TraitUnionAlertes");
         recevoir(getIntent());
+        ouvrirAlerte(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         recevoir(intent);
+        ouvrirAlerte(intent);
+    }
+
+    // Alerte touchée : ouvre sa page, seulement sur le serveur où les alertes ont été activées
+    private void ouvrirAlerte(Intent intent) {
+        if (intent == null) return;
+        String url = intent.getStringExtra(EXTRA_URL);
+        String origine = getSharedPreferences(AlertesService.PREFERENCES, MODE_PRIVATE).getString(AlertesService.ORIGINE, null);
+        if (url == null || origine == null || !url.startsWith(origine + "/")) return;
+        intent.removeExtra(EXTRA_URL);
+        WebView vue = getBridge().getWebView();
+        vue.post(() -> vue.loadUrl(url));
     }
 
     // Photos partagées vers l'application : copiées tout de suite dans le cache (l'autorisation de
@@ -149,6 +186,91 @@ public class MainActivity extends BridgeActivity {
     private void envoyer(String evenement, JSONObject detail) {
         WebView vue = getBridge().getWebView();
         vue.post(() -> vue.evaluateJavascript("window.dispatchEvent(new CustomEvent('" + evenement + "', { detail: " + detail + " }))", null));
+    }
+
+    private class Alertes {
+
+        // Faux si l'application a été construite sans google-services.json (pas de Firebase)
+        @JavascriptInterface
+        public boolean disponible() {
+            return !FirebaseApp.getApps(MainActivity.this).isEmpty();
+        }
+
+        // « accordee », « refusee » ou « a_demander »
+        @JavascriptInterface
+        public String autorisation() {
+            if (!NotificationManagerCompat.from(MainActivity.this).areNotificationsEnabled()) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "refusee";
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return "refusee";
+                // Android ne montre plus la demande après deux refus
+                boolean demandee = preferences().getBoolean("demandee", false);
+                return demandee && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) ? "refusee" : "a_demander";
+            }
+            return "accordee";
+        }
+
+        // Demande l'autorisation d'afficher des notifications (Android 13 et plus)
+        @JavascriptInterface
+        public void demander() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || "accordee".equals(autorisation())) {
+                JSONObject detail = new JSONObject();
+                try {
+                    detail.put("autorisation", autorisation());
+                } catch (Exception e) {
+                    return;
+                }
+                envoyer("tu-alertes", detail);
+                return;
+            }
+            preferences().edit().putBoolean("demandee", true).apply();
+            runOnUiThread(() -> autorisationNotifications.launch(Manifest.permission.POST_NOTIFICATIONS));
+        }
+
+        // Jeton de l'appareil, renvoyé par l'événement « tu-alertes » ({ jeton } ou { erreur }).
+        // On retient aussi le serveur de la page, pour ouvrir la bonne adresse quand on touche une alerte.
+        @JavascriptInterface
+        public void jeton() {
+            runOnUiThread(() -> {
+                String adresse = getBridge().getWebView().getUrl();
+                if (adresse != null && adresse.startsWith("http")) {
+                    Uri page = Uri.parse(adresse);
+                    String origine = page.getScheme() + "://" + page.getAuthority();
+                    preferences().edit().putString(AlertesService.ORIGINE, origine).apply();
+                }
+            });
+            if (!disponible()) {
+                erreur("Cette version de l'application ne peut pas recevoir d'alertes");
+                return;
+            }
+            AlertesService.creerCanaux(MainActivity.this);
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener((tache) -> {
+                if (!tache.isSuccessful() || tache.getResult() == null) {
+                    erreur("Impossible de contacter Firebase : vérifiez la connexion internet");
+                    return;
+                }
+                JSONObject detail = new JSONObject();
+                try {
+                    detail.put("jeton", tache.getResult());
+                } catch (Exception e) {
+                    return;
+                }
+                envoyer("tu-alertes", detail);
+            });
+        }
+
+        private void erreur(String message) {
+            JSONObject detail = new JSONObject();
+            try {
+                detail.put("erreur", message);
+            } catch (Exception e) {
+                return;
+            }
+            envoyer("tu-alertes", detail);
+        }
+
+        private SharedPreferences preferences() {
+            return getSharedPreferences(AlertesService.PREFERENCES, MODE_PRIVATE);
+        }
     }
 
     private class Ecran {

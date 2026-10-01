@@ -1,8 +1,9 @@
 // Service worker de Trait d'union : rend l'application installable et affiche une page
 // « hors ligne » quand il n'y a pas de réseau. Les données (/api) ne sont jamais mises en cache :
 // elles concernent des personnes et doivent toujours être à jour.
-// Il reçoit aussi les photos partagées vers la PWA installée (share_target du manifeste).
-const VERSION = 'v2'
+// Il reçoit aussi les photos partagées vers la PWA installée (share_target du manifeste)
+// et affiche les alertes envoyées par le serveur (Web Push, server/alertes/envoi.js).
+const VERSION = 'v3'
 const CACHE = `trait-union-${VERSION}`
 const HORS_LIGNE = '/hors-ligne.html'
 const A_PRECHARGER = [HORS_LIGNE, '/icones/icone-192.png', '/manifest.webmanifest']
@@ -72,4 +73,40 @@ self.addEventListener('fetch', (event) => {
       }))
     )
   }
+})
+
+// --- Alertes : { titre, corps, url, tag, image } envoyées par le serveur
+self.addEventListener('push', (event) => {
+  let alerte = {}
+  try {
+    alerte = event.data?.json() ?? {}
+  } catch {
+    alerte = { corps: event.data?.text() }
+  }
+  event.waitUntil(self.registration.showNotification(alerte.titre || 'Trait d\'union', {
+    body: alerte.corps || '',
+    icon: '/icones/icone-192.png',
+    badge: '/icones/badge-96.png',
+    image: alerte.image || undefined,
+    tag: alerte.tag || undefined,
+    renotify: Boolean(alerte.tag),
+    lang: 'fr',
+    data: { url: alerte.url || '/' }
+  }))
+})
+
+// Toucher l'alerte ouvre la bonne page, dans une fenêtre déjà ouverte si possible
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = new URL(event.notification.data?.url || '/', location.origin)
+  if (url.origin !== location.origin) return
+  event.waitUntil((async () => {
+    const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const fenetre = fenetres.find((f) => new URL(f.url).origin === location.origin)
+    if (fenetre) {
+      await fenetre.focus()
+      return fenetre.navigate(url.href).catch(() => self.clients.openWindow(url.href))
+    }
+    return self.clients.openWindow(url.href)
+  })())
 })

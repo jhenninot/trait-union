@@ -12,6 +12,11 @@
 # L'envoi d'emails (Brevo) et le stockage des photos (S3, ex. OVHcloud Object Storage)
 # se configurent dans l'application, écrans d'administration. Les photos ne sont pas
 # stockées sur ce serveur : aucun volume à prévoir pour elles.
+# Alertes (rappels de rendez-vous, nouvelles photos) : rien à ajouter ici. Le Web Push des
+# navigateurs et de la PWA marche tout seul (clés créées en base au premier démarrage) ; pour
+# l'application Android, le compte de service Firebase se saisit dans Administration, Alertes.
+# Le serveur doit pouvoir joindre internet en HTTPS (services de notification de Google,
+# Mozilla et Apple) ; les rappels sont calculés à l'heure de TZ ci-dessous.
 
 services:
   app:

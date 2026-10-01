@@ -11,6 +11,9 @@ import routesInvitations from './routes/invitations.js'
 import routesAdmin from './routes/admin.js'
 import routesVoix from './routes/voix.js'
 import routesProfil from './routes/profil.js'
+import routesAlertes from './routes/alertes.js'
+import { ErreurAlertes } from './alertes/envoi.js'
+import { demarrerAlertes } from './alertes/planificateur.js'
 import { ErreurEmail } from './email/brevo.js'
 import { ErreurStockage } from './stockage/s3.js'
 
@@ -40,11 +43,13 @@ app.use('/api/invitations', routesInvitations)
 app.use('/api/admin', routesAdmin)
 app.use('/api/voix', routesVoix)
 app.use('/api/profil', routesProfil)
+app.use('/api/alertes', routesAlertes)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })
   if (err instanceof ErreurEmail) return res.status(502).json({ erreur: err.message })
   if (err instanceof ErreurStockage) return res.status(502).json({ erreur: err.message })
+  if (err instanceof ErreurAlertes) return res.status(502).json({ erreur: err.message })
   if ((err.cause?.code ?? err.code) === '22P02') return res.status(404).json({ erreur: 'Introuvable' }) // UUID mal formé
   console.error(err)
   res.status(500).json({ erreur: 'Erreur interne' })
@@ -60,6 +65,8 @@ app.get('/{*splat}', (req, res) => {
 
 await migrer()
 console.log('Base de données à jour')
+// Rappels de rendez-vous et alertes « nouvelles photos »
+demarrerAlertes()
 
 app.listen(port, () => {
   console.log(`Trait d'union (${version}) écoute sur le port ${port}`)

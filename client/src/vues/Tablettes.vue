@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
+import Icone from '../navigation/Icone.vue'
 
 // Page « Tablettes » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
@@ -26,6 +27,12 @@ const deconnecterAppareils = (m) => action(async () => {
   await charger()
 })
 
+// Alertes reçues par la personne accompagnée sur ses appareils
+const changerAlertes = (m, cle, valeur) => action(async () => {
+  const { appareils, ...preferences } = m.alertes
+  m.alertes = { ...await api('PUT', `${url.value}/membres/${m.id}/alertes`, { ...preferences, [cle]: valeur }), appareils }
+})
+
 const retirer = (m) => action(async () => {
   if (!confirm(`Retirer ${m.prenom} du cercle ?`)) return
   await api('DELETE', `${url.value}/membres/${m.id}`)
@@ -46,6 +53,14 @@ const retirer = (m) => action(async () => {
         <div class="ligne">
           <strong>{{ m.prenom }} {{ m.nom }}</strong>
           <span class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
+        </div>
+        <div v-if="m.alertes" class="alertes">
+          <span class="titre-alertes"><Icone nom="cloche" class="en-ligne" /> Alertes</span>
+          <label class="case"><input type="checkbox" :checked="m.alertes.rendezVous" @change="changerAlertes(m, 'rendezVous', $event.target.checked)" /> Rappels de rendez-vous</label>
+          <label class="case"><input type="checkbox" :checked="m.alertes.photos" @change="changerAlertes(m, 'photos', $event.target.checked)" /> Nouvelles photos</label>
+          <span class="aide">{{ m.alertes.appareils
+            ? `Reçues sur ${m.alertes.appareils} appareil${m.alertes.appareils > 1 ? 's' : ''}.`
+            : `Pas encore activées : sur l'appareil de ${m.prenom}, touchez « Recevoir les alertes » sur l'écran d'accueil.` }}</span>
         </div>
         <div v-if="cercle.peutGerer" class="actions">
           <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>
@@ -76,6 +91,10 @@ const retirer = (m) => action(async () => {
 .surtitre { margin: 0; }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.alertes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ebe8e3; }
+.titre-alertes { font-weight: 600; color: var(--bleu-nuit); }
+.alertes .aide { flex-basis: 100%; margin: 0; }
+.case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .code { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--bleu-nuit); margin: 8px 0; }
 </style>

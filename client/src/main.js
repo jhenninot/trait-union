@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { session, rafraichirSession } from './session.js'
@@ -21,9 +21,12 @@ import PhotosAccompagne from './vues/PhotosAccompagne.vue'
 import AdminPhotos from './vues/AdminPhotos.vue'
 import Recevoir from './vues/Recevoir.vue'
 import Profil from './vues/Profil.vue'
+import Alertes from './vues/Alertes.vue'
+import AdminAlertes from './vues/AdminAlertes.vue'
 import { preparerInstallation } from './installation.js'
 import { surveillerMisesAJour } from './miseAJour.js'
 import { surveillerPartages } from './partage.js'
+import { rafraichirAlertes } from './alertes.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -38,10 +41,12 @@ const router = createRouter({
     { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
     { path: '/recevoir', component: Recevoir, meta: { connecte: true, appareil: true } },
     { path: '/profil', component: Profil, meta: { connecte: true } },
+    { path: '/alertes', component: Alertes, meta: { connecte: true } },
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
+    { path: '/admin/alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },
     { path: '/connexion', component: Connexion },
     { path: '/bienvenue', component: Initialisation },
     { path: '/appareil', component: Appareil },
@@ -67,4 +72,6 @@ router.beforeEach(async (to) => {
 preparerInstallation()
 surveillerMisesAJour(router)
 surveillerPartages(router)
+// Abonnement aux alertes renvoyé au serveur à chaque connexion (il suit la session)
+watch(() => session.utilisateur?.id, (id) => id && rafraichirAlertes())
 createApp(App).use(router).mount('#app')

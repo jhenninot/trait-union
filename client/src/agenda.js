@@ -170,3 +170,47 @@ export function duJour(liste, cle) {
     return debut <= cle && cle <= fin
   })
 }
+
+// --- Alertes (mêmes valeurs que rendez_vous.rappel : minutes avant le début, ou avant 9 h le
+// premier jour pour une journée entière)
+
+export const RAPPELS = [
+  { valeur: null, libelle: 'Pas d\'alerte' },
+  { valeur: 0, libelle: 'Au début du rendez-vous', court: 'au début' },
+  { valeur: 5, libelle: '5 minutes avant' },
+  { valeur: 15, libelle: '15 minutes avant' },
+  { valeur: 30, libelle: '30 minutes avant' },
+  { valeur: 60, libelle: '1 heure avant' },
+  { valeur: 120, libelle: '2 heures avant' },
+  { valeur: 1440, libelle: '1 jour avant' },
+  { valeur: 2880, libelle: '2 jours avant' },
+  { valeur: 10080, libelle: '1 semaine avant' }
+]
+
+export const RAPPELS_JOURNEE = [
+  { valeur: null, libelle: 'Pas d\'alerte' },
+  { valeur: 0, libelle: 'Le matin même, à 9 h', court: 'le matin même' },
+  { valeur: 1440, libelle: 'La veille, à 9 h', court: 'la veille' },
+  { valeur: 2880, libelle: '2 jours avant, à 9 h', court: '2 jours avant' },
+  { valeur: 10080, libelle: '1 semaine avant, à 9 h', court: '1 semaine avant' }
+]
+
+// Choix proposés ; un délai qui n'y est pas (saisi ailleurs) est gardé et ajouté à la liste
+export function choixRappels(journeeEntiere, actuel) {
+  const liste = journeeEntiere ? RAPPELS_JOURNEE : RAPPELS
+  if (actuel == null || liste.some((r) => r.valeur === actuel)) return liste
+  return [...liste, { valeur: actuel, libelle: libelleDelai(actuel) }]
+}
+
+function libelleDelai(minutes) {
+  if (minutes % 1440 === 0) return `${minutes / 1440} jour${minutes > 1440 ? 's' : ''} avant`
+  if (minutes % 60 === 0) return `${minutes / 60} heure${minutes > 60 ? 's' : ''} avant`
+  return `${minutes} minutes avant`
+}
+
+// « Alerte 1 heure avant », « Alerte la veille » (vide sans alerte)
+export function texteRappel(rdv) {
+  if (rdv.rappel == null) return ''
+  const r = (rdv.journeeEntiere ? RAPPELS_JOURNEE : RAPPELS).find((x) => x.valeur === rdv.rappel)
+  return `Alerte ${r?.court ?? r?.libelle ?? libelleDelai(rdv.rappel)}`
+}

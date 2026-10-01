@@ -85,6 +85,13 @@
       "when": 1790807184583,
       "tag": "0011_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790835731217,
+      "tag": "0012_alertes",
+      "breakpoints": true
     }
   ]
 }
