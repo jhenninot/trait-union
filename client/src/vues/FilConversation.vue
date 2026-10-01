@@ -100,10 +100,14 @@ function marquerLu() {
 }
 
 const estEnBas = () => !zone.value || zone.value.scrollHeight - zone.value.scrollTop - zone.value.clientHeight < 80
+let defileLe = 0
 async function defiler() {
+  defileLe = Date.now()
   await nextTick()
   if (zone.value) zone.value.scrollTop = zone.value.scrollHeight
 }
+// Une photo qui finit de charger allonge le fil : on reste en bas juste après l'ouverture
+const apresImage = () => Date.now() - defileLe < 5000 && zone.value && (zone.value.scrollTop = zone.value.scrollHeight)
 
 watch(() => props.conversationId, () => {
   donnees.value = null
@@ -307,7 +311,7 @@ const vocalPossible = enregistrementPossible()
             <span v-if="b.accompagne" class="pastille">{{ b.accompagne.prenom }}</span>
             <span class="heure">{{ heureMessage(b.creeLe) }}</span>
           </div>
-          <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @click.stop="enGrand = b.photo" />
+          <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" @click.stop="enGrand = b.photo" />
           <audio v-if="b.vocal" :src="b.vocal.lien" controls preload="none" class="audio" />
           <p v-if="b.texte" class="texte-note">{{ b.texte }}</p>
           <p v-if="b.vuPar?.length" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
@@ -322,27 +326,26 @@ const vocalPossible = enregistrementPossible()
           <div class="bulle-bloc">
             <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</div>
             <div class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
-              <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = b.photo" />
+              <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = { ...b.photo, message: b }" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
               <div v-if="b.vocal" class="vocal"><Icone nom="micro" class="en-ligne" /><audio :src="b.vocal.lien" controls preload="none" /><span>{{ duree(b.vocal.duree) }}</span></div>
               <div v-if="b.texte" class="texte">{{ b.texte }}</div>
               <div class="h">{{ heureMessage(b.creeLe) }}</div>
             </div>
             <p v-if="b.deMoi && b.vuPar?.length && (conversation.type === 'privee' || b.id === dernierDeMoi)" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
+            <!-- Photo : bouton toujours visible pour la ranger dans les photos du cercle -->
             <p v-if="ajoutees.has(b.id)" class="vu"><Icone nom="coche" class="en-ligne" /> Ajoutée aux photos</p>
-            <div v-if="selection === b.id && (b.peutRetirer || (b.photo && peutAlbum))" class="actions-msg">
-              <template v-if="ajout?.message.id === b.id">
-                <select v-model="ajout.album" aria-label="Album">
-                  <option value="aucun">Non classé</option>
-                  <option v-for="a in albums ?? []" :key="a.id" :value="a.id">{{ a.nom }}</option>
-                </select>
-                <button :disabled="envoi" @click.stop="ajouterAuxPhotos"><Icone nom="photo" class="en-ligne" /> {{ envoi ? 'Ajout…' : 'Ajouter' }}</button>
-                <button class="secondaire" @click.stop="ajout = null">Annuler</button>
-              </template>
-              <template v-else>
-                <button v-if="b.photo && peutAlbum && !ajoutees.has(b.id)" class="secondaire" @click.stop="preparerAjout(b)"><Icone nom="photo" class="en-ligne" /> Ajouter aux photos</button>
-                <button v-if="b.peutRetirer" class="danger" @click="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer pour tout le monde' : 'Retirer ce message' }}</button>
-              </template>
+            <div v-else-if="ajout?.message.id === b.id" class="actions-msg">
+              <select v-model="ajout.album" aria-label="Album">
+                <option value="aucun">Non classé</option>
+                <option v-for="a in albums ?? []" :key="a.id" :value="a.id">{{ a.nom }}</option>
+              </select>
+              <button :disabled="envoi" @click.stop="ajouterAuxPhotos"><Icone nom="photo" class="en-ligne" /> {{ envoi ? 'Ajout…' : 'Ajouter' }}</button>
+              <button class="secondaire" @click.stop="ajout = null">Annuler</button>
+            </div>
+            <button v-else-if="b.photo && peutAlbum" class="ajouter-photos" @click.stop="preparerAjout(b)"><Icone nom="photo" class="en-ligne" /> Ajouter aux photos</button>
+            <div v-if="selection === b.id && b.peutRetirer" class="actions-msg">
+              <button class="danger" @click="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer pour tout le monde' : 'Retirer ce message' }}</button>
             </div>
           </div>
         </div>
@@ -392,6 +395,7 @@ const vocalPossible = enregistrementPossible()
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
       <img :src="enGrand.ecran" alt="Photo" />
       <button class="fermer" aria-label="Fermer"><Icone nom="fermer" /></button>
+      <button v-if="enGrand.message && peutAlbum && !ajoutees.has(enGrand.message.id)" class="ajouter-plein" @click.stop="preparerAjout(enGrand.message); enGrand = null"><Icone nom="photo" class="en-ligne" /> Ajouter aux photos</button>
     </div>
   </section>
 </template>
@@ -465,6 +469,9 @@ const vocalPossible = enregistrementPossible()
 .ferme { text-align: center; padding: 12px; margin: 0; background: white; border-top: 1px solid #ebe8e3; }
 .plein-ecran { position: fixed; inset: 0; z-index: 200; background: rgb(0 0 0 / 0.9); display: grid; place-items: center; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ajouter-photos { align-self: flex-start; margin-top: 4px; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.moi .ajouter-photos { align-self: flex-end; }
+.ajouter-plein { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
 .plein-ecran .fermer { position: absolute; top: 12px; right: 12px; background: rgb(255 255 255 / 0.15); border-radius: 50%; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }
 @media (max-width: 760px) {
   .messages { padding: 10px 10px; }
