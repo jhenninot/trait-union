@@ -169,7 +169,9 @@ async function envoyerAnniversaires(maintenant) {
     .from(utilisateurs)
     .where(and(
       isNull(utilisateurs.desactiveLe),
-      inArray(sql`to_char(${utilisateurs.dateNaissance}, 'MM-DD')`, joursFetes(maintenant))
+      inArray(sql`to_char(${utilisateurs.dateNaissance}, 'MM-DD')`, joursFetes(maintenant)),
+      // Pas de « 0 an » le jour de la naissance
+      sql`extract(year from ${utilisateurs.dateNaissance}) < ${maintenant.getFullYear()}`
     ))
   const finDeJournee = new Date(maintenant)
   finDeJournee.setHours(23, 59, 59, 0)
@@ -219,7 +221,9 @@ async function envoyerAnniversairesArbre(maintenant, duree) {
   const fetes = await db.select().from(personnes).where(and(
     isNull(personnes.utilisateurId),
     eq(personnes.decede, false),
-    inArray(sql`to_char(${personnes.dateNaissance}, 'MM-DD')`, joursFetes(maintenant))
+    inArray(sql`to_char(${personnes.dateNaissance}, 'MM-DD')`, joursFetes(maintenant)),
+      // Pas de « 0 an » le jour de la naissance
+      sql`extract(year from ${personnes.dateNaissance}) < ${maintenant.getFullYear()}`
   ))
   for (const fete of fetes) {
     const [nouveau] = await db.insert(anniversairesEnvoyes)

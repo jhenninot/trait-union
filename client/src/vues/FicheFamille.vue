@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { dateLongue, age, ans as nbAns, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
+import { dateLongue, ageTexte, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import { parler, lectureDisponible } from '../voix.js'
 import Avatar from './Avatar.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
@@ -12,7 +12,7 @@ const props = defineProps({ personne: { type: Object, required: true } })
 const emit = defineEmits(['fermer'])
 const petit = window.matchMedia('(max-width: 600px)').matches
 const p = computed(() => props.personne)
-const ans = (date) => nbAns(age(date))
+const ans = (date) => ageTexte(date)
 const annee = (d) => d?.slice(0, 4)
 const lecture = lectureDisponible()
 // Phrase de l'arbre (« Léo est votre arrière-petit-fils… ») ou, à défaut, prénom et lien

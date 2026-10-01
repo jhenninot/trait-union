@@ -8,6 +8,19 @@ export function age(date, auj = new Date()) {
   return auj.getFullYear() - a - (anniversairePasse ? 0 : 1)
 }
 
+// Âge lisible : « 4 ans », et pour un bébé « 3 mois », « 2 semaines », « 5 jours »
+export function ageTexte(date, auj = new Date()) {
+  if (!date) return ''
+  const [a, m, j] = date.split('-').map(Number)
+  const n = age(date, auj)
+  if (n >= 1) return `${n} an${n > 1 ? 's' : ''}`
+  const mois = (auj.getFullYear() - a) * 12 + auj.getMonth() + 1 - m - (auj.getDate() < j ? 1 : 0)
+  if (mois >= 1) return `${mois} mois`
+  const jours = Math.max(0, Math.round((Date.UTC(auj.getFullYear(), auj.getMonth(), auj.getDate()) - Date.UTC(a, m - 1, j)) / 86400000))
+  if (jours >= 7) { const s = Math.floor(jours / 7); return `${s} semaine${s > 1 ? 's' : ''}` }
+  return jours ? `${jours} jour${jours > 1 ? 's' : ''}` : 'moins d\'un jour'
+}
+
 // « 12 mars 1950 »
 export function dateLongue(date) {
   if (!date) return ''
@@ -17,7 +30,7 @@ export function dateLongue(date) {
 // « 12 mars 1950 (75 ans) »
 export function naissance(date) {
   if (!date) return ''
-  return `${dateLongue(date)} (${ans(age(date))})`
+  return `${dateLongue(date)} (${ageTexte(date)})`
 }
 
 // Lien d'appel : on garde le « + » et les chiffres
@@ -44,7 +57,7 @@ export const ans = (n) => `${n} an${n > 1 ? 's' : ''}`
 
 // Anniversaire aujourd'hui ? (né un 29 février : fêté le 28 les autres années, comme le serveur)
 export function estAnniversaire(date, d = new Date()) {
-  if (!date) return false
+  if (!date || Number(date.slice(0, 4)) >= d.getFullYear()) return false // pas de « 0 an » le jour de la naissance
   const deux = (n) => String(n).padStart(2, '0')
   const jour = `${deux(d.getMonth() + 1)}-${deux(d.getDate())}`
   const a = d.getFullYear()

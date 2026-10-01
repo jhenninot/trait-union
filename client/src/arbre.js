@@ -1,5 +1,5 @@
 // Arbre généalogique : dates affichées, groupes de « Ma famille » et disposition de l'arbre
-import { age, ans } from './coordonnees.js'
+import { ageTexte } from './coordonnees.js'
 
 // « 85 ans », « 1938 – 2015 », « Décédée »
 export function dates(p) {
@@ -9,7 +9,7 @@ export function dates(p) {
     if (n || d) return `${n ?? '?'} – ${d ?? '?'}`
     return p.genre === 'homme' ? 'Décédé' : 'Décédée'
   }
-  return p.dateNaissance ? ans(age(p.dateNaissance)) : ''
+  return p.dateNaissance ? ageTexte(p.dateNaissance) : ''
 }
 
 // Groupes de « Ma famille » (personne accompagnée) et de la vue en liste, dans l'ordre

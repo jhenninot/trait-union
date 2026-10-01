@@ -5,7 +5,7 @@ import { session } from '../session.js'
 import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
 import { visibilites, debutDuJour, ajouterJours, heureCourte, horaire, parJour } from '../agenda.js'
-import { lienTelephone, lienSms, lienWhatsApp, ans, age, estAnniversaire } from '../coordonnees.js'
+import { lienTelephone, lienSms, lienWhatsApp, ans, age, ageTexte, estAnniversaire } from '../coordonnees.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
@@ -283,7 +283,7 @@ const aujourdhui = (() => {
             <div class="grandit">
               <strong>{{ m.prenom }} {{ m.nom }}</strong>
               <p class="aide">
-                <span v-if="m.dateNaissance">{{ ans(age(m.dateNaissance)) }}</span>
+                <span v-if="m.dateNaissance">{{ ageTexte(m.dateNaissance) }}</span>
                 <span v-if="m.dateNaissance && m.telephone"> · </span>
                 <span v-if="m.telephone"><Icone nom="telephone" class="en-ligne" /> {{ m.telephone }}</span>
               </p>

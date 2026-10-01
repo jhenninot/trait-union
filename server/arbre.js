@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.js'
 import { personnes, relations, utilisateurs, membres } from './db/schema.js'
 import { liensAvatars } from './avatars.js'
-import { age } from './anniversaires.js'
+import { ageTexte } from './anniversaires.js'
 
 // Arbre généalogique d'un cercle : chargement, liens de parenté calculés à partir des seules
 // relations « parent » et « conjoint », et phrases lues à la personne accompagnée.
@@ -223,8 +223,7 @@ export function phrase(g, ego, x, maintenant = new Date()) {
   if (p.decede) {
     morceaux.push(`${il} ${g3(p.genre, 'est décédé', 'est décédée', 'est décédée')}${p.dateDeces ? ` en ${annee(p.dateDeces)}` : ''}.`)
   } else if (p.dateNaissance) {
-    const n = age(p.dateNaissance, maintenant)
-    morceaux.push(`${il} a ${n} an${n > 1 ? 's' : ''}.`)
+    morceaux.push(`${il} a ${ageTexte(p.dateNaissance, maintenant)}.`)
   }
   if (p.aSavoir) morceaux.push(p.aSavoir)
   return morceaux.join(' ') || p.prenom
