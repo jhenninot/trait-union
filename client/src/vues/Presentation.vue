@@ -17,7 +17,8 @@ const aujourdhui = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day
 const QUESTIONS = [
   'Est-ce que maman sait qu\'elle a rendez-vous chez le médecin jeudi ?',
   'Qui passe la voir cette semaine ?',
-  'A-t-elle vu les photos des petits-enfants ?'
+  'A-t-elle vu les photos des petits-enfants ?',
+  'Quelqu\'un a-t-il pensé à racheter du lait ?'
 ]
 
 // Les trois bénéfices mis en avant ; le reste est présenté plus bas
@@ -26,7 +27,7 @@ const ESSENTIEL = [
     icone: 'tablette',
     couleur: 'vert',
     titre: 'Un écran tout simple, tablette ou smartphone',
-    texte: 'La date et l\'heure en grand, le moment de la journée, ses rendez-vous, ses photos et sa famille : quatre gros boutons, rien d\'autre. Un bouton lui lit sa journée à voix haute.'
+    texte: 'La date et l\'heure en grand, le moment de la journée, ses rendez-vous, ses photos, sa famille et ses messages : de gros boutons, rien d\'autre. Un bouton lui lit sa journée à voix haute.'
   },
   {
     icone: 'agenda',
@@ -45,8 +46,8 @@ const ESSENTIEL = [
 const ROLES = [
   { icone: 'compte', nom: 'Les personnes accompagnées', texte: 'Une ou plusieurs par cercle, un couple par exemple. Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette ou son smartphone, qui reste ensuite connecté.' },
   { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, arbre de la famille, appareils et coordonnées des personnes accompagnées, réglages de leurs alertes.' },
-  { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos, consultent l\'arbre et gardent le contact, même de loin.' },
-  { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun. Ni les photos de famille, ni l\'arbre.' }
+  { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos, écrivent à toute la famille, consultent l\'arbre et gardent le contact, même de loin.' },
+  { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun, et tiennent le cahier de liaison avec les aidants. Ni les photos de famille, ni l\'arbre, ni les messages de la famille.' }
 ]
 
 // Arbre d'exemple, vu par la personne accompagnée : les liens sont calculés par l'application
@@ -79,8 +80,27 @@ const ARBRE_POINTS = [
 const TABLEAU_POINTS = [
   'Appeler, envoyer un SMS ou un message WhatsApp en un geste',
   'Savoir si la personne accompagnée a vu les nouvelles photos',
+  'Les messages non lus, en tête de l\'accueil',
   'Un appareil à relier ou une alerte à activer : c\'est dans « À faire »',
   'Plusieurs cercles pour un même compte, chacun avec son rôle'
+]
+
+// Messagerie d'exemple, vue par la personne accompagnée : ses conversations, puis un fil
+const CONVERSATIONS = [
+  { titre: 'Toute la famille', groupe: true, apercu: 'Claire : On arrive à 15h avec Lucas !', heure: '10:12', nonLus: 2 },
+  { titre: 'Michel', avatar: 'mature-man-fair-grey', apercu: 'Je t\'appelle ce soir, Maman.', heure: 'Hier', nonLus: 0 }
+]
+const FIL = [
+  { prenom: 'Claire', avatar: 'young-woman-fair-ginger', texte: 'On arrive à 15h avec Lucas !' },
+  { prenom: 'Julien', avatar: 'adult-man-fair-glasses', photo: true, texte: 'Léo a fait ses premiers pas' },
+  { prenom: 'Vous', avatar: 'senior-woman-fair-glasses', moi: true, rapide: 'Je t\'embrasse' }
+]
+const MESSAGES_POINTS = [
+  '« Toute la famille », personnes accompagnées comprises, et des conversations à deux',
+  'Pour elle : gros boutons « Écouter » et « Répondre », réponses toutes faites, message vocal ou photo',
+  'Une pastille pour les messages non lus, et « Vu par Claire et Michel »',
+  'Le cahier de liaison, entre aidants et auxiliaires de vie : passages, repas, courses à prévoir',
+  'Une photo reçue se range en un geste dans un album du cercle'
 ]
 
 // Agenda d'exemple : chaque rendez-vous a son niveau de visibilité
@@ -91,12 +111,12 @@ const RENDEZ_VOUS = [
 ]
 
 const AUSSI = [
-  { icone: 'cloche', titre: 'Des alertes qui arrivent', texte: 'Rappel avant un rendez-vous, nouvelles photos, anniversaire du jour : sur le téléphone de chacun, et sur la tablette ou le smartphone de la personne accompagnée, même écran éteint.' },
+  { icone: 'cloche', titre: 'Des alertes qui arrivent', texte: 'Rappel avant un rendez-vous, nouveaux messages, nouvelles photos, anniversaire du jour : sur le téléphone de chacun, et sur la tablette ou le smartphone de la personne accompagnée, même écran éteint.' },
   { icone: 'gateau', titre: 'Les anniversaires', texte: 'Le matin, son écran lui rappelle à qui souhaiter son anniversaire, avec l\'âge. Toute la famille reçoit la même alerte.' },
   { icone: 'telephone', titre: 'Les coordonnées de chacun', texte: 'Téléphone, adresse, âge et lien avec elle : une fiche en gros caractères, lue à voix haute, pour qu\'elle sache qui est qui, et qui appeler.' },
   { icone: 'compte', titre: 'Un visage pour chacun', texte: 'Une photo ou un avatar illustré pour chaque membre, pour reconnaître tout le monde d\'un coup d\'oeil.' },
   { icone: 'partager', titre: 'Partager depuis le téléphone', texte: 'Sur Android, « Partager » depuis la galerie envoie directement des photos dans un album du cercle.' },
-  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
+  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? », « Lis mes messages » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
   { icone: 'mobile', titre: 'Sur tous les écrans', texte: 'Ordinateur, téléphone ou tablette : application installable sur iPhone et Android, et application Android dédiée.' },
   { icone: 'repeter', titre: 'Toujours à jour', texte: 'Quand une nouvelle version de l\'application Android sort, chacun est prévenu, et les aidants voient quels appareils mettre à jour.' }
 ]
@@ -189,6 +209,7 @@ function contacter() {
                   <span class="bouton"><Icone nom="agenda" />Mon agenda</span>
                   <span class="bouton"><Icone nom="photo" />Mes photos</span>
                   <span class="bouton"><Icone nom="famille" />Ma famille</span>
+                  <span class="bouton"><span class="avec-pastille"><Icone nom="message" /><i>2</i></span>Mes messages</span>
                   <span class="bouton parler"><Icone nom="micro" />Parler</span>
                 </div>
               </div>
@@ -210,6 +231,7 @@ function contacter() {
                   <span class="bouton"><Icone nom="agenda" /></span>
                   <span class="bouton"><Icone nom="photo" /></span>
                   <span class="bouton"><Icone nom="famille" /></span>
+                  <span class="bouton"><span class="avec-pastille"><Icone nom="message" /><i>2</i></span></span>
                   <span class="bouton parler"><Icone nom="micro" /></span>
                 </div>
               </div>
@@ -271,6 +293,44 @@ function contacter() {
             <ul class="points">
               <li v-for="pt in ARBRE_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- La messagerie de la famille -->
+      <section class="section">
+        <div class="encadre">
+          <div>
+            <span class="pastille">La messagerie</span>
+            <h2>Des nouvelles de chacun, dans un même fil</h2>
+            <p>Chaque cercle a sa conversation « Toute la famille », comme un groupe WhatsApp, mais réservé au cercle et
+              pensé pour elle : elle voit qui écrit, avec son visage et son prénom, se fait lire les messages à voix haute
+              et répond d'un geste. Les aidants ont aussi leur conversation à eux, et chacun peut écrire en privé.</p>
+            <ul class="points">
+              <li v-for="pt in MESSAGES_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
+          </div>
+          <div class="demo-messages" aria-hidden="true">
+            <span class="demo-titre">Mes messages</span>
+            <div v-for="c in CONVERSATIONS" :key="c.titre" class="demo-conv">
+              <span v-if="c.groupe" class="demo-groupe"><Icone nom="famille" /></span>
+              <img v-else :src="`/avatars/${c.avatar}.webp`" alt="" />
+              <div><strong>{{ c.titre }}</strong><span>{{ c.apercu }}</span></div>
+              <span class="demo-conv-droite"><small :class="{ nouveau: c.nonLus }">{{ c.heure }}</small><b v-if="c.nonLus">{{ c.nonLus }}</b></span>
+            </div>
+            <div class="demo-fil">
+              <div v-for="m in FIL" :key="m.prenom" class="demo-msg" :class="{ moi: m.moi }">
+                <img :src="`/avatars/${m.avatar}.webp`" alt="" />
+                <div class="demo-bulle" :class="{ rapide: m.rapide }">
+                  <strong>{{ m.prenom }}</strong>
+                  <span v-if="m.photo" class="demo-photo"><img src="/avatars/baby.webp" alt="" /></span>
+                  <span v-if="m.texte">{{ m.texte }}</span>
+                  <span v-if="m.rapide" class="demo-rapide">{{ m.rapide }}</span>
+                  <span v-if="!m.moi" class="demo-ecouter"><Icone nom="son" class="en-ligne" /> Écouter</span>
+                </div>
+              </div>
+              <span class="demo-repondre"><Icone nom="message" class="en-ligne" /> Répondre</span>
+            </div>
           </div>
         </div>
       </section>
@@ -611,7 +671,7 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 
 .barre {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
   padding: 8px;
   background: white;
@@ -755,6 +815,7 @@ h1, h2, h3 { color: var(--bleu-nuit); }
   .encadre { grid-template-columns: 1.15fr 0.85fr; padding: 36px; }
 }
 
+.encadre > div { min-width: 0; }
 .encadre h2 { margin: 12px 0 10px; }
 .encadre > div > p { margin: 0; line-height: 1.6; color: #4a4a55; }
 
@@ -996,6 +1057,33 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 }
 
 .tableau-rond .icone { width: 16px; height: 16px; }
+
+/* Messagerie d'exemple */
+.avec-pastille { position: relative; display: inline-flex; }
+.avec-pastille i { position: absolute; top: -5px; right: -9px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px; background: #c0392b; color: white; font-style: normal; font-size: 0.55rem; display: grid; place-items: center; }
+.smartphone .avec-pastille i { top: -4px; right: -7px; min-width: 11px; height: 11px; font-size: 0.45rem; }
+.demo-messages { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 18px; background: var(--fond); border: 1px solid #ece9e3; }
+.demo-conv { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+.demo-conv > img, .demo-groupe { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.demo-groupe { display: grid; place-items: center; background: var(--vert-clair); color: var(--vert); }
+.demo-conv > div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.demo-conv strong { color: var(--bleu-nuit); font-size: 0.95rem; }
+.demo-conv div span { font-size: 0.8rem; color: #4a4a55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.demo-conv-droite { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.demo-conv-droite small { font-size: 0.72rem; color: var(--gris); }
+.demo-conv-droite small.nouveau { color: var(--vert); font-weight: 700; }
+.demo-conv-droite b { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--vert); color: white; font-size: 0.75rem; display: grid; place-items: center; }
+.demo-fil { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 12px; border-radius: 14px; background: #f3f0ea; }
+.demo-msg { display: flex; gap: 8px; align-items: flex-start; max-width: 88%; }
+.demo-msg.moi { align-self: flex-end; flex-direction: row-reverse; }
+.demo-msg > img { width: 30px; height: 30px; border-radius: 50%; flex: none; }
+.demo-bulle { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: white; font-size: 0.85rem; box-shadow: 0 1px 2px rgb(0 0 0 / 0.07); }
+.moi .demo-bulle { background: #dff1e7; border-radius: 14px 14px 4px 14px; }
+.demo-bulle strong { color: var(--bleu-nuit); font-size: 0.78rem; }
+.demo-photo img { display: block; width: 120px; height: 80px; object-fit: cover; border-radius: 8px; background: #f6e6d8; }
+.demo-rapide { color: var(--vert); font-weight: 700; font-size: 0.95rem; }
+.demo-ecouter { align-self: flex-start; padding: 3px 8px; border-radius: 8px; background: var(--vert-clair); color: var(--vert); font-size: 0.72rem; font-weight: 700; }
+.demo-repondre { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 10px; border-radius: 12px; background: var(--vert); color: white; font-weight: 700; font-size: 0.9rem; }
 
 /* Pour qui */
 .pour-qui {
