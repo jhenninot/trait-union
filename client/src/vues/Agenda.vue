@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { utiliserCercle } from '../cercle.js'
+import { motDecede } from '../coordonnees.js'
 import { RECURRENCES, texteRecurrence, choixRappels, texteRappel, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import Icone from '../navigation/Icone.vue'
@@ -12,7 +13,7 @@ import { confirmer } from '../fenetre.js'
 // Agenda d'un cercle pour les aidants et les proches : vue mois, semaine ou liste
 // (à venir ou passés), ajout et modification. Chacun choisit qui peut voir le
 // rendez-vous qu'il crée ; les autres le voient comme « Rendez-vous privé ».
-const { url, cercle, erreur, action, accompagnes } = utiliserCercle()
+const { url, cercle, erreur, action, accompagnes, accompagnesActifs } = utiliserCercle()
 const liste = ref([])
 const passes = ref(false) // afficher les rendez-vous passés plutôt qu'à venir
 const formulaire = ref(null) // saisie en cours (ajout ou modification)
@@ -38,9 +39,12 @@ function naviguer(sens) {
 
 // Avec plusieurs personnes accompagnées, un rendez-vous qui leur est destiné peut n'en
 // concerner qu'une (accompagneId) ; les autres ne le voient pas.
-const plusieurs = computed(() => accompagnes.value.length > 1)
+// Une personne accompagnée décédée n'est plus proposée (sauf pour un rendez-vous qui la concernait)
+const plusieurs = computed(() => accompagnesActifs.value.length > 1)
 const prenomAccompagne = (id) => accompagnes.value.find((m) => m.utilisateurId === id)?.prenom
-const pourQui = (id) => (id && prenomAccompagne(id)) || (plusieurs.value ? 'Personnes accompagnées' : accompagnes.value[0]?.prenom)
+const pourQui = (id) => (id && prenomAccompagne(id)) || (plusieurs.value ? 'Personnes accompagnées' : accompagnesActifs.value[0]?.prenom)
+const genreDe = (id) => accompagnes.value.find((m) => m.utilisateurId === id)?.genre ?? null
+const choixPourQui = computed(() => accompagnes.value.filter((m) => !m.decede || m.utilisateurId === formulaire.value?.accompagneId))
 const niveaux = computed(() => visibilites(pourQui(formulaire.value?.accompagneId)))
 const pourAccompagne = (v) => v === 'accompagne' || v === 'accompagne_aidants'
 const libelleNiveau = (rdv) => visibilites(rdv.accompagnePrenom ?? pourQui(null)).find((n) => n.valeur === rdv.visibilite)?.court
@@ -262,7 +266,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
           <label v-if="plusieurs && pourAccompagne(formulaire.visibilite)" class="pour-qui">Pour qui
             <select v-model="formulaire.accompagneId">
               <option :value="null">Toutes</option>
-              <option v-for="m in accompagnes" :key="m.id" :value="m.utilisateurId">{{ m.prenom }} {{ m.nom }}</option>
+              <option v-for="m in choixPourQui" :key="m.id" :value="m.utilisateurId">{{ m.prenom }} {{ m.nom }}{{ m.decede ? ` (${motDecede(m.genre)})` : '' }}</option>
             </select>
           </label>
           <label class="choix auxiliaires">
@@ -309,7 +313,8 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
             <span class="aide">
               <span class="pastille" :class="rdv.visibilite">{{ libelleNiveau(rdv) }}</span>
               <span v-if="rdv.auxiliaires" class="pastille auxiliaire">Auxiliaires</span>
-              Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}<template v-if="rdv.modifieParPrenom">, modifié par {{ rdv.modifieParPrenom }}</template>
+              <span v-if="rdv.accompagneDecede" class="pastille decede">{{ rdv.accompagnePrenom }} est {{ motDecede(genreDe(rdv.accompagneId)) }}</span>
+              Ajouté par {{ rdv.deMoi ? 'vous' : (rdv.creeParPrenom ?? 'un ancien membre') }}<template v-if="rdv.creeParDecede"> ({{ motDecede(null) }})</template><template v-if="rdv.modifieParPrenom">, modifié par {{ rdv.modifieParPrenom }}</template>
             </span>
             <div v-if="suppression === rdv.cle" class="actions choix-suppression">
               <span>Supprimer :</span>
@@ -360,6 +365,7 @@ legend { font-weight: 500; padding: 0 4px; }
 .pastille.aidants { background: #fdf0dc; color: #8a5a00; }
 .pastille.accompagne, .pastille.accompagne_aidants { background: var(--vert-clair); color: var(--vert); }
 .pastille.auxiliaire { background: #f1e8f7; color: #6b3d8a; }
+.pastille.decede { background: #ebe9e5; color: #5f5d58; }
 .pour-qui { margin: 2px 0 6px; padding-left: 26px; }
 .pour-qui select { width: 100%; max-width: 100%; }
 /* Un fieldset s'élargit par défaut à son contenu (longue liste « Pour qui ») */

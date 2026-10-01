@@ -40,7 +40,9 @@ export async function listerComptes() {
     estAdmin: utilisateurs.estAdmin,
     avatar: utilisateurs.avatar,
     creeLe: utilisateurs.creeLe,
-    desactiveLe: utilisateurs.desactiveLe
+    desactiveLe: utilisateurs.desactiveLe,
+    decede: utilisateurs.decede,
+    dateDeces: utilisateurs.dateDeces
   }).from(utilisateurs).orderBy(sql`lower(${utilisateurs.prenom})`, sql`lower(coalesce(${utilisateurs.nom}, ''))`)
   // Dernière activité : une session est prolongée au plus une fois par jour (précision : le jour)
   const activites = await db.select({ utilisateurId: sessions.utilisateurId, le: max(sessions.modifieLe) })

@@ -140,9 +140,11 @@ async function enregistrer() {
 
       <div class="deux">
         <label v-if="coordonneesModifiables && !membre">Date de naissance <input v-model="f.dateNaissance" type="date" min="1800-01-01" :max="aujourdhui" /></label>
-        <div class="champ">
+        <div v-if="!membre" class="champ">
           <label class="case"><input v-model="f.decede" type="checkbox" /> Personne décédée</label>
           <label v-if="f.decede">Date du décès <input v-model="f.dateDeces" type="date" min="1800-01-01" :max="aujourdhui" /></label>
+          <span v-if="compte && f.decede && !p.decede" class="aide">Son compte sera désactivé : plus de connexion, d'alertes ni de messages. Rien n'est effacé : décochez pour annuler une erreur.</span>
+          <span v-else-if="compte && !f.decede && p.decede" class="aide">Son compte sera réactivé ; {{ p.prenom }} devra se reconnecter.</span>
         </div>
       </div>
 

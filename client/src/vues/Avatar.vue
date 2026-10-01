@@ -5,14 +5,15 @@ import { ref, watch } from 'vue'
 const props = defineProps({
   src: { type: String, default: null },
   prenom: { type: String, default: '' },
-  taille: { type: Number, default: 36 } // px
+  taille: { type: Number, default: 36 }, // px
+  decede: { type: Boolean, default: false } // visage grisé
 })
 const erreur = ref(false)
 watch(() => props.src, () => (erreur.value = false))
 </script>
 
 <template>
-  <span class="avatar" :style="{ width: `${taille}px`, height: `${taille}px`, fontSize: `${taille * 0.45}px` }" aria-hidden="true">
+  <span class="avatar" :class="{ decede }" :style="{ width: `${taille}px`, height: `${taille}px`, fontSize: `${taille * 0.45}px` }" aria-hidden="true">
     <img v-if="src && !erreur" :src="src" alt="" loading="lazy" @error="erreur = true" />
     <template v-else>{{ prenom.charAt(0).toUpperCase() }}</template>
   </span>
@@ -31,4 +32,6 @@ watch(() => props.src, () => (erreur.value = false))
   line-height: 1;
 }
 img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.decede { background: #ebe9e5; color: var(--gris); }
+.decede img { filter: grayscale(1); opacity: 0.8; }
 </style>

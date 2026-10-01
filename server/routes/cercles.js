@@ -20,6 +20,7 @@ import { derniereApkConnue } from '../application.js'
 import { resumeUtilisation } from '../utilisation.js'
 import { reglages as reglagesMessagerie, REPONSES_DEFAUT } from '../messagerie/droits.js'
 import { supprimerFichiersDe } from '../messagerie/conservation.js'
+import { marquerDeces, annulerDeces } from '../deces.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -89,7 +90,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -120,7 +121,7 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
   // Lien avec la personne accompagnée calculé par l'arbre généalogique, quand le membre y est
   // placé (vu depuis la personne connectée si elle est accompagnée) ; sinon le lien saisi
   const { g, liens } = await liensDesMembres(req.cercle.id, req.role === 'accompagne' ? req.utilisateur.id : null)
-  const personneDe = new Map(g.personnes.filter((p) => p.utilisateurId).map((p) => [p.utilisateurId, p.id]))
+  const ficheDe = new Map(g.personnes.filter((p) => p.utilisateurId).map((p) => [p.utilisateurId, p]))
   // Les auxiliaires de vie ne voient que le téléphone des membres
   const voitTout = req.peutGerer || req.role !== 'auxiliaire'
   res.json({
@@ -131,7 +132,11 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       ...m,
       lien: liens.get(utilisateurId) ?? m.lien,
       lienCalcule: liens.has(utilisateurId),
-      personneId: voitTout ? personneDe.get(utilisateurId) ?? null : undefined,
+      personneId: voitTout ? ficheDe.get(utilisateurId)?.id ?? null : undefined,
+      // Pour accorder « décédé » / « décédée » (le genre est renseigné dans l'arbre)
+      genre: ficheDe.get(utilisateurId)?.genre ?? null,
+      decede: Boolean(m.decede),
+      dateDeces: m.decede ? m.dateDeces : null,
       dateNaissance: voitTout ? dateNaissance : undefined,
       adresse: voitTout ? adresse : undefined,
       moi: utilisateurId === req.utilisateur.id,
@@ -229,6 +234,8 @@ router.post('/:cercleId/accompagnes', chargerCercle, exigerGestion, async (req, 
 
 // Code à 6 chiffres (30 minutes, usage unique) pour configurer l'appareil d'une personne accompagnée
 router.post('/:cercleId/membres/:membreId/code', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const [u] = await db.select({ decede: utilisateurs.decede }).from(utilisateurs).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  if (u?.decede) return res.status(400).json({ erreur: `${req.membre.prenom} est indiqué comme décédé : annulez d'abord le décès` })
   const maintenant = new Date()
   // Les anciens codes non utilisés de cette personne ne servent plus
   await db.update(codesConnexion).set({ expireLe: maintenant })
@@ -272,6 +279,27 @@ router.put('/:cercleId/membres/:membreId/messagerie', chargerCercle, exigerGesti
   const messagerie = { prive, reponses, lectureAuto: Boolean(req.body.lectureAuto), vocal: req.body.vocal !== false }
   await db.update(utilisateurs).set({ messagerie }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(reglagesMessagerie(messagerie))
+})
+
+// Décès d'un membre (n'importe quel rôle), indiqué par un aidant : { dateDeces } (facultative).
+// Le compte est désactivé mais gardé ; DELETE annule en cas d'erreur (server/deces.js).
+async function chargerMembreAvecCompte(req, res, next) {
+  const [membre] = await db.select().from(membres)
+    .where(and(eq(membres.id, req.params.membreId), eq(membres.cercleId, req.cercle.id)))
+  if (!membre?.utilisateurId) return res.status(404).json({ erreur: 'Membre introuvable' })
+  req.membre = membre
+  next()
+}
+
+router.put('/:cercleId/membres/:membreId/deces', chargerCercle, exigerGestion, chargerMembreAvecCompte, async (req, res) => {
+  const dateDeces = valider.dateNaissance(req.body.dateDeces, { champ: 'date du décès', min: '1900-01-01' })
+  await marquerDeces(req.membre.utilisateurId, dateDeces, req.utilisateur)
+  res.json({ decede: true, dateDeces })
+})
+
+router.delete('/:cercleId/membres/:membreId/deces', chargerCercle, exigerGestion, chargerMembreAvecCompte, async (req, res) => {
+  await annulerDeces(req.membre.utilisateurId)
+  res.json({ decede: false, dateDeces: null })
 })
 
 // Lien d'un membre avec la personne accompagnée (fils, petite-fille...) : chacun règle le sien,

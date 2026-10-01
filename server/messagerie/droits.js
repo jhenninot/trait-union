@@ -1,6 +1,6 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, or } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { membres, utilisateurs } from '../db/schema.js'
+import { membres, utilisateurs, personnes } from '../db/schema.js'
 
 // Qui voit quelle conversation, et qui peut écrire à qui en privé (choix de Julien, 2026-10-01) :
 // - « Toute la famille » : tout le cercle, personnes accompagnées comprises, sauf les auxiliaires ;
@@ -26,7 +26,9 @@ export const reglages = (messagerie) => ({ ...REGLAGES_DEFAUT, ...messagerie })
 
 export const voitGroupe = (type, role) => ROLES_GROUPE[type]?.includes(role) ?? false
 
-// Membres du cercle qui ont un compte actif
+// Membres du cercle qui ont un compte actif, et les membres décédés (`decede`) : leurs anciens
+// messages restent signés de leur nom, mais ils ne font plus partie d'aucune conversation de
+// groupe et on ne peut plus leur écrire
 export async function membresCercle(cercleId) {
   return db.select({
     utilisateurId: membres.utilisateurId,
@@ -36,11 +38,14 @@ export async function membresCercle(cercleId) {
     prenom: utilisateurs.prenom,
     nom: utilisateurs.nom,
     avatar: utilisateurs.avatar,
-    messagerie: utilisateurs.messagerie
+    messagerie: utilisateurs.messagerie,
+    decede: utilisateurs.decede,
+    genre: personnes.genre // pour accorder « décédé » / « décédée »
   })
     .from(membres)
     .innerJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
-    .where(and(eq(membres.cercleId, cercleId), isNull(utilisateurs.desactiveLe)))
+    .leftJoin(personnes, and(eq(personnes.cercleId, membres.cercleId), eq(personnes.utilisateurId, membres.utilisateurId)))
+    .where(and(eq(membres.cercleId, cercleId), or(isNull(utilisateurs.desactiveLe), eq(utilisateurs.decede, true))))
 }
 
 // Une personne accompagnée accepte-t-elle un message privé de `autre` ?
@@ -53,7 +58,7 @@ function accepte(accompagne, autre) {
 
 // `moi` et `autre` : membres du même cercle (voir membresCercle)
 export function peutEcrirePrive(moi, autre) {
-  if (!moi || !autre || moi.utilisateurId === autre.utilisateurId) return false
+  if (!moi || !autre || moi.utilisateurId === autre.utilisateurId || moi.decede || autre.decede) return false
   const roles = [moi.role, autre.role]
   if (roles.includes('auxiliaire') && roles.includes('proche')) return false
   if (moi.role === 'accompagne' && !accepte(moi, autre)) return false
@@ -61,12 +66,13 @@ export function peutEcrirePrive(moi, autre) {
   return true
 }
 
-// Membres qui ont accès à une conversation
+// Membres qui ont accès à une conversation (une conversation privée avec une personne décédée
+// reste lisible par l'autre, mais plus personne n'y écrit : voir peutEcrirePrive)
 export function participants(conversation, liste) {
   if (conversation.type === 'privee') {
     return liste.filter((m) => m.utilisateurId === conversation.personneA || m.utilisateurId === conversation.personneB)
   }
-  return liste.filter((m) => voitGroupe(conversation.type, m.role))
+  return liste.filter((m) => !m.decede && voitGroupe(conversation.type, m.role))
 }
 
 // Peut-on encore écrire dans cette conversation (privée : le réglage de l'aidé a pu changer) ?

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { chargerFamille } from '../famille.js'
+import { motDecede } from '../coordonnees.js'
 import { GROUPES, titreConjoint } from '../arbre.js'
 import Avatar from './Avatar.vue'
 import FicheFamille from './FicheFamille.vue'
@@ -38,7 +39,7 @@ const groupes = computed(() => {
 })
 // « Mon arbre » : seulement s'il y a des enfants à montrer
 const aUnArbre = computed(() => personnes.value.some((p) => p.groupe === 'enfants'))
-const pastille = (p) => p.decede ? `${p.genre === 'homme' ? 'Décédé' : 'Décédée'}${p.dateDeces ? ` en ${p.dateDeces.slice(0, 4)}` : ''}` : p.lien
+const pastille = (p) => p.decede ? `${motDecede(p.genre, true)}${p.dateDeces ? ` en ${p.dateDeces.slice(0, 4)}` : ''}` : p.lien
 </script>
 
 <template>

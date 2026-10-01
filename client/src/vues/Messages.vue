@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { ecouterMessagerie, quandCourt, rafraichirNonLus } from '../messagerie.js'
+import { motDecede } from '../coordonnees.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import FilConversation from './FilConversation.vue'
@@ -97,10 +98,10 @@ const montrerFil = computed(() => Boolean(choisie.value))
       </div>
 
       <button v-for="c in donnees?.conversations ?? []" :key="c.id" class="conv" :class="{ actif: c.id === choisie, 'non-lu': c.nonLus }" @click="ouvrir(c.id)">
-        <Avatar v-if="c.autre" :src="c.autre.avatar" :prenom="c.autre.prenom" :taille="44" />
+        <Avatar v-if="c.autre" :src="c.autre.avatar" :prenom="c.autre.prenom" :taille="44" :decede="c.autre.decede" />
         <span v-else class="rond" :class="c.type"><Icone :nom="icone(c)" /></span>
         <span class="grandit">
-          <span class="conv-haut"><strong>{{ c.titre }}</strong><span class="heure">{{ c.dernier ? quandCourt(c.dernier.le) : '' }}</span></span>
+          <span class="conv-haut"><strong>{{ c.titre }}<span v-if="c.autre?.decede" class="mention-deces">{{ motDecede(c.autre.genre) }}</span></strong><span class="heure">{{ c.dernier ? quandCourt(c.dernier.le) : '' }}</span></span>
           <span class="conv-bas">
             <span class="dernier">
               <Icone v-if="c.muet" nom="sourdine" class="en-ligne" />
@@ -154,4 +155,5 @@ const montrerFil = computed(() => Boolean(choisie.value))
   .messagerie { height: calc(100dvh - 49px - 72px); }
   .colonne-liste { padding: 16px 8px; }
 }
+.mention-deces { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #ebe9e5; color: #5f5d58; font-size: 0.8rem; font-weight: 600; }
 </style>

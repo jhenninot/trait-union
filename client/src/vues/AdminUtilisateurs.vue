@@ -78,12 +78,13 @@ async function supprimer() {
 
     <ul v-if="comptes" class="liste">
       <li v-for="c in affiches" :key="c.id" class="carte compte">
-        <Avatar :src="c.avatar" :prenom="c.prenom" :taille="44" />
+        <Avatar :src="c.avatar" :prenom="c.prenom" :taille="44" :decede="c.decede" />
         <div class="infos">
           <div class="nom">
             <strong>{{ nomComplet(c) }}</strong>
             <span v-if="c.id === session.utilisateur.id" class="etiquette">Vous</span>
             <span v-if="c.estAdmin" class="etiquette admin">Admin</span>
+            <span v-if="c.decede" class="etiquette">Décès indiqué{{ c.dateDeces ? ` le ${date(c.dateDeces)}` : '' }}</span>
           </div>
           <span class="aide">{{ c.accompagne ? 'Personne accompagnée, sans email' : c.email }}</span>
           <div class="cercles">

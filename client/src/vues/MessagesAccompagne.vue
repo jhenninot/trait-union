@@ -9,6 +9,7 @@ import {
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import { confirmer } from '../fenetre.js'
+import { motDecede } from '../coordonnees.js'
 
 // « Mes messages » de la personne accompagnée, comme WhatsApp en très grand : la liste de ses
 // conversations (« Toute la famille » et les privées) avec une pastille de messages non lus ;
@@ -257,10 +258,10 @@ async function terminerVocal() {
       <h1>Mes messages</h1>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <button v-for="c in donnees?.conversations ?? []" :key="c.id" class="conv" :class="{ 'non-lu': c.nonLus }" @click="ouvrir(c)">
-        <Avatar v-if="c.autre" :src="c.autre.avatar" :prenom="c.autre.prenom" :taille="76" />
+        <Avatar v-if="c.autre" :src="c.autre.avatar" :prenom="c.autre.prenom" :taille="76" :decede="c.autre.decede" />
         <span v-else class="rond-famille"><Icone nom="famille" /></span>
         <span class="conv-milieu">
-          <span class="conv-titre">{{ titreConv(c) }}<small v-if="c.sousTitre"> · {{ c.sousTitre }}</small></span>
+          <span class="conv-titre">{{ titreConv(c) }}<small v-if="c.autre?.decede"> · {{ motDecede(c.autre.genre) }}</small><small v-else-if="c.sousTitre"> · {{ c.sousTitre }}</small></span>
           <span class="conv-apercu">{{ apercu(c) }}</span>
         </span>
         <span class="conv-droite">
@@ -289,11 +290,12 @@ async function terminerVocal() {
     <div v-else-if="ecran === 'fil' && fil" class="ecran-fil">
       <div class="tete-fil">
         <button class="secondaire retour" @click="versListe"><Icone nom="precedent" class="en-ligne" /> Retour</button>
-        <Avatar v-if="fil.conversation.autre" :src="fil.conversation.autre.avatar" :prenom="fil.conversation.autre.prenom" :taille="64" />
+        <Avatar v-if="fil.conversation.autre" :src="fil.conversation.autre.avatar" :prenom="fil.conversation.autre.prenom" :taille="64" :decede="fil.conversation.autre.decede" />
         <span v-else class="rond-famille petit-rond"><Icone nom="famille" /></span>
         <div class="grandit">
           <p class="qui">{{ titreConv(fil.conversation) }}</p>
           <p v-if="fil.conversation.type === 'famille'" class="lien-msg">{{ fil.conversation.membres.map((m) => m.prenom).join(', ') }}</p>
+          <p v-else-if="fil.conversation.autre?.decede" class="lien-msg">{{ motDecede(fil.conversation.autre.genre, true) }}</p>
           <p v-else-if="fil.conversation.autre?.lien" class="lien-msg">{{ fil.conversation.autre.lien }}</p>
         </div>
       </div>
@@ -304,7 +306,7 @@ async function terminerVocal() {
           <p v-if="b.separateur" class="jour"><span>{{ b.separateur }}</span></p>
           <p v-else-if="b.retire" class="retire">{{ b.retire.parAuteur ? 'Message effacé' : 'Message retiré' }}</p>
           <div v-else class="ligne" :class="{ moi: b.deMoi }">
-            <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="56" />
+            <Avatar :src="b.auteur.avatar" :prenom="b.auteur.prenom" :taille="56" :decede="b.auteur.decede" />
             <div class="bulle" :class="{ rapide: b.type === 'rapide' }">
               <p class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}</p>
               <img v-if="b.photo" :src="b.photo.ecran" alt="Photo" class="photo" @click="enGrand = b.photo" />

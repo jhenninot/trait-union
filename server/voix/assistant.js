@@ -54,7 +54,7 @@ async function donneesPersonne(utilisateur, jours = JOURS_AGENDA) {
   const debut = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate())
   const fin = new Date(debut.getTime() + jours * 86_400_000)
   const [famille, lignes, listeAlbums] = await Promise.all([
-    db.select({ prenom: membres.prenom, nom: membres.nom, role: membres.role, utilisateurId: membres.utilisateurId, dateNaissance: utilisateurs.dateNaissance })
+    db.select({ prenom: membres.prenom, nom: membres.nom, role: membres.role, utilisateurId: membres.utilisateurId, dateNaissance: utilisateurs.dateNaissance, decede: utilisateurs.decede })
       .from(membres).leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id)).where(inArray(membres.cercleId, ids)),
     db.select().from(rendezVous).where(and(
       inArray(rendezVous.cercleId, ids),
@@ -204,7 +204,7 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       const cle = normaliser(parametres.prenom)
       const p = famille.find((m) => normaliser(m.prenom) === cle && m.phrase) ?? famille.find((m) => normaliser(m.prenom) === cle)
       if (!p) return { texte: 'Je ne connais pas cette personne. Voici votre famille.', lien: '/famille' }
-      return { texte: p.phrase ?? `${p.prenom} fait partie de votre entourage.`, lien: '/famille' }
+      return { texte: p.phrase ?? (p.decede ? `${p.prenom} est décédé.` : `${p.prenom} fait partie de votre entourage.`), lien: '/famille' }
     }
     case 'messages': {
       // Les nouveaux messages écrits (au plus trois), sinon le dernier reçu
