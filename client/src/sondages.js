@@ -54,3 +54,4 @@ export const repondreSondage = (id, reponses, { commentaire = '', pour = null } 
   api('PUT', `/messagerie/sondages/${id}/reponses`, { reponses, commentaire, ...(pour ? { pour } : {}) })
 export const relancerSondage = (id) => api('POST', `/messagerie/sondages/${id}/relancer`)
 export const retenirDate = (id, donnees) => api('POST', `/messagerie/sondages/${id}/retenir`, donnees)
+export const rouvrirSondage = (id) => api('POST', `/messagerie/sondages/${id}/rouvrir`)

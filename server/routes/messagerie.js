@@ -568,6 +568,26 @@ router.post('/sondages/:sondageId/retenir', chargerLeSondage, async (req, res) =
   res.json(await detailSondage(req))
 })
 
+// Rouvre un sondage clos : le rendez-vous créé à la clôture est supprimé de l'agenda et un message
+// prévient la famille que la date n'est plus retenue
+router.post('/sondages/:sondageId/rouvrir', chargerLeSondage, async (req, res) => {
+  const { conversation, moi } = req
+  const { sondage } = req.sondage
+  if (!peutGererSondage(req)) return res.status(403).json({ erreur: 'Seuls son auteur et les aidants rouvrent ce sondage' })
+  if (!sondage.dateRetenue) return res.status(400).json({ erreur: 'Ce sondage est déjà ouvert' })
+  const texte = `Le sondage « ${sondage.titre} » est rouvert : la date du ${jourEnClair(sondage.dateRetenue)} n'est plus retenue. Vous pouvez changer vos réponses.`
+  const message = await db.transaction(async (tx) => {
+    const [rouvert] = await tx.update(sondages).set({ dateRetenue: null, rendezVousId: null, closParId: null })
+      .where(and(eq(sondages.id, sondage.id), sql`${sondages.dateRetenue} is not null`)).returning()
+    if (!rouvert) throw new ErreurSaisie('Ce sondage est déjà ouvert')
+    if (sondage.rendezVousId) await tx.delete(rendezVous).where(eq(rendezVous.id, sondage.rendezVousId))
+    const [m] = await tx.insert(messages).values({ conversationId: conversation.id, cercleId: conversation.cercleId, auteurId: moi.utilisateurId, type: 'texte', texte }).returning()
+    return m
+  })
+  await annoncer(req, message)
+  res.json(await detailSondage(req))
+})
+
 // --- Personne accompagnée : tous les messages qui lui sont adressés, sur de grandes cartes
 
 // Messages des autres dans « Toute la famille » et ses conversations privées, tous cercles confondus

@@ -103,6 +103,25 @@ const MESSAGES_POINTS = [
   'Une photo reçue se range en un geste dans un album du cercle'
 ]
 
+// Sondage de dates d'exemple, vu par la personne accompagnée : une ligne par jour proposé
+const SONDAGE = [
+  { jour: 'Samedi 10 octobre', choix: 'non' },
+  { jour: 'Dimanche 11 octobre', choix: 'peut_etre' },
+  { jour: 'Samedi 17 octobre', choix: 'oui' }
+]
+const SONDAGE_CHOIX = [
+  { valeur: 'oui', libelle: 'Oui', icone: 'coche' },
+  { valeur: 'peut_etre', libelle: 'Peut-être', icone: 'question' },
+  { valeur: 'non', libelle: 'Non', icone: 'fermer' }
+]
+const SONDAGE_POINTS = [
+  'Aidants et proches proposent les jours, le moment et le lieu',
+  'Oui, peut-être ou non pour chaque jour, et un petit mot',
+  'Un aidant peut répondre à la place de la personne accompagnée',
+  'Bouton « Relancer », et une alerte la veille de la date limite',
+  'La date choisie part dans l\'agenda de tous ; le sondage peut être rouvert'
+]
+
 // Agenda d'exemple : chaque rendez-vous a son niveau de visibilité
 const RENDEZ_VOUS = [
   { heure: '09h00', titre: 'Toilette', visibilite: [{ nom: 'Aidants', classe: 'aidants' }, { nom: 'Auxiliaires', classe: 'auxiliaires' }], alerte: '15 minutes avant' },
@@ -330,6 +349,34 @@ function contacter() {
               </div>
               <span class="demo-repondre"><Icone nom="message" class="en-ligne" /> Écrire</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sondage de dates -->
+      <section class="section">
+        <div class="encadre inverse">
+          <div class="demo-sondage" aria-hidden="true">
+            <span class="demo-titre">On cherche une date</span>
+            <strong class="sondage-titre">Réunion de famille pour les 86 ans de Paul</strong>
+            <span class="sondage-meta"><Icone nom="lieu" class="en-ligne" /> Chez Claire · à midi</span>
+            <div v-for="l in SONDAGE" :key="l.jour" class="sondage-ligne">
+              <strong>{{ l.jour }}</strong>
+              <div class="sondage-choix">
+                <span v-for="c in SONDAGE_CHOIX" :key="c.valeur" :class="[c.valeur, { on: l.choix === c.valeur }]"><Icone :nom="c.icone" class="en-ligne" />{{ c.libelle }}</span>
+              </div>
+            </div>
+            <span class="demo-repondre"><Icone nom="coche" class="en-ligne" /> C'est bon</span>
+          </div>
+          <div>
+            <span class="pastille">Sondage de dates</span>
+            <h2>Trouver une date qui convient à tous</h2>
+            <p>Un repas d'anniversaire, une réunion de famille : on propose quelques jours dans « Toute la famille », et
+              chacun dit quand il peut venir. Elle aussi répond depuis son écran, en touchant Oui, Peut-être ou Non pour
+              chaque jour. Le meilleur jour se voit tout de suite, et il n'y a plus qu'à le retenir.</p>
+            <ul class="points">
+              <li v-for="pt in SONDAGE_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -1056,6 +1103,18 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 }
 
 .tableau-rond .icone { width: 16px; height: 16px; }
+
+/* Sondage de dates d'exemple */
+.demo-sondage { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 18px; background: var(--fond); border: 1px solid #ece9e3; }
+.sondage-titre { color: var(--bleu-nuit); font-size: 1.1rem; line-height: 1.3; }
+.sondage-meta { color: var(--gris); font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+.sondage-ligne { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 14px; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+.sondage-ligne > strong { color: var(--bleu-nuit); font-size: 0.95rem; }
+.sondage-choix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sondage-choix span { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 4px; border-radius: 10px; background: #f1eee9; color: var(--gris); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.sondage-choix .oui.on { background: var(--vert); color: white; }
+.sondage-choix .peut_etre.on { background: #fdf0d8; color: #9a5b12; }
+.sondage-choix .non.on { background: #fbe3e0; color: #b03a2e; }
 
 /* Messagerie d'exemple */
 .avec-pastille { position: relative; display: inline-flex; }

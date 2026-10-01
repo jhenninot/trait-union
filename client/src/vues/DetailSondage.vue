@@ -5,11 +5,11 @@ import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Avatar from './Avatar.vue'
 import FenetreSondage from './FenetreSondage.vue'
-import { avertir } from '../fenetre.js'
+import { avertir, confirmer } from '../fenetre.js'
 import { ecouterMessagerie } from '../messagerie.js'
 import {
   REPONSES, jourLong, jourCourt, momentTexte, avantLe, horairesParDefaut,
-  lireSondage, repondreSondage, relancerSondage, retenirDate
+  lireSondage, repondreSondage, relancerSondage, retenirDate, rouvrirSondage
 } from '../sondages.js'
 
 // Un sondage de dates en grand (aidants, proches) : ses réponses à donner (« repondre »), le
@@ -99,6 +99,12 @@ const valider = () => action(async () => {
   })
   vue.value = 'detail'
 })
+
+async function rouvrir() {
+  const question = `Rouvrir le sondage ? La date du ${jourLong(s.value.dateRetenue).toLowerCase()} ne sera plus retenue : le rendez-vous sera retiré de l'agenda et la famille sera prévenue.`
+  if (!await confirmer(question, { oui: 'Rouvrir', icone: 'annuler' })) return
+  return action(async () => { s.value = await rouvrirSondage(props.sondageId) })
+}
 
 const parDate = computed(() => new Map((s.value?.parDate ?? []).map((d) => [d.date, d])))
 const reponseDe = (ligne, date) => ligne.reponses[date]
@@ -228,6 +234,7 @@ const reponseDe = (ligne, date) => ligne.reponses[date]
           </div>
           <div class="actions">
             <button v-if="s.ouvert && s.peutGerer && s.attendus.length" class="secondaire" :disabled="envoi" @click="relancer"><Icone nom="cloche" class="en-ligne" /> Relancer {{ s.attendus.length > 3 ? `${s.attendus.length} personnes` : s.attendus.join(', ') }}</button>
+            <button v-if="!s.ouvert && s.peutGerer" class="secondaire" :disabled="envoi" @click="rouvrir"><Icone nom="annuler" class="en-ligne" /> Rouvrir le sondage</button>
             <button v-if="s.ouvert && s.peutGerer" class="secondaire" @click="vue = 'modifier'"><Icone nom="modifier" class="en-ligne" /> Modifier le sondage</button>
             <button v-if="s.peutRepondre" @click="preparerReponse(null)"><Icone nom="coche" class="en-ligne" /> {{ Object.keys(s.mesReponses).length ? 'Changer mes réponses' : 'Donner mes disponibilités' }}</button>
           </div>
