@@ -36,10 +36,13 @@ const filtreDemande = () => route.query.album ?? 'tous'
 const filtre = ref(filtreDemande()) // 'tous', 'aucun' (sans album) ou l'id d'un album (suit ?album=)
 const albumEnvoi = ref('') // album où ranger les photos envoyées ('' = sans album, NOUVEL_ALBUM = à créer)
 const NOUVEL_ALBUM = 'nouveau'
+const ALBUM_CONVERSATIONS = 'conversations' // album virtuel : photos reçues par message
 const nomAlbumEnvoi = ref('') // nom de l'album créé au moment de l'envoi
 const erreurAlbum = ref('')
 const nomAlbum = ref(null) // saisie d'un nouvel album ou d'un nouveau nom
 
+// Albums où l'on peut ranger une photo (pas l'album « Conversations »)
+const albumsRangement = computed(() => albums.value.filter((a) => a.id !== ALBUM_CONVERSATIONS))
 const albumCourant = computed(() => albums.value.find((a) => a.id === filtre.value) ?? null)
 
 const charger = (avant) => action(async () => {
@@ -60,7 +63,7 @@ const chargerAlbums = () => action(async () => {
 watch(url, () => {
   liste.value = []
   filtre.value = filtreDemande()
-  albumEnvoi.value = filtre.value === 'tous' || filtre.value === 'aucun' ? '' : filtre.value
+  albumEnvoi.value = ['tous', 'aucun', ALBUM_CONVERSATIONS].includes(filtre.value) ? '' : filtre.value
   vider()
   charger()
   chargerAlbums()
@@ -85,7 +88,7 @@ function choisirFiltre(f) {
 watch(() => route.query.album, () => {
   if (route.path !== `${url.value}/photos` || filtre.value === filtreDemande()) return
   filtre.value = filtreDemande()
-  albumEnvoi.value = filtre.value === 'tous' || filtre.value === 'aucun' ? '' : filtre.value
+  albumEnvoi.value = ['tous', 'aucun', ALBUM_CONVERSATIONS].includes(filtre.value) ? '' : filtre.value
   nomAlbum.value = null
   liste.value = []
   charger()
@@ -313,7 +316,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <label v-if="actif" class="choix-album">Ranger dans l'album
           <select v-model="albumEnvoi" :disabled="envoiEnCours">
             <option value="">Non classé</option>
-            <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
+            <option v-for="a in albumsRangement" :key="a.id" :value="a.id">{{ a.nom }}</option>
             <option :value="NOUVEL_ALBUM">+ Nouvel album…</option>
           </select>
         </label>
@@ -380,10 +383,10 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
         </p>
         <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
-        <label v-if="photo.peutSupprimer && albums.length && legendeEnEdition == null" class="album-photo">Album
+        <label v-if="photo.peutSupprimer && albumsRangement.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Non classé</option>
-            <option v-for="a in albums" :key="a.id" :value="a.id">{{ a.nom }}</option>
+            <option v-for="a in albumsRangement" :key="a.id" :value="a.id">{{ a.nom }}</option>
           </select>
         </label>
         <div v-if="photo.peutSupprimer && legendeEnEdition == null" class="actions">

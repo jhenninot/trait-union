@@ -6,6 +6,7 @@ import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif } from '../stockage/s3.js'
 import { lienAffichage } from './photos.js'
+import { ALBUM_CONVERSATIONS, resumeAlbumConversations } from '../messagerie/album.js'
 
 // Albums photos d'un cercle, montés sous /api/cercles/:cercleId/albums après chargerCercle.
 // Tout membre peut créer un album ; son auteur et les aidants peuvent le renommer ou le supprimer
@@ -38,12 +39,13 @@ export function nonVuesPar(cercleId, utilisateurId) {
 router.get('/', async (req, res) => {
   const stockage = await stockageActif()
   const publiees = and(eq(photos.cercleId, req.cercle.id), eq(photos.statut, 'publiee'))
-  const [liste, comptes, couvertures, nonVues] = await Promise.all([
+  const [liste, comptes, couvertures, nonVues, conversations] = await Promise.all([
     db.select().from(albums).where(eq(albums.cercleId, req.cercle.id)),
     db.select({ albumId: photos.albumId, nombre: count(), derniere: max(photos.creeLe) }).from(photos).where(publiees).groupBy(photos.albumId),
     db.selectDistinctOn([photos.albumId], { id: photos.id, cercleId: photos.cercleId, albumId: photos.albumId })
       .from(photos).where(publiees).orderBy(photos.albumId, desc(photos.creeLe)),
-    nonVuesPar(req.cercle.id, req.utilisateur.id)
+    nonVuesPar(req.cercle.id, req.utilisateur.id),
+    stockage ? resumeAlbumConversations(req.cercle.id, req.utilisateur.id, stockage) : null
   ])
   const compte = new Map(comptes.map((c) => [c.albumId, c]))
   const couverture = new Map(couvertures.map((p) => [p.albumId, p]))
@@ -65,7 +67,11 @@ router.get('/', async (req, res) => {
   }
   res.json({
     // Les albums où une photo vient d'arriver d'abord
-    albums: liste.map(presenter).sort((a, b) => new Date(b.derniere) - new Date(a.derniere)),
+    // L'album « Conversations » (photos des messages) est virtuel : ni modifiable ni compté dans le total
+    albums: [
+      ...liste.map(presenter),
+      ...(conversations ? [{ id: ALBUM_CONVERSATIONS, nom: 'Conversations', nombre: conversations.nombre, nouvelles: 0, couverture: conversations.couverture, peutModifier: false, derniere: conversations.derniere }] : [])
+    ].sort((a, b) => new Date(b.derniere) - new Date(a.derniere)),
     total: comptes.reduce((n, c) => n + c.nombre, 0),
     sansAlbum: compte.get(null)?.nombre ?? 0,
     sansAlbumNouvelles: nouvelles.get(null) ?? 0,
@@ -93,6 +99,7 @@ router.get('/accompagnes', async (req, res) => {
 // ('aucun' : les photos sans album ; 'tous' : toutes les photos du cercle, donc tous les albums).
 router.post('/vus', async (req, res) => {
   const choix = String(req.body.album ?? '')
+  if (choix === ALBUM_CONVERSATIONS) return res.status(204).end()
   let ids
   if (choix === 'tous') {
     const liste = await db.select({ id: albums.id }).from(albums).where(eq(albums.cercleId, req.cercle.id))

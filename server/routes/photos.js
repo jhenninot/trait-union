@@ -6,6 +6,7 @@ import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif, lienSigne, infoObjet, supprimerObjet } from '../stockage/s3.js'
 import { lienAvatar } from '../avatars.js'
+import { ALBUM_CONVERSATIONS, photosAlbumConversations } from '../messagerie/album.js'
 
 // Photos d'un cercle, montées sous /api/cercles/:cercleId/photos après chargerCercle
 // (req.cercle, req.role, req.peutGerer). Tout membre du cercle voit et ajoute des photos.
@@ -89,6 +90,13 @@ async function albumDuCercle(req, id) {
 router.get('/', async (req, res) => {
   req.stockage = await stockageActif()
   if (!req.stockage) return res.json({ actif: false, photos: [] })
+  if (req.query.album === ALBUM_CONVERSATIONS) {
+    const avant = req.query.avant ? new Date(req.query.avant) : null
+    if (avant && Number.isNaN(avant.getTime())) throw new ErreurSaisie('Date invalide')
+    const limite = Math.min(Number(req.query.limite) || 60, 200)
+    const liste = await photosAlbumConversations(req.cercle.id, req.utilisateur.id, req.stockage, { avant, limite })
+    return res.json({ actif: true, photos: liste, suite: liste.length === limite })
+  }
   const conditions = [eq(photos.cercleId, req.cercle.id), eq(photos.statut, 'publiee')]
   if (req.query.avant) {
     const avant = new Date(req.query.avant)
