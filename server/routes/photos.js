@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { and, eq, lt, desc, isNull } from 'drizzle-orm'
+import { and, eq, lt, desc, asc, isNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { photos, albums, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
@@ -54,6 +54,7 @@ function presenter(req, photo) {
     largeur: photo.largeur,
     hauteur: photo.hauteur,
     creeLe: photo.creeLe,
+    priseLe: photo.priseLe ?? null,
     creeParPrenom: photo.creeParPrenom ?? null,
     creeParAvatar: photo.creeParId ? lienAvatar(req.stockage, photo.creeParId, photo.creeParAvatar) : null,
     deMoi: photo.creeParId === req.utilisateur.id,
@@ -73,7 +74,8 @@ const colonnes = {
   legende: photos.legende,
   largeur: photos.largeur,
   hauteur: photos.hauteur,
-  creeLe: photos.creeLe
+  creeLe: photos.creeLe,
+  priseLe: photos.priseLe
 }
 
 // Album du cercle désigné par `id` (null pour « sans album ») ; lève une erreur s'il n'existe pas
@@ -86,7 +88,9 @@ async function albumDuCercle(req, id) {
 }
 
 // Liste des photos publiées, les plus récentes d'abord. ?avant=<date ISO> pour la suite,
-// ?album=<id> pour un album, ?album=aucun pour les photos sans album.
+// ?album=<id> pour un album, ?album=aucun pour les photos sans album. ?tri=prise|envoi (date de
+// prise de vue, à défaut d'envoi ; envoi par défaut), ?ordre=asc|desc et ?decalage=<n> (suite d'une
+// liste triée : nombre de photos déjà reçues) permettent de trier ; ?avant= ne sert qu'au tri par envoi.
 router.get('/', async (req, res) => {
   req.stockage = await stockageActif()
   if (!req.stockage) return res.json({ actif: false, photos: [] })
@@ -106,13 +110,25 @@ router.get('/', async (req, res) => {
   if (req.query.album === 'aucun') conditions.push(isNull(photos.albumId))
   else if (req.query.album) conditions.push(eq(photos.albumId, await albumDuCercle(req, req.query.album)))
   const limite = Math.min(Number(req.query.limite) || 60, 200)
+  const decalage = Math.max(0, Math.trunc(Number(req.query.decalage)) || 0)
+  const sens = req.query.ordre === 'asc' ? asc : desc
+  const date = req.query.tri === 'prise' ? sql`coalesce(${photos.priseLe}, ${photos.creeLe})` : photos.creeLe
   const liste = await db.select(colonnes).from(photos)
     .leftJoin(utilisateurs, eq(photos.creeParId, utilisateurs.id))
     .where(and(...conditions))
-    .orderBy(desc(photos.creeLe))
+    .orderBy(sens(date), sens(photos.id))
     .limit(limite)
+    .offset(decalage)
   res.json({ actif: true, photos: liste.map((p) => presenter(req, p)), suite: liste.length === limite })
 })
+
+// Date de prise de vue envoyée par le navigateur : facultative, ni dans le futur ni avant 1900
+function datePrise(valeur) {
+  if (valeur == null || valeur === '') return null
+  const date = new Date(valeur)
+  if (Number.isNaN(date.getTime()) || date.getFullYear() < 1900 || date.getTime() > Date.now() + 24 * HEURE) return null
+  return date
+}
 
 function entier(valeur, champ, max) {
   const n = Number(valeur)
@@ -146,6 +162,7 @@ router.post('/', exigerStockage, async (req, res) => {
     legende: valider.texte(req.body.legende, 'légende', { obligatoire: false, max: 500 }),
     largeur: entier(req.body.largeur, 'largeur', 10000),
     hauteur: entier(req.body.hauteur, 'hauteur', 10000),
+    priseLe: datePrise(req.body.priseLe),
     taille: Object.values(tailles).reduce((a, b) => a + b, 0)
   }).returning()
   // La taille et le type font partie de la signature : l'hébergeur refuse tout autre fichier

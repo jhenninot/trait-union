@@ -239,6 +239,8 @@ export const photos = pgTable('photos', {
   largeur: integer('largeur').notNull(), // de la version plein écran
   hauteur: integer('hauteur').notNull(),
   taille: integer('taille').notNull(), // octets, toutes versions comprises
+  // Date de prise de vue (EXIF de l'original, sinon date du fichier) ; null : inconnue, on prend cree_le
+  priseLe: timestamp('prise_le', { withTimezone: true }),
   statut: statutPhoto('statut').notNull().default('envoi'),
   // Alerte « nouvelles photos » envoyée (null : pas encore, voir server/alertes/planificateur.js)
   alerteLe: timestamp('alerte_le', { withTimezone: true })

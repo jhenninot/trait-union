@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { session } from '../session.js'
 import { utiliserCercle } from '../cercle.js'
-import { envoyerPhoto, dateEnvoi } from '../photos.js'
+import { envoyerPhoto, dateEnvoi, datePrise } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
 import { partagerPhoto, partagerPhotos, partageDisponible, telechargerPhoto, telechargerPhotos, telechargementDisponible, prendreRecues } from '../partage.js'
@@ -45,13 +45,37 @@ const nomAlbum = ref(null) // saisie d'un nouvel album ou d'un nouveau nom
 const albumsRangement = computed(() => albums.value.filter((a) => a.id !== ALBUM_CONVERSATIONS))
 const albumCourant = computed(() => albums.value.find((a) => a.id === filtre.value) ?? null)
 
-const charger = (avant) => action(async () => {
+// Tri choisi (mémorisé sur l'appareil) : date de prise de vue ou d'envoi, récentes ou anciennes d'abord
+const lireTri = () => {
+  try { return { tri: 'envoi', ordre: 'desc', ...JSON.parse(localStorage.getItem('tu-tri-photos') ?? '{}') } } catch { return { tri: 'envoi', ordre: 'desc' } }
+}
+const triPhotos = ref(lireTri())
+const choixTri = computed({
+  get: () => `${triPhotos.value.tri}-${triPhotos.value.ordre}`,
+  set: (v) => {
+    const [tri, ordre] = v.split('-')
+    triPhotos.value = { tri, ordre }
+    try { localStorage.setItem('tu-tri-photos', JSON.stringify(triPhotos.value)) } catch { /* sans mémoire locale */ }
+    liste.value = []
+    charger()
+  }
+})
+// L'album des photos de conversations garde son ordre (les plus récentes d'abord)
+const triPossible = computed(() => filtre.value !== ALBUM_CONVERSATIONS)
+
+const charger = (suivantes = false) => action(async () => {
   const params = new URLSearchParams()
-  if (avant) params.set('avant', avant)
   if (filtre.value !== 'tous') params.set('album', filtre.value)
+  if (triPossible.value) {
+    params.set('tri', triPhotos.value.tri)
+    params.set('ordre', triPhotos.value.ordre)
+    if (suivantes) params.set('decalage', liste.value.length)
+  } else if (suivantes) {
+    params.set('avant', liste.value[liste.value.length - 1].creeLe)
+  }
   const r = await api('GET', `${url.value}/photos?${params}`)
   actif.value = r.actif
-  liste.value = avant ? [...liste.value, ...r.photos] : r.photos
+  liste.value = suivantes ? [...liste.value, ...r.photos] : r.photos
   suite.value = r.suite
 })
 const chargerAlbums = () => action(async () => {
@@ -159,6 +183,7 @@ async function envoyer() {
     nomAlbumEnvoi.value = ''
   }
   envoiEnCours.value = true
+  let nouvellesEnvoyees = false
   const file = aEnvoyer.value.filter((x) => x.etat !== 'fait')
   const travailleur = async () => {
     for (let a = file.shift(); a; a = file.shift()) {
@@ -166,7 +191,7 @@ async function envoyer() {
       a.message = ''
       try {
         const photo = await envoyerPhoto(cercle.value.id, a.fichier, a.legende, albumEnvoi.value || null)
-        if (filtre.value === 'tous' || filtre.value === (photo.albumId ?? 'aucun')) liste.value.unshift(photo)
+        if (filtre.value === 'tous' || filtre.value === (photo.albumId ?? 'aucun')) nouvellesEnvoyees = true
         a.etat = 'fait'
       } catch (e) {
         a.etat = 'erreur'
@@ -176,6 +201,7 @@ async function envoyer() {
   }
   await Promise.all(Array.from({ length: Math.min(ENVOIS_SIMULTANES, file.length) }, travailleur))
   envoiEnCours.value = false
+  if (nouvellesEnvoyees) charger() // le tri choisi place les nouvelles photos
   if (aEnvoyer.value.every((a) => a.etat === 'fait')) vider()
   chargerAlbums()
 }
@@ -439,6 +465,14 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <template v-if="albumCourant">Cet album est vide : ajoutez-y des photos avec le bouton « Ajouter des photos ».</template>
         <template v-else>Aucune photo pour l'instant. Les photos envoyées ici apparaissent sur la tablette de la personne accompagnée.</template>
       </p>
+      <label v-if="actif && liste.length && triPossible" class="tri">Trier par
+        <select v-model="choixTri">
+          <option value="envoi-desc">Envoi : récentes d'abord</option>
+          <option value="envoi-asc">Envoi : anciennes d'abord</option>
+          <option value="prise-desc">Prise de vue : récentes d'abord</option>
+          <option value="prise-asc">Prise de vue : anciennes d'abord</option>
+        </select>
+      </label>
       <div v-if="selectionActive" class="barre-selection" role="toolbar" aria-label="Photos sélectionnées">
         <BoutonIcone icone="fermer" libelle="Quitter la sélection" @click="quitterSelection" />
         <strong class="compte">{{ selection.size }} sélectionnée(s)</strong>
@@ -465,7 +499,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </button>
       </div>
       <div v-if="suite" class="plus">
-        <button class="secondaire" @click="charger(liste[liste.length - 1].creeLe)">Voir les photos plus anciennes</button>
+        <button class="secondaire" @click="charger(true)">Voir plus de photos</button>
       </div>
     </template>
 
@@ -499,6 +533,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <p class="aide auteur">
           <Avatar v-if="photo.creeParPrenom" :src="photo.creeParAvatar" :prenom="photo.creeParPrenom" :taille="28" />
           Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
+          <template v-if="photo.priseLe"> · prise le {{ datePrise(photo) }}</template>
         </p>
         <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
         <BoutonIcone v-if="telechargement && legendeEnEdition == null" icone="telecharger" libelle="Télécharger" class="partager" @click="telechargerPhoto(photo)" />
@@ -639,4 +674,5 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .case { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; background: rgb(0 0 0 / 0.35); color: white; display: grid; place-items: center; }
 .vignette.cochee .case { background: var(--bleu, #3a63c8); }
 .case :deep(svg) { width: 16px; height: 16px; }
+.tri { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin: 6px 0; font-size: 0.95rem; }
 </style>

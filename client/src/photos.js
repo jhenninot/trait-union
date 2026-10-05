@@ -44,11 +44,56 @@ export async function preparerPhoto(fichier) {
   }
 }
 
+// Date de prise de vue lue dans l'EXIF d'un JPEG (DateTimeOriginal, heure locale de l'appareil
+// photo), sinon la date du fichier ; null si on ne trouve rien de crédible.
+async function datePriseDeVue(fichier) {
+  try {
+    const d = new DataView(await fichier.slice(0, 256 * 1024).arrayBuffer())
+    if (d.getUint16(0) === 0xffd8) {
+      let o = 2
+      while (o + 4 < d.byteLength) {
+        const marqueur = d.getUint16(o)
+        const longueur = d.getUint16(o + 2)
+        if (marqueur === 0xffe1 && d.getUint32(o + 4) === 0x45786966) { // « Exif »
+          const exif = o + 10
+          const petit = d.getUint16(exif) === 0x4949
+          const u16 = (x) => d.getUint16(x, petit)
+          const u32 = (x) => d.getUint32(x, petit)
+          const lireTexte = (x, n) => String.fromCharCode(...new Uint8Array(d.buffer, x, n))
+          const chercher = (ifd, etiquette) => {
+            const n = u16(ifd)
+            for (let i = 0; i < n; i++) {
+              const e = ifd + 2 + i * 12
+              if (u16(e) === etiquette) return { type: u16(e + 2), nombre: u32(e + 4), valeur: u32(e + 8) }
+            }
+            return null
+          }
+          const ifd0 = exif + u32(exif + 4)
+          const sous = chercher(ifd0, 0x8769)
+          const entree = (sous && chercher(exif + sous.valeur, 0x9003)) ?? chercher(ifd0, 0x0132)
+          if (entree && entree.nombre >= 19) {
+            const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/.exec(lireTexte(exif + entree.valeur, 19))
+            if (m) {
+              const date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])
+              if (m[1] > '1900' && !Number.isNaN(date.getTime())) return date.toISOString()
+            }
+          }
+          break
+        }
+        if ((marqueur & 0xff00) !== 0xff00) break
+        o += 2 + longueur
+      }
+    }
+  } catch { /* EXIF absent ou illisible : on se rabat sur la date du fichier */ }
+  return fichier.lastModified ? new Date(fichier.lastModified).toISOString() : null
+}
+
 // Prépare, envoie et publie une photo dans un cercle ; renvoie la photo publiée
 export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
-  const p = await preparerPhoto(fichier)
+  const [p, priseLe] = await Promise.all([preparerPhoto(fichier), datePriseDeVue(fichier)])
   const { id, envois } = await api('POST', `/cercles/${cercleId}/photos`, {
     legende,
+    priseLe,
     albumId,
     largeur: p.largeur,
     hauteur: p.hauteur,
@@ -93,6 +138,7 @@ export async function albumsAccompagne(cercles) {
   return albums
 }
 
+export const datePrise = (p) => new Date(p.priseLe ?? p.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 export const dateEnvoi = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // Albums où des photos sont arrivées depuis la dernière visite de la personne accompagnée,

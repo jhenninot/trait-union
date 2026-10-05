@@ -1,0 +1,1 @@
+ALTER TABLE "photos" ADD COLUMN "prise_le" timestamp with time zone;
