@@ -42,12 +42,11 @@ onMounted(() => {
       legende.textContent = p.legende
       contenu.appendChild(legende)
     }
-    if (contenu.childNodes.length) repere.bindPopup(contenu, { minWidth: 120 })
+    if (contenu.childNodes.length) repere.bindPopup(contenu, { minWidth: 100, maxWidth: 160 })
     return repere
   })
   if (props.points.length === 1) carte.setView([props.points[0].latitude, props.points[0].longitude], 15)
   else carte.fitBounds(L.featureGroup(reperes).getBounds().pad(0.2), { maxZoom: 16 })
-  if (props.points.length === 1) reperes[0].openPopup()
   window.addEventListener('keydown', touche)
 })
 onUnmounted(() => {
@@ -76,6 +75,15 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .fermer { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
 .grand .fermer { width: 60px; height: 60px; }
 .carte-leaflet { flex: 1; min-height: 0; }
-.bulle-photo { display: flex; flex-direction: column; gap: 6px; align-items: center; }
-.bulle-photo img { max-width: 160px; max-height: 160px; border-radius: 6px; cursor: pointer; }
+@media (max-width: 600px) {
+  .voile { padding: 0; }
+  .fenetre { width: 100%; height: 100%; border-radius: 0; }
+}
+</style>
+
+<style>
+/* Contenu des bulles, créé par Leaflet hors du gabarit : styles non limités au composant */
+.bulle-photo { display: flex; flex-direction: column; gap: 6px; align-items: center; max-width: 140px; }
+.bulle-photo img { display: block; width: auto; height: auto; max-width: 140px; max-height: 140px; object-fit: contain; border-radius: 6px; cursor: pointer; }
+.bulle-photo span { font-size: 0.85rem; text-align: center; overflow-wrap: anywhere; }
 </style>
