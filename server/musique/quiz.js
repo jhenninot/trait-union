@@ -14,13 +14,6 @@ const melanger = (liste) => {
   return l
 }
 
-// L'API iTunes limite le nombre de recherches par minute : on les lance par petits groupes
-async function parGroupes(liste, taille, f) {
-  const sortie = []
-  for (let i = 0; i < liste.length; i += taille) sortie.push(...await Promise.all(liste.slice(i, i + taille).map(f)))
-  return sortie
-}
-
 // Une chanson par artiste à tour de rôle, pour varier les artistes
 function entrelacer(listes) {
   const reste = listes.map(melanger)
@@ -53,21 +46,29 @@ export async function construireQuiz(utilisateur, { niveau = 3, questions = 5 } 
   const catalogue = melanger(chansonsDeJeunesse(naissance))
     .filter((c) => !moins.has(cleChanson(c.titre, c.artiste)))
 
-  // Un peu plus de candidates que de questions : certains extraits peuvent manquer
+  // Candidates dans l'ordre voulu (la moitié de préférences, le reste de la jeunesse), puis le reste
+  // en réserve. On cherche leurs extraits par petits groupes jusqu'à en avoir assez : certains
+  // peuvent manquer (absents du catalogue, limite de l'API).
   const prefs = [...preferees, ...deArtistes]
   const demi = Math.ceil(questions / 2)
-  const candidates = [...prefs.slice(0, demi + 1), ...catalogue.slice(0, questions + 5), ...prefs.slice(demi + 1)]
   const vues = new Set()
-  const choisies = candidates.filter((c) => {
-    const k = cleChanson(c.titre, c.artiste)
-    if (vues.has(k)) return false
-    vues.add(k)
-    return true
-  }).slice(0, questions + 6)
-  // Les chansons venues de la recherche d'un artiste ont déjà leur extrait
-  const extraits = await parGroupes(choisies, 5, (c) => (c.apercu ? c : trouverExtrait(c.titre, c.artiste)))
+  const candidates = [...prefs.slice(0, demi), ...catalogue.slice(0, questions - Math.min(prefs.length, demi) + 2), ...prefs.slice(demi), ...catalogue.slice(questions + 2)]
+    .filter((c) => {
+      const k = cleChanson(c.titre, c.artiste)
+      if (vues.has(k)) return false
+      vues.add(k)
+      return true
+    })
+  const trouvees = []
+  for (let i = 0; i < candidates.length && trouvees.length < questions; ) {
+    const groupe = candidates.slice(i, i + Math.max(3, questions - trouvees.length + 1))
+    i += groupe.length
+    // Les chansons venues de la recherche d'un artiste ont déjà leur extrait
+    const extraits = await Promise.all(groupe.map((c) => (c.apercu ? c : trouverExtrait(c.titre, c.artiste))))
+    groupe.forEach((c, k) => { if (extraits[k]?.apercu && trouvees.length < questions) trouvees.push({ ...c, ...extraits[k] }) })
+  }
   // Préférences et chansons de la jeunesse sont mélangées : les préférées ne passent pas toujours en premier
-  const trouvees = melanger(choisies.map((c, i) => ({ ...c, ...extraits[i] })).filter((c) => c.apercu).slice(0, questions))
+  melanger(trouvees).forEach((c, k) => { trouvees[k] = c })
 
   // Titres proposés en plus de la bonne réponse : d'autres chansons du même genre d'époque
   const autres = [...catalogue, ...prefs]
