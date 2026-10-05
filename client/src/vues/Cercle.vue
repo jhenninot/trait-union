@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { session, rafraichirSession } from '../session.js'
@@ -59,6 +59,27 @@ const inviter = (role) => action(async () => {
   const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations`, { role, email: emailInvite.value || undefined })
   invitation.value = { role, lien: `${location.origin}/invitation/${jeton}`, expireLe, emailEnvoye, erreurEmail }
   if (emailEnvoye) emailInvite.value = ''
+  await chargerSuivi()
+})
+
+// Suivi des invitations : en attente, acceptées, expirées ; relance (nouveau lien) et annulation
+const suivi = ref([])
+const chargerSuivi = async () => {
+  if (!cercle.value?.peutGerer) return
+  try { suivi.value = await api('GET', `${url.value}/invitations`) } catch { /* liste laissée telle quelle */ }
+}
+watch(() => cercle.value?.id, chargerSuivi, { immediate: true })
+const libellesStatut = { attendue: 'En attente', acceptee: 'Acceptée', expiree: 'Expirée' }
+const destinataireDe = (i) => i.personne || i.email || 'Lien sans destinataire'
+const relancer = (i) => action(async () => {
+  const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations/${i.id}/relancer`, {})
+  invitation.value = { role: i.role, lien: `${location.origin}/invitation/${jeton}`, expireLe, emailEnvoye, erreurEmail }
+  await chargerSuivi()
+})
+const annuler = (i) => action(async () => {
+  if (!await confirmer(`Annuler l'invitation de ${destinataireDe(i)} ? Son lien ne fonctionnera plus.`, { oui: 'Annuler l\'invitation', non: 'Garder', danger: true })) return
+  await api('DELETE', `${url.value}/invitations/${i.id}`)
+  await chargerSuivi()
 })
 
 const retirer = (m) => action(async () => {
@@ -232,6 +253,26 @@ const rejoindre = () => action(async () => {
           </div>
         </Modale>
       </div>
+      <div v-if="cercle.peutGerer && suivi.length" class="carte">
+        <strong>Invitations envoyées</strong>
+        <ul class="suivi">
+          <li v-for="i in suivi" :key="i.id">
+            <div>
+              <strong>{{ destinataireDe(i) }}</strong>
+              <span class="aide"> · {{ libellesRoles[i.role] }} · envoyée le {{ heure(i.creeLe) }}<template v-if="i.creePar"> par {{ i.creePar }}</template></span>
+              <p class="aide statut" :class="i.statut">
+                <template v-if="i.statut === 'acceptee'">Acceptée le {{ heure(i.accepteeLe) }}<template v-if="i.accepteePar"> par {{ i.accepteePar }}</template>, compte créé</template>
+                <template v-else-if="i.statut === 'expiree'">Expirée le {{ heure(i.expireLe) }}</template>
+                <template v-else>En attente, valable jusqu'au {{ heure(i.expireLe) }}</template>
+              </p>
+            </div>
+            <span v-if="i.statut !== 'acceptee'" class="liens">
+              <BoutonIcone icone="repeter" :libelle="`Relancer ${destinataireDe(i)} avec un nouveau lien`" @click="relancer(i)" />
+              <BoutonIcone icone="effacer" :libelle="`Annuler l'invitation de ${destinataireDe(i)}`" danger @click="annuler(i)" />
+            </span>
+          </li>
+        </ul>
+      </div>
       <FenetreDeces v-if="deces" :url="url" :membre="deces" :seul-aidant="seulAidant(deces)" @fermer="deces = null" @fait="decesFait" />
     </template>
   </main>
@@ -257,4 +298,9 @@ const rejoindre = () => action(async () => {
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .encart .actions { align-items: center; margin-top: 8px; }
 .champ-email { margin-top: 12px; }
+.suivi { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.suivi li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid #ece9e3; }
+.suivi p { margin: 2px 0 0; }
+.statut.acceptee { color: var(--vert); font-weight: 600; }
+.statut.expiree { color: #b3261e; }
 </style>

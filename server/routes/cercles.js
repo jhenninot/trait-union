@@ -178,23 +178,8 @@ router.post('/:cercleId/rejoindre', chargerCercle, exigerAdmin, async (req, res)
   res.status(204).end()
 })
 
-// Lien d'invitation (7 jours, usage unique) pour un aidant, un proche ou une auxiliaire de vie
-router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
-  const role = req.body.role
-  if (!['aidant', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
-  // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
-  const destinataire = req.body.email ? valider.email(req.body.email) : null
-  // Invitation envoyée depuis une fiche de l'arbre généalogique : le compte y sera rattaché
-  let personneId = null
-  if (req.body.personneId) {
-    const [p] = await db.select().from(personnes).where(and(eq(personnes.id, req.body.personneId), eq(personnes.cercleId, req.cercle.id)))
-    if (!p || p.utilisateurId) return res.status(400).json({ erreur: 'Cette personne a déjà un compte' })
-    personneId = p.id
-  }
-  if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
-  const jeton = nouveauJeton()
-  const expireLe = new Date(Date.now() + DUREE_INVITATION)
-  await db.insert(invitations).values({ cercleId: req.cercle.id, role, email: destinataire, personneId, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
+// Envoie le lien d'invitation par email quand une adresse est connue ; l'invitation reste valable en cas d'échec
+async function envoyerInvitationEmail(req, { destinataire, role, jeton, expireLe }) {
   let emailEnvoye = null
   let erreurEmail = null
   if (destinataire) {
@@ -217,7 +202,74 @@ router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, 
       erreurEmail = e.message
     }
   }
+  return { emailEnvoye, erreurEmail }
+}
+
+// Lien d'invitation (7 jours, usage unique) pour un aidant, un proche ou une auxiliaire de vie
+router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
+  const role = req.body.role
+  if (!['aidant', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
+  const destinataire = req.body.email ? valider.email(req.body.email) : null
+  // Invitation envoyée depuis une fiche de l'arbre généalogique : le compte y sera rattaché
+  let personneId = null
+  if (req.body.personneId) {
+    const [p] = await db.select().from(personnes).where(and(eq(personnes.id, req.body.personneId), eq(personnes.cercleId, req.cercle.id)))
+    if (!p || p.utilisateurId) return res.status(400).json({ erreur: 'Cette personne a déjà un compte' })
+    personneId = p.id
+  }
+  if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
+  const jeton = nouveauJeton()
+  const expireLe = new Date(Date.now() + DUREE_INVITATION)
+  await db.insert(invitations).values({ cercleId: req.cercle.id, role, email: destinataire, personneId, creeParId: req.utilisateur.id, jetonHash: empreinte(jeton), expireLe })
+  const { emailEnvoye, erreurEmail } = await envoyerInvitationEmail(req, { destinataire, role, jeton, expireLe })
   res.status(201).json({ jeton, role, expireLe, emailEnvoye, erreurEmail })
+})
+
+// Suivi des invitations du cercle : en attente, acceptées (avec le compte créé) et expirées
+router.get('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
+  const liste = await db
+    .select({
+      id: invitations.id, role: invitations.role, email: invitations.email, creeLe: invitations.creeLe, expireLe: invitations.expireLe,
+      accepteeLe: invitations.accepteeLe, accepteePar: utilisateurs.prenom, accepteeParNom: utilisateurs.nom,
+      creePar: sql`(select prenom from utilisateurs where id = ${invitations.creeParId})`.mapWith(String),
+      personne: personnes.prenom
+    })
+    .from(invitations)
+    .leftJoin(utilisateurs, eq(utilisateurs.id, invitations.accepteeParId))
+    .leftJoin(personnes, eq(personnes.id, invitations.personneId))
+    .where(eq(invitations.cercleId, req.cercle.id))
+    .orderBy(sql`${invitations.creeLe} desc`)
+    .limit(100)
+  const maintenant = Date.now()
+  res.json(liste.map(({ accepteeParNom, ...i }) => ({
+    ...i,
+    accepteePar: i.accepteePar ? [i.accepteePar, accepteeParNom].filter(Boolean).join(' ') : null,
+    statut: i.accepteeLe ? 'acceptee' : new Date(i.expireLe).getTime() < maintenant ? 'expiree' : 'attendue'
+  })))
+})
+
+// Relance : un nouveau lien remplace l'ancien (le lien d'origine n'est pas conservé, seulement son empreinte)
+router.post('/:cercleId/invitations/:id/relancer', chargerCercle, exigerGestion, async (req, res) => {
+  const [inv] = await db.select().from(invitations).where(and(eq(invitations.id, req.params.id), eq(invitations.cercleId, req.cercle.id)))
+  if (!inv) return res.status(404).json({ erreur: 'Invitation introuvable' })
+  if (inv.accepteeLe) return res.status(400).json({ erreur: 'Cette invitation a déjà été acceptée' })
+  const destinataire = req.body.email ? valider.email(req.body.email) : inv.email
+  if (destinataire && !(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
+  const jeton = nouveauJeton()
+  const expireLe = new Date(Date.now() + DUREE_INVITATION)
+  await db.update(invitations).set({ jetonHash: empreinte(jeton), expireLe, email: destinataire }).where(eq(invitations.id, inv.id))
+  const { emailEnvoye, erreurEmail } = await envoyerInvitationEmail(req, { destinataire, role: inv.role, jeton, expireLe })
+  res.json({ jeton, role: inv.role, expireLe, emailEnvoye, erreurEmail })
+})
+
+// Annule une invitation pas encore acceptée : son lien ne fonctionne plus
+router.delete('/:cercleId/invitations/:id', chargerCercle, exigerGestion, async (req, res) => {
+  const [inv] = await db.delete(invitations)
+    .where(and(eq(invitations.id, req.params.id), eq(invitations.cercleId, req.cercle.id), isNull(invitations.accepteeLe)))
+    .returning({ id: invitations.id })
+  if (!inv) return res.status(404).json({ erreur: 'Invitation introuvable ou déjà acceptée' })
+  res.status(204).end()
 })
 
 // Ajoute une personne accompagnée (sans email ni mot de passe)
