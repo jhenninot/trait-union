@@ -11,6 +11,7 @@ import Avatar from './Avatar.vue'
 import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import SelecteurEmoji from './SelecteurEmoji.vue'
+import ReactionsMessage from './ReactionsMessage.vue'
 import { EMOJIS_FREQUENTS, insererDans, seulementEmojis } from '../emojis.js'
 import { confirmer } from '../fenetre.js'
 import { motDecede } from '../coordonnees.js'
@@ -388,6 +389,7 @@ async function terminerVocal() {
                 <button v-if="b.deMoi && b.peutRetirer" class="effacer" :disabled="envoi" @click="effacer(b)"><Icone nom="effacer" class="en-ligne" /> Effacer</button>
                 <span class="heure">{{ heureMessage(b.creeLe) }}</span>
               </div>
+              <ReactionsMessage v-if="!b.sondage" grand :message-id="b.id" :reactions="b.reactions" :peut="fil.conversation.peutEcrire" @change="chargerFil(fil.conversation.id, { defiler: false })" />
             </div>
           </div>
         </template>

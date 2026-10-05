@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, sql, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { conversations, messages, lectures, sondages, sondageReponses, rendezVous } from '../db/schema.js'
+import { conversations, messages, lectures, reactionsMessage, sondages, sondageReponses, rendezVous } from '../db/schema.js'
 import { exigerConnexion } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
@@ -148,7 +148,25 @@ async function chargerMessage(req, res, next) {
 
 // --- Présentation des messages
 
-function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil }) {
+// Réactions des messages : Map messageId → [{ emoji, nombre, moi, par: [prénoms] }], les plus
+// données d'abord (à égalité, la première arrivée)
+async function reactionsDes(ids, liste, moiId) {
+  if (!ids.length) return new Map()
+  const lignes = await db.select().from(reactionsMessage).where(inArray(reactionsMessage.messageId, ids)).orderBy(reactionsMessage.creeLe)
+  const parMessage = new Map()
+  for (const r of lignes) {
+    const groupes = parMessage.get(r.messageId) ?? new Map()
+    const g = groupes.get(r.emoji) ?? { emoji: r.emoji, nombre: 0, moi: false, par: [] }
+    g.nombre++
+    g.moi ||= r.utilisateurId === moiId
+    g.par.push(r.utilisateurId === moiId ? 'Vous' : liste.find((x) => x.utilisateurId === r.utilisateurId)?.prenom ?? 'Ancien membre')
+    groupes.set(r.emoji, g)
+    parMessage.set(r.messageId, groupes)
+  }
+  return new Map([...parMessage].map(([id, g]) => [id, [...g.values()].sort((a, b) => b.nombre - a.nombre)]))
+}
+
+function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil, reactions }) {
   const auteur = liste.find((x) => x.utilisateurId === m.auteurId)
   const base = {
     id: m.id,
@@ -163,7 +181,7 @@ function presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, l
     const par = liste.find((x) => x.utilisateurId === m.retireParId)
     return { ...base, retire: { parAuteur: m.retireParId === m.auteurId, prenom: par?.prenom ?? null } }
   }
-  const message = { ...base, texte: m.texte, peutRetirer: peutRetirer(conversation, moi, m) }
+  const message = { ...base, texte: m.texte, peutRetirer: peutRetirer(conversation, moi, m), reactions: reactions?.get(m.id) ?? [] }
   const lien = m.type === 'texte' ? m.fichier?.lien : null
   if (lien) {
     message.lien = { url: lien.url, titre: lien.titre, description: lien.description, site: lien.site, image: lien.image ? `/api/messagerie/messages/${m.id}/apercu-image` : null }
@@ -336,11 +354,12 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     conditions.push(sql`${messages.creeLe} < ${avant.toISOString()}::timestamptz`)
   }
   const lignes = await db.select().from(messages).where(and(...conditions)).orderBy(sql`${messages.creeLe} desc`).limit(PAR_PAGE)
-  const [lienAvatar, stockage, lus, etat, sondagesFil] = await Promise.all([
+  const [lienAvatar, stockage, lus, etat, sondagesFil, reactions] = await Promise.all([
     liensAvatars(), stockageActif(), lecteurs(conversation, liste), etatsLecture([conversation.id], moi.utilisateurId),
-    sondagesDesMessages(lignes.filter((m) => m.type === 'sondage').map((m) => m.id))
+    sondagesDesMessages(lignes.filter((m) => m.type === 'sondage').map((m) => m.id)),
+    reactionsDes(lignes.map((m) => m.id), liste, moi.utilisateurId)
   ])
-  const contexte = { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil }
+  const contexte = { conversation, moi, liste, lienAvatar, stockage, lus, sondagesFil, reactions }
   res.json({
     conversation: presenterConversation(conversation, { moi, liste, lienAvatar, etat: etat.get(conversation.id) }),
     messages: lignes.reverse().map((m) => presenterMessage(m, contexte)),
@@ -435,6 +454,27 @@ router.post('/messages/:messageId/publier', chargerMessage, async (req, res) => 
     await annoncer(req, publie)
   }
   res.json({ id: message.id })
+})
+
+// Réagir à un message par un émoji (corps : { emoji }) ; { emoji: null }, ou retoucher le même
+// émoji, retire sa réaction. Il faut pouvoir écrire dans la conversation.
+const EMOJI = /^(?:\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?)*|\p{Regional_Indicator}{2})$/u
+router.put('/messages/:messageId/reaction', chargerMessage, async (req, res) => {
+  const { conversation, moi, liste, message } = req
+  if (message.retireLe || !message.publie) return res.status(404).json({ erreur: 'Message introuvable' })
+  if (!peutEcrire(conversation, moi, liste)) return res.status(403).json({ erreur: 'Vous ne pouvez pas réagir dans cette conversation' })
+  const emoji = req.body.emoji ?? null
+  if (emoji !== null && (typeof emoji !== 'string' || !EMOJI.test(emoji))) throw new ErreurSaisie('Choisissez un émoji')
+  const [actuelle] = await db.select().from(reactionsMessage).where(and(eq(reactionsMessage.messageId, message.id), eq(reactionsMessage.utilisateurId, moi.utilisateurId)))
+  if (!emoji || actuelle?.emoji === emoji) {
+    if (actuelle) await db.delete(reactionsMessage).where(eq(reactionsMessage.id, actuelle.id))
+  } else {
+    await db.insert(reactionsMessage).values({ messageId: message.id, utilisateurId: moi.utilisateurId, emoji })
+      .onConflictDoUpdate({ target: [reactionsMessage.messageId, reactionsMessage.utilisateurId], set: { emoji } })
+  }
+  // Sans auteurId : les écrans se rechargent, mais l'aidé n'est pas invité à lire à voix haute
+  signaler(participants(conversation, liste).map((m) => m.utilisateurId), 'message', { cercleId: conversation.cercleId, conversationId: conversation.id })
+  res.status(204).end()
 })
 
 // Retire un message : son texte et son fichier sont effacés, il en reste la trace « Message retiré »
@@ -718,10 +758,11 @@ export async function messagesAccompagne(utilisateur, { avecLesMiens = false } =
       sql`${messages.creeLe} > ${new Date(Date.now() - 30 * JOUR).toISOString()}::timestamptz`
     )).orderBy(sql`${messages.creeLe} desc`).limit(40)
     const sondagesFil = await sondagesDesMessages(lignes.filter((m) => m.type === 'sondage').map((m) => m.id))
+    const reactions = await reactionsDes(lignes.map((m) => m.id), liste, moi.utilisateurId)
     for (const m of lignes) {
       const conversation = convs.find((x) => x.id === m.conversationId)
       const auteur = liste.find((x) => x.utilisateurId === m.auteurId)
-      const p = presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, sondagesFil })
+      const p = presenterMessage(m, { conversation, moi, liste, lienAvatar, stockage, sondagesFil, reactions })
       const lu = etats.get(conversation.id)?.luJusquA
       // Répondre : dans la même conversation, comme un groupe WhatsApp (la réponse à un message de
       // « Toute la famille » va à toute la famille, celle à un message privé reste privée)

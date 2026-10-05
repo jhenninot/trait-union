@@ -20,6 +20,7 @@ import DetailSondage from './DetailSondage.vue'
 import FenetreSondage from './FenetreSondage.vue'
 import FenetreGroupe from './FenetreGroupe.vue'
 import SelecteurEmoji from './SelecteurEmoji.vue'
+import ReactionsMessage from './ReactionsMessage.vue'
 import { insererDans, seulementEmojis } from '../emojis.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
@@ -405,6 +406,7 @@ const vocalPossible = enregistrementPossible()
           <audio v-if="b.vocal" :src="b.vocal.lien" controls preload="none" class="audio" />
           <p v-if="b.texte" class="texte-note"><TexteMessage :texte="b.texte" /></p>
           <ApercuLien v-if="b.lien" :lien="b.lien" @charge="apresImage" />
+          <ReactionsMessage :message-id="b.id" :reactions="b.reactions" :peut="conversation.peutEcrire" @change="charger({ garderPosition: true })" />
           <p v-if="b.vuPar?.length" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
           <div v-if="selection === b.id && b.peutRetirer" class="actions-msg">
             <button class="danger" @click.stop="retirer(b)"><Icone nom="effacer" class="en-ligne" /> {{ b.deMoi ? 'Effacer' : 'Retirer' }}</button>
@@ -426,6 +428,7 @@ const vocalPossible = enregistrementPossible()
               <ApercuLien v-if="b.lien" :lien="b.lien" @charge="apresImage" />
               <div class="h">{{ heureMessage(b.creeLe) }}</div>
             </div>
+            <ReactionsMessage v-if="!b.sondage" :message-id="b.id" :reactions="b.reactions" :peut="conversation.peutEcrire" @change="charger({ garderPosition: true })" />
             <p v-if="b.deMoi && b.vuPar?.length && (conversation.type === 'privee' || b.id === dernierDeMoi)" class="vu"><Icone nom="coche" class="en-ligne" /> {{ texteVu(b.vuPar) }}</p>
             <!-- Photo : bouton toujours visible pour la ranger dans les photos du cercle -->
             <p v-if="ajoutees.has(b.id)" class="vu"><Icone nom="coche" class="en-ligne" /> Ajoutée aux photos</p>
@@ -486,11 +489,11 @@ const vocalPossible = enregistrementPossible()
       <button v-if="donnees.fichiers && vocalPossible && !texte.trim()" type="button" class="envoyer" :aria-label="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :title="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :disabled="envoi" @click="commencerVocal"><Icone nom="micro" /></button>
       <button v-else class="envoyer" :disabled="envoi || !texte.trim()" aria-label="Envoyer" title="Envoyer"><Icone nom="envoyer" /></button>
     </form>
-    <SelecteurEmoji v-if="emojis && conversation?.peutEcrire && !enregistrement" @choisir="ajouterEmoji" />
     <p v-else-if="conversation?.autre?.decede" class="fin-conversation">
       {{ conversation.autre.prenom }} est {{ motDecede(conversation.autre.genre) }} : vos messages restent ici, mais on ne peut plus lui écrire.
     </p>
     <p v-else-if="conversation" class="aide ferme">Vous ne pouvez plus écrire dans cette conversation.</p>
+    <SelecteurEmoji v-if="emojis && conversation?.peutEcrire && !enregistrement" @choisir="ajouterEmoji" />
 
     <!-- Photos choisies : aperçu en grand, une légende par photo, comme sur WhatsApp -->
     <div v-if="photos" class="envoi-photos">

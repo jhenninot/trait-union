@@ -393,6 +393,17 @@ export const lectures = pgTable('lectures', {
   unique('lectures_unique').on(t.conversationId, t.utilisateurId)
 ])
 
+// Réactions par émoji sous un message, comme sur WhatsApp : une seule par personne et par message
+// (en choisir une autre remplace la précédente, retoucher la même la retire).
+export const reactionsMessage = pgTable('reactions_message', {
+  ...commun,
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  emoji: text('emoji').notNull()
+}, (t) => [
+  unique('reactions_message_unique').on(t.messageId, t.utilisateurId)
+])
+
 // Sondage de dates façon Doodle (server/messagerie/sondages.js), publié comme un message de
 // « Toute la famille ». Dates proposées : AAAA-MM-JJ, triées ; moment : journée entière, midi,
 // soir ou heure précise (heure « HH:MM »). À la clôture, la date retenue crée un rendez-vous.
