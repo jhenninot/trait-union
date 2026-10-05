@@ -7,6 +7,7 @@ import { questionsQui, questionsAge, candidats, reglagesJeux, chargerReglagesJeu
 import { useRouter } from 'vue-router'
 import { lectureDisponible, parler, arreterParole } from '../voix.js'
 import Avatar from './Avatar.vue'
+import QuizMusical from './QuizMusical.vue'
 import Icone from '../navigation/Icone.vue'
 
 // Jeux de la personne accompagnée : « Qui est-ce ? » (retrouver un prénom) et « Quel âge ? »
@@ -14,7 +15,8 @@ import Icone from '../navigation/Icone.vue'
 // une mauvaise réponse ou « Je ne sais pas » donne la réponse avec bienveillance.
 const personnes = ref([])
 const charge = ref(false)
-const jeu = ref(null) // null (accueil des jeux), 'qui' ou 'age'
+const jeu = ref(null) // null (accueil des jeux), 'qui', 'age' ou 'musique'
+const partie = ref(0) // change à chaque partie de musique, pour repartir de zéro
 const questions = ref([])
 const n = ref(0) // question en cours
 const reponse = ref(null) // null (question posée), 'bonne', 'presque' ou 'inconnu'
@@ -36,12 +38,13 @@ onUnmounted(arreterParole)
 const nbQui = computed(() => candidats(personnes.value, { decedes: reglagesJeux.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
 const propose = (k) => reglagesJeux[k]
-const dispo = (k) => (k === 'qui' ? nbQui.value : nbAge.value) >= 2
+const dispo = (k) => k === 'musique' || (k === 'qui' ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
   api('POST', '/jeux/partie').catch(() => {})
+  if (k === 'musique') { partie.value++; return }
   questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, reglagesJeux)
   n.value = 0
   reponse.value = null
@@ -106,11 +109,18 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
           <strong>Quel âge ?</strong><span>Deviner l'âge des personnes</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
+        <button v-if="propose('musique')" type="button" class="jeu" @click="jouer('musique')">
+          <strong>Quelle est cette chanson ?</strong><span>Reconnaître les chansons d'autrefois</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
       </div>
       <p v-if="charge && ((propose('qui') && !dispo('qui')) || (propose('age') && !dispo('age')))" class="manque">
         Il faut quelques photos de la famille (et leurs dates de naissance) pour jouer. Vos proches peuvent les ajouter.
       </p>
     </template>
+
+    <!-- Quiz musical -->
+    <QuizMusical v-else-if="jeu === 'musique'" :key="partie" @quitter="retour" @rejouer="jouer('musique')" />
 
     <!-- Fin de partie -->
     <template v-else-if="fini">
@@ -156,7 +166,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
 .jeux { max-width: none; flex: 1; padding: 28px 36px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
 h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .sous { font-size: 1.5rem; color: var(--gris); margin: 6px 0 18px; text-align: center; }
-.cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; width: 100%; max-width: 960px; margin-top: 10px; }
+.cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; width: 100%; max-width: 960px; margin-top: 10px; }
 .jeu { background: white; color: inherit; border-radius: 28px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.1); padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
 .jeu:disabled { opacity: 0.5; }
 .jeu strong { font-size: 2rem; color: var(--bleu-nuit); }

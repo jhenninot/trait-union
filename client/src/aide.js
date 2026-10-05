@@ -231,6 +231,7 @@ const FICHES_ACCOMPAGNE = {
     comment: [
       { q: 'Jouer à « Qui est-ce ? »', r: 'Regardez la photo et touchez le prénom qui convient.' },
       { q: 'Jouer à « Quel âge ? »', r: 'Regardez la photo et touchez l\'âge qui convient. Pas besoin d\'être précis.' },
+      { q: 'Jouer à « Quelle est cette chanson ? »', r: 'Écoutez l\'extrait de musique, puis touchez le titre qui convient. Touchez « Réécouter » pour l\'entendre encore, et « J\'aime » ou « J\'aime moins » à la fin.' },
       { q: 'Si je ne sais pas', r: 'Touchez « Je ne sais pas » : on vous donne la réponse.' },
       { q: 'Écouter', r: 'Touchez le haut-parleur : la tablette lit la question ou la réponse.' }
     ],

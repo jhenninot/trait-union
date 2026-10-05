@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes } from '../db/schema.js'
+import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons } from '../db/schema.js'
+import { cleChanson } from '../musique/itunes.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
 import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
@@ -371,6 +372,26 @@ router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, ch
   const jeux = lireJeux(req.body)
   await db.update(utilisateurs).set({ jeux }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(reglagesJeux(jeux))
+})
+
+// Chansons du quiz musical d'une personne accompagnée : celles que ses aidants ont choisies, et
+// celles qu'elle a aimées ou moins aimées en jouant
+const lignesChansons = (utilisateurId) => db.select({ id: chansons.id, titre: chansons.titre, artiste: chansons.artiste, source: chansons.source, reaction: chansons.reaction })
+  .from(chansons).where(eq(chansons.utilisateurId, utilisateurId)).orderBy(chansons.creeLe)
+router.get('/:cercleId/membres/:membreId/chansons', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  res.json(await lignesChansons(req.membre.utilisateurId))
+})
+// Corps : { titre, artiste }
+router.post('/:cercleId/membres/:membreId/chansons', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const titre = valider.texte(req.body.titre, 'titre', { max: 120 })
+  const artiste = valider.texte(req.body.artiste, 'artiste', { max: 120 })
+  await db.insert(chansons).values({ utilisateurId: req.membre.utilisateurId, titre, artiste, cle: cleChanson(titre, artiste), source: 'aidant', creeParId: req.utilisateur.id })
+    .onConflictDoUpdate({ target: [chansons.utilisateurId, chansons.cle], set: { source: 'aidant', creeParId: req.utilisateur.id, modifieLe: new Date() } })
+  res.status(201).json(await lignesChansons(req.membre.utilisateurId))
+})
+router.delete('/:cercleId/membres/:membreId/chansons/:chansonId', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  await db.delete(chansons).where(and(eq(chansons.id, req.params.chansonId), eq(chansons.utilisateurId, req.membre.utilisateurId)))
+  res.json(await lignesChansons(req.membre.utilisateurId))
 })
 
 // Décès d'un membre (n'importe quel rôle), indiqué par un aidant : { dateDeces } (facultative).

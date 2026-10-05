@@ -34,7 +34,7 @@ export const utilisateurs = pgTable('utilisateurs', {
   // { prive: 'tous' | 'aidants' | 'personne', reponses: [...], lectureAuto, vocal }
   messagerie: jsonb('messagerie').$type(),
   // Jeux d'une personne accompagnée, réglés par ses aidants (server/jeux.js) :
-  // { actif, qui, age, decedes, niveau: 2 | 3, questions: 3 | 5 | 8 }
+  // { actif, qui, age, musique, decedes, niveau: 2 | 3, questions: 3 | 5 | 8 }
   jeux: jsonb('jeux').$type(),
   // Compte qui ne peut plus se connecter ni recevoir d'alertes (posé aussi au décès)
   desactiveLe: timestamp('desactive_le', { withTimezone: true }),
@@ -306,6 +306,21 @@ export const anniversairesEnvoyes = pgTable('anniversaires_envoyes', {
 }, (t) => [
   unique('anniversaires_envoyes_unique').on(t.utilisateurId, t.annee),
   unique('anniversaires_envoyes_personne_unique').on(t.personneId, t.annee)
+])
+
+// Chansons du quiz musical d'une personne accompagnée : celles choisies par ses aidants (source
+// « aidant ») et celles qu'elle a aimées ou moins aimées en jouant (reaction « aime » ou « moins »).
+export const chansons = pgTable('chansons', {
+  ...commun,
+  utilisateurId: uuid('utilisateur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  titre: text('titre').notNull(),
+  artiste: text('artiste').notNull(),
+  cle: text('cle').notNull(), // titre et artiste normalisés (sans accents ni majuscules), pour éviter les doublons
+  source: text('source').notNull().default('catalogue'),
+  reaction: text('reaction'),
+  creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+}, (t) => [
+  unique('chansons_unique').on(t.utilisateurId, t.cle)
 ])
 
 // Compteurs d'utilisation par jour, pour les statistiques de l'administration

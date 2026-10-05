@@ -75,6 +75,23 @@ const changerAlertes = (m, cle, valeur) => action(async () => {
 const changerJeux = (m, modifs) => action(async () => {
   m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
 })
+// Chansons du quiz musical : celles choisies par les aidants et les réactions de la personne
+const chansons = ref({}) // par membre
+const nouvelleChanson = ref(null) // { membre, titre, artiste }
+const chargerChansons = async (m) => {
+  try { chansons.value = { ...chansons.value, [m.id]: await api('GET', `${url.value}/membres/${m.id}/chansons`) } } catch { /* liste laissée vide */ }
+}
+watch(() => cercle.value?.membres, (liste) => {
+  if (cercle.value?.peutGerer) (liste ?? []).filter((m) => m.jeux).forEach(chargerChansons)
+}, { immediate: true })
+const ajouterChanson = () => action(async () => {
+  const { membre, titre, artiste } = nouvelleChanson.value
+  chansons.value = { ...chansons.value, [membre.id]: await api('POST', `${url.value}/membres/${membre.id}/chansons`, { titre, artiste }) }
+  nouvelleChanson.value = null
+})
+const retirerChanson = (m, c) => action(async () => {
+  chansons.value = { ...chansons.value, [m.id]: await api('DELETE', `${url.value}/membres/${m.id}/chansons/${c.id}`) }
+})
 const nouvelleReponse = ref({})
 const changerMessagerie = (m, modifs) => action(async () => {
   m.messagerie = await api('PUT', `${url.value}/membres/${m.id}/messagerie`, { ...m.messagerie, ...modifs })
@@ -139,6 +156,7 @@ const adresseApk = `${location.host}/apk`
           <template v-if="m.jeux.actif">
             <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">
               <span class="libelle-reglage">Niveau</span>
@@ -150,6 +168,18 @@ const adresseApk = `${location.host}/apk`
               <label v-for="n in [3, 5, 8]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
             </div>
           </template>
+          <div v-if="m.jeux.actif && m.jeux.musique" class="reglage">
+            <span class="libelle-reglage">Chansons de {{ m.prenom }}</span>
+            <p class="aide">Ces chansons passent en premier dans le quiz. Sinon, l'application choisit des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
+            <div class="etiquettes">
+              <span v-for="c in chansons[m.id] ?? []" :key="c.id" class="etiquette">
+                {{ c.titre }}, {{ c.artiste }}
+                <small v-if="c.reaction === 'aime'"> · aime</small><small v-else-if="c.reaction === 'moins'"> · aime moins</small>
+                <button type="button" class="x" :aria-label="`Retirer « ${c.titre} »`" @click="retirerChanson(m, c)"><Icone nom="fermer" /></button>
+              </span>
+            </div>
+            <button type="button" class="secondaire petit" @click="nouvelleChanson = { membre: m, titre: '', artiste: '' }"><Icone nom="ajouter" class="en-ligne" /> Ajouter une chanson</button>
+          </div>
           <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Par défaut, les personnes décédées ne sont pas proposées.</span>
         </div>
         <div v-if="m.messagerie" class="messagerie">
@@ -182,6 +212,13 @@ const adresseApk = `${location.host}/apk`
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
+        <Modale v-if="nouvelleChanson?.membre.id === m.id" :titre="`Ajouter une chanson pour ${m.prenom}`" @fermer="nouvelleChanson = null">
+          <form class="envoi-app" @submit.prevent="ajouterChanson">
+            <label class="champ">Titre <input v-model="nouvelleChanson.titre" required maxlength="120" placeholder="La Bohème" /></label>
+            <label class="champ">Artiste <input v-model="nouvelleChanson.artiste" required maxlength="120" placeholder="Charles Aznavour" /></label>
+            <div class="actions"><button>Ajouter</button><button type="button" class="secondaire" @click="nouvelleChanson = null">Annuler</button></div>
+          </form>
+        </Modale>
         <Modale v-if="envoiApp?.id === m.id" :titre="`Envoyer l'application à ${envoiApp.prenom}`" @fermer="envoiApp = null">
           <div class="envoi-app">
           <p class="aide">Le message contient le lien de l'application, le lien d'installation de l'APK Android et la marche à suivre.
