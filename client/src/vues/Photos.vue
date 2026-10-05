@@ -139,7 +139,8 @@ function vider() {
 }
 onUnmounted(vider)
 
-// Envoi une photo après l'autre (les réductions consomment beaucoup de mémoire sur téléphone)
+// Envoi de 3 photos à la fois (au-delà, les réductions consomment trop de mémoire sur téléphone)
+const ENVOIS_SIMULTANES = 3
 async function envoyer() {
   // Album créé à la volée : d'abord l'album, puis les photos dedans
   if (albumEnvoi.value === NOUVEL_ALBUM) {
@@ -158,18 +159,22 @@ async function envoyer() {
     nomAlbumEnvoi.value = ''
   }
   envoiEnCours.value = true
-  for (const a of aEnvoyer.value.filter((x) => x.etat !== 'fait')) {
-    a.etat = 'envoi'
-    a.message = ''
-    try {
-      const photo = await envoyerPhoto(cercle.value.id, a.fichier, a.legende, albumEnvoi.value || null)
-      if (filtre.value === 'tous' || filtre.value === (photo.albumId ?? 'aucun')) liste.value.unshift(photo)
-      a.etat = 'fait'
-    } catch (e) {
-      a.etat = 'erreur'
-      a.message = e.message
+  const file = aEnvoyer.value.filter((x) => x.etat !== 'fait')
+  const travailleur = async () => {
+    for (let a = file.shift(); a; a = file.shift()) {
+      a.etat = 'envoi'
+      a.message = ''
+      try {
+        const photo = await envoyerPhoto(cercle.value.id, a.fichier, a.legende, albumEnvoi.value || null)
+        if (filtre.value === 'tous' || filtre.value === (photo.albumId ?? 'aucun')) liste.value.unshift(photo)
+        a.etat = 'fait'
+      } catch (e) {
+        a.etat = 'erreur'
+        a.message = e.message
+      }
     }
   }
+  await Promise.all(Array.from({ length: Math.min(ENVOIS_SIMULTANES, file.length) }, travailleur))
   envoiEnCours.value = false
   if (aEnvoyer.value.every((a) => a.etat === 'fait')) vider()
   chargerAlbums()
