@@ -44,9 +44,10 @@ export async function preparerPhoto(fichier) {
   }
 }
 
-// Date de prise de vue lue dans l'EXIF d'un JPEG (DateTimeOriginal, heure locale de l'appareil
-// photo), sinon la date du fichier ; null si on ne trouve rien de crédible.
-async function datePriseDeVue(fichier) {
+// Date et lieu de prise de vue lus dans l'EXIF d'un JPEG (DateTimeOriginal, en heure locale de
+// l'appareil photo ; GPS en degrés décimaux). À défaut de date, celle du fichier ; null si rien de crédible.
+async function lireMetadonnees(fichier) {
+  const resultat = { priseLe: null, latitude: null, longitude: null }
   try {
     const d = new DataView(await fichier.slice(0, 256 * 1024).arrayBuffer())
     if (d.getUint16(0) === 0xffd8) {
@@ -59,12 +60,12 @@ async function datePriseDeVue(fichier) {
           const petit = d.getUint16(exif) === 0x4949
           const u16 = (x) => d.getUint16(x, petit)
           const u32 = (x) => d.getUint32(x, petit)
-          const lireTexte = (x, n) => String.fromCharCode(...new Uint8Array(d.buffer, x, n))
+          const texte = (x, n) => String.fromCharCode(...new Uint8Array(d.buffer, x, n))
           const chercher = (ifd, etiquette) => {
             const n = u16(ifd)
             for (let i = 0; i < n; i++) {
               const e = ifd + 2 + i * 12
-              if (u16(e) === etiquette) return { type: u16(e + 2), nombre: u32(e + 4), valeur: u32(e + 8) }
+              if (u16(e) === etiquette) return { nombre: u32(e + 4), valeur: u32(e + 8), enLigne: e + 8 }
             }
             return null
           }
@@ -72,10 +73,35 @@ async function datePriseDeVue(fichier) {
           const sous = chercher(ifd0, 0x8769)
           const entree = (sous && chercher(exif + sous.valeur, 0x9003)) ?? chercher(ifd0, 0x0132)
           if (entree && entree.nombre >= 19) {
-            const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/.exec(lireTexte(exif + entree.valeur, 19))
+            const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/.exec(texte(exif + entree.valeur, 19))
             if (m) {
               const date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])
-              if (m[1] > '1900' && !Number.isNaN(date.getTime())) return date.toISOString()
+              if (m[1] > '1900' && !Number.isNaN(date.getTime())) resultat.priseLe = date.toISOString()
+            }
+          }
+          // GPS : latitude/longitude en degrés, minutes, secondes (3 fractions) et leur référence N/S, E/O
+          const gps = chercher(ifd0, 0x8825)
+          if (gps) {
+            const ifdGps = exif + gps.valeur
+            const coordonnee = (etiquetteRef, etiquette) => {
+              const ref = chercher(ifdGps, etiquetteRef)
+              const val = chercher(ifdGps, etiquette)
+              if (!ref || !val || val.nombre !== 3) return null
+              const base = exif + val.valeur
+              const fraction = (i) => {
+                const den = u32(base + i * 8 + 4)
+                return den ? u32(base + i * 8) / den : NaN
+              }
+              const deg = fraction(0) + fraction(1) / 60 + fraction(2) / 3600
+              const signe = ['S', 'W'].includes(String.fromCharCode(d.getUint8(ref.enLigne))) ? -1 : 1
+              return Number.isFinite(deg) ? signe * deg : null
+            }
+            const latitude = coordonnee(0x0001, 0x0002)
+            const longitude = coordonnee(0x0003, 0x0004)
+            // (0, 0) : position vide écrite par certains appareils
+            if (latitude != null && longitude != null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && (latitude || longitude)) {
+              resultat.latitude = latitude
+              resultat.longitude = longitude
             }
           }
           break
@@ -85,15 +111,16 @@ async function datePriseDeVue(fichier) {
       }
     }
   } catch { /* EXIF absent ou illisible : on se rabat sur la date du fichier */ }
-  return fichier.lastModified ? new Date(fichier.lastModified).toISOString() : null
+  if (!resultat.priseLe && fichier.lastModified) resultat.priseLe = new Date(fichier.lastModified).toISOString()
+  return resultat
 }
 
 // Prépare, envoie et publie une photo dans un cercle ; renvoie la photo publiée
 export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
-  const [p, priseLe] = await Promise.all([preparerPhoto(fichier), datePriseDeVue(fichier)])
+  const [p, lieuEtDate] = await Promise.all([preparerPhoto(fichier), lireMetadonnees(fichier)])
   const { id, envois } = await api('POST', `/cercles/${cercleId}/photos`, {
     legende,
-    priseLe,
+    ...lieuEtDate,
     albumId,
     largeur: p.largeur,
     hauteur: p.hauteur,

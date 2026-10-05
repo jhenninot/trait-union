@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { and, eq, lt, desc, asc, isNull, sql } from 'drizzle-orm'
+import { and, eq, lt, desc, asc, isNull, isNotNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { photos, albums, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
@@ -55,6 +55,8 @@ function presenter(req, photo) {
     hauteur: photo.hauteur,
     creeLe: photo.creeLe,
     priseLe: photo.priseLe ?? null,
+    latitude: photo.latitude ?? null,
+    longitude: photo.longitude ?? null,
     creeParPrenom: photo.creeParPrenom ?? null,
     creeParAvatar: photo.creeParId ? lienAvatar(req.stockage, photo.creeParId, photo.creeParAvatar) : null,
     deMoi: photo.creeParId === req.utilisateur.id,
@@ -75,7 +77,9 @@ const colonnes = {
   largeur: photos.largeur,
   hauteur: photos.hauteur,
   creeLe: photos.creeLe,
-  priseLe: photos.priseLe
+  priseLe: photos.priseLe,
+  latitude: photos.latitude,
+  longitude: photos.longitude
 }
 
 // Album du cercle désigné par `id` (null pour « sans album ») ; lève une erreur s'il n'existe pas
@@ -86,6 +90,19 @@ async function albumDuCercle(req, id) {
   if (!album) throw new ErreurSaisie('Album introuvable')
   return album.id
 }
+
+// Photos localisées d'un album (ou de toutes), pour la carte : position et miniature seulement.
+// ?album=<id>|aucun comme pour la liste. Déclaré avant les routes /:photoId.
+router.get('/positions', async (req, res) => {
+  req.stockage = await stockageActif()
+  if (!req.stockage || req.query.album === ALBUM_CONVERSATIONS) return res.json({ positions: [] })
+  const conditions = [eq(photos.cercleId, req.cercle.id), eq(photos.statut, 'publiee'), isNotNull(photos.latitude), isNotNull(photos.longitude)]
+  if (req.query.album === 'aucun') conditions.push(isNull(photos.albumId))
+  else if (req.query.album && req.query.album !== 'tous') conditions.push(eq(photos.albumId, await albumDuCercle(req, req.query.album)))
+  const liste = await db.select({ id: photos.id, cercleId: photos.cercleId, latitude: photos.latitude, longitude: photos.longitude, legende: photos.legende, creeLe: photos.creeLe, priseLe: photos.priseLe }).from(photos)
+    .where(and(...conditions)).orderBy(desc(photos.creeLe)).limit(1000)
+  res.json({ positions: liste.map((p) => ({ id: p.id, latitude: p.latitude, longitude: p.longitude, legende: p.legende, creeLe: p.creeLe, priseLe: p.priseLe, miniature: lienAffichage(req.stockage, p, 'miniature') })) })
+})
 
 // Liste des photos publiées, les plus récentes d'abord. ?avant=<date ISO> pour la suite,
 // ?album=<id> pour un album, ?album=aucun pour les photos sans album. ?tri=prise|envoi (date de
@@ -130,6 +147,14 @@ function datePrise(valeur) {
   return date
 }
 
+// Lieu de prise de vue envoyé par le navigateur : facultatif, les deux coordonnées ou aucune
+function lieu(latitude, longitude) {
+  const lat = Number(latitude)
+  const lon = Number(longitude)
+  const valide = latitude != null && longitude != null && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+  return valide ? { latitude: lat, longitude: lon } : {}
+}
+
 function entier(valeur, champ, max) {
   const n = Number(valeur)
   if (!Number.isInteger(n) || n <= 0 || n > max) throw new ErreurSaisie(`Valeur invalide pour « ${champ} »`)
@@ -163,6 +188,7 @@ router.post('/', exigerStockage, async (req, res) => {
     largeur: entier(req.body.largeur, 'largeur', 10000),
     hauteur: entier(req.body.hauteur, 'hauteur', 10000),
     priseLe: datePrise(req.body.priseLe),
+    ...lieu(req.body.latitude, req.body.longitude),
     taille: Object.values(tailles).reduce((a, b) => a + b, 0)
   }).returning()
   // La taille et le type font partie de la signature : l'hébergeur refuse tout autre fichier

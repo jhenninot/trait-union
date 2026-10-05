@@ -12,6 +12,7 @@ import { zoom as vZoom } from '../zoom.js'
 import { revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
 import Icone from '../navigation/Icone.vue'
+import FenetreCarte from './FenetreCarte.vue'
 
 // « Mes photos » sur la tablette de la personne accompagnée. S'il y a des albums, on choisit
 // d'abord un album (grandes vignettes) ; puis une photo en grand à la fois, deux gros boutons
@@ -100,6 +101,7 @@ const photo = computed(() => liste.value[index.value])
 // Légende et auteur lus à voix haute
 const lecture = lectureDisponible()
 const partage = partageDisponible()
+const carte = ref(null) // photo dont on montre le lieu de prise de vue
 const telechargement = telechargementDisponible()
 const lirePhoto = () => {
   const p = photo.value
@@ -208,6 +210,7 @@ function glisser(sens) {
         <button class="diaporama" @click="basculerDiaporama"><Icone nom="lecture" class="en-ligne" /> Diaporama</button>
         <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto"><Icone nom="son" class="en-ligne" /></button>
         <button v-if="partage" class="diaporama" aria-label="Partager" title="Partager" @click="partagerPhoto(photo)"><Icone nom="partager" class="en-ligne" /></button>
+        <button v-if="photo.latitude != null" class="diaporama" aria-label="Où a été prise la photo ?" title="Où a été prise la photo ?" @click="carte = photo"><Icone nom="lieu" class="en-ligne" /></button>
         <button v-if="telechargement" class="diaporama" aria-label="Télécharger la photo" title="Télécharger la photo" @click="telechargerPhoto(photo)"><Icone nom="telecharger" class="en-ligne" /></button>
         <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)"><Icone nom="suivant" class="en-ligne" /></button>
       </div>
@@ -219,6 +222,7 @@ function glisser(sens) {
       </div>
       <p class="vide">Pas encore de photo.<br />Votre famille peut vous en envoyer.</p>
     </template>
+    <FenetreCarte v-if="carte" grand :points="[carte]" titre="Où a été prise la photo" @fermer="carte = null" />
   </main>
 </template>
 

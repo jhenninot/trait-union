@@ -204,6 +204,13 @@
       "when": 1791212871834,
       "tag": "0028_photos_prise_le",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791213078636,
+      "tag": "0029_photos_lieu",
+      "breakpoints": true
     }
   ]
 }

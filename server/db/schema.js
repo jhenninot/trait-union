@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
+import { pgTable, pgEnum, uuid, text, boolean, integer, doublePrecision, timestamp, date, jsonb, uniqueIndex, index, unique } from 'drizzle-orm/pg-core'
 
 // Colonnes communes : identifiant UUID (généré aussi bien côté serveur que
 // côté mobile) et dates utiles à la future synchronisation hors ligne.
@@ -241,6 +241,9 @@ export const photos = pgTable('photos', {
   taille: integer('taille').notNull(), // octets, toutes versions comprises
   // Date de prise de vue (EXIF de l'original, sinon date du fichier) ; null : inconnue, on prend cree_le
   priseLe: timestamp('prise_le', { withTimezone: true }),
+  // Lieu de prise de vue (GPS de l'EXIF de l'original, que la réduction des images efface) ; visible de tout le cercle
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   statut: statutPhoto('statut').notNull().default('envoi'),
   // Alerte « nouvelles photos » envoyée (null : pas encore, voir server/alertes/planificateur.js)
   alerteLe: timestamp('alerte_le', { withTimezone: true })

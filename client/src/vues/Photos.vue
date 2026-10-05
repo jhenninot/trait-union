@@ -12,6 +12,7 @@ import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
 import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
+import FenetreCarte from './FenetreCarte.vue'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import { confirmer, avertir } from '../fenetre.js'
@@ -362,6 +363,22 @@ const rangerSelection = () => action(async () => {
   chargerAlbums()
 })
 
+// --- Carte : lieu de la photo ouverte, ou toutes les photos localisées de l'album affiché ---
+const carte = ref(null) // { titre, points } quand la carte est ouverte
+const aUnLieu = (p) => p.latitude != null && p.longitude != null
+const carteDeLaPhoto = (p) => { carte.value = { titre: 'Lieu de prise de vue', points: [p] } }
+const carteDeLAlbum = () => action(async () => {
+  const r = await api('GET', `${url.value}/photos/positions?album=${filtre.value}`)
+  if (!r.positions.length) return avertir('Aucune photo de cet album n\'a de lieu de prise de vue. Les lieux sont lus dans les photos envoyées à partir de maintenant.')
+  carte.value = { titre: `${albumCourant.value?.nom ?? (filtre.value === 'aucun' ? 'Non classé' : 'Toutes les photos')} : ${r.positions.length} lieu(x)`, points: r.positions }
+})
+function ouvrirDepuisCarte(id) {
+  const i = liste.value.findIndex((p) => p.id === id)
+  if (i < 0) return
+  carte.value = null
+  ouvrir(i)
+}
+
 const partage = partageDisponible()
 const telechargement = telechargementDisponible()
 const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'))
@@ -465,6 +482,9 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <template v-if="albumCourant">Cet album est vide : ajoutez-y des photos avec le bouton « Ajouter des photos ».</template>
         <template v-else>Aucune photo pour l'instant. Les photos envoyées ici apparaissent sur la tablette de la personne accompagnée.</template>
       </p>
+      <div v-if="actif && liste.length && triPossible" class="outils-grille">
+        <button class="secondaire" @click="carteDeLAlbum"><Icone nom="lieu" class="en-ligne" /> Carte</button>
+      </div>
       <label v-if="actif && liste.length && triPossible" class="tri">Trier par
         <select v-model="choixTri">
           <option value="envoi-desc">Envoi : récentes d'abord</option>
@@ -537,6 +557,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </p>
         <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
         <BoutonIcone v-if="telechargement && legendeEnEdition == null" icone="telecharger" libelle="Télécharger" class="partager" @click="telechargerPhoto(photo)" />
+        <BoutonIcone v-if="aUnLieu(photo) && legendeEnEdition == null" icone="lieu" libelle="Voir sur la carte" class="partager" @click="carteDeLaPhoto(photo)" />
         <label v-if="photo.peutSupprimer && albumsRangement.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Non classé</option>
@@ -549,6 +570,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         </div>
       </div>
     </div>
+  <FenetreCarte v-if="carte" :titre="carte.titre" :points="carte.points" @fermer="carte = null" @ouvrir="ouvrirDepuisCarte" />
   </main>
 </template>
 
@@ -674,5 +696,6 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .case { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; background: rgb(0 0 0 / 0.35); color: white; display: grid; place-items: center; }
 .vignette.cochee .case { background: var(--bleu, #3a63c8); }
 .case :deep(svg) { width: 16px; height: 16px; }
+.outils-grille { display: flex; justify-content: flex-end; margin-top: 6px; }
 .tri { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin: 6px 0; font-size: 0.95rem; }
 </style>
