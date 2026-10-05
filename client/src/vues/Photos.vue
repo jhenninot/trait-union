@@ -14,6 +14,7 @@ import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
 import FenetreCarte from './FenetreCarte.vue'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import { confirmer, avertir } from '../fenetre.js'
 
@@ -437,12 +438,16 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           </button>
         </div>
 
-        <form v-if="nomAlbum" class="carte ligne-album" @submit.prevent="enregistrerAlbum">
-          <input v-model="nomAlbum.nom" required maxlength="100" placeholder="Nom de l'album (ex. Noël 2025, Vacances à Biarritz)" />
-          <button>{{ nomAlbum.id ? 'Renommer' : 'Créer l\'album' }}</button>
-          <button type="button" class="secondaire" @click="nomAlbum = null">Annuler</button>
-        </form>
-        <div v-else-if="albumCourant?.peutModifier" class="actions-album">
+        <Modale v-if="nomAlbum" :titre="nomAlbum.id ? 'Renommer l\'album' : 'Nouvel album'" @fermer="nomAlbum = null">
+          <form @submit.prevent="enregistrerAlbum">
+            <input v-model="nomAlbum.nom" required maxlength="100" placeholder="Nom de l'album (ex. Noël 2025, Vacances à Biarritz)" />
+            <div class="actions">
+              <button>{{ nomAlbum.id ? 'Renommer' : 'Créer l\'album' }}</button>
+              <button type="button" class="secondaire" @click="nomAlbum = null">Annuler</button>
+            </div>
+          </form>
+        </Modale>
+        <div v-if="albumCourant?.peutModifier" class="actions-album">
           <strong>{{ albumCourant.nom }}</strong>
           <BoutonIcone icone="modifier" libelle="Renommer l'album" @click="nomAlbum = { id: albumCourant.id, nom: albumCourant.nom }" />
           <BoutonIcone icone="effacer" libelle="Supprimer l'album" danger @click="supprimerAlbum" />

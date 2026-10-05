@@ -7,6 +7,7 @@ import { motDecede } from '../coordonnees.js'
 import { RECURRENCES, texteRecurrence, choixRappels, texteRappel, visibilites, valeurJour, valeurHeure, combiner, debutDuJour, horaire, parJour, nomDuJour, periode, decaler, duJour, titreRdv } from '../agenda.js'
 import Calendrier from './Calendrier.vue'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import { confirmer } from '../fenetre.js'
 
@@ -218,11 +219,11 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
       <p class="aide surtitre">{{ cercle.nom }}</p>
       <div class="titre">
         <h1>Agenda</h1>
-        <button v-if="!formulaire" @click="nouveau()"><Icone nom="ajouter" class="en-ligne" /> Ajouter un rendez-vous</button>
+        <button @click="nouveau()"><Icone nom="ajouter" class="en-ligne" /> Ajouter un rendez-vous</button>
       </div>
 
-      <form v-if="formulaire" class="carte" @submit.prevent="enregistrer">
-        <strong>{{ formulaire.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous' }}</strong>
+      <Modale v-if="formulaire" large :titre="formulaire.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'" @fermer="formulaire = null">
+      <form @submit.prevent="enregistrer">
         <label>Quoi <input v-model="formulaire.titre" required maxlength="200" placeholder="Ex. Visite chez le Dr Martin" /></label>
         <label class="choix"><input v-model="formulaire.journeeEntiere" type="checkbox" /> Journée entière</label>
         <div class="ligne-champs">
@@ -276,11 +277,13 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
           </label>
           <p class="aide">Vous voyez toujours les rendez-vous que vous créez.</p>
         </fieldset>
+        <p v-if="erreur" class="erreur">{{ erreur }}</p>
         <div class="actions">
           <button>Enregistrer</button>
           <button type="button" class="secondaire" @click="formulaire = null">Annuler</button>
         </div>
       </form>
+      </Modale>
 
       <div class="vues" role="tablist">
         <button v-for="v in VUES" :key="v.valeur" role="tab" :aria-selected="vue === v.valeur" :class="{ actif: vue === v.valeur }" @click="vue = v.valeur">

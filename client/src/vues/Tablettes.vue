@@ -6,6 +6,7 @@ import { mentionDeces, lienWhatsAppMessage, lienSmsMessage } from '../coordonnee
 import { session } from '../session.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
 import { confirmer } from '../fenetre.js'
 
@@ -45,10 +46,12 @@ async function envoyerApp() {
   }
 }
 const nouvelAccompagne = ref({ prenom: '', nom: '' })
+const ajoutOuvert = ref(false)
 
 const ajouterAccompagne = () => action(async () => {
   await api('POST', `${url.value}/accompagnes`, nouvelAccompagne.value)
   nouvelAccompagne.value = { prenom: '', nom: '' }
+  ajoutOuvert.value = false
   await charger()
 })
 
@@ -191,12 +194,17 @@ const adresseApk = `${location.host}/apk`
         <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(codeAppareil.lien)" />
       </div>
 
-      <form v-if="cercle.peutGerer" class="carte" @submit.prevent="ajouterAccompagne">
-        <strong>Ajouter une personne accompagnée</strong>
-        <label>Prénom <input v-model="nouvelAccompagne.prenom" required /></label>
-        <label>Nom <input v-model="nouvelAccompagne.nom" /></label>
-        <button>Ajouter</button>
-      </form>
+      <button v-if="cercle.peutGerer" class="secondaire" @click="ajoutOuvert = true"><Icone nom="ajouter" class="en-ligne" /> Ajouter une personne accompagnée</button>
+      <Modale v-if="ajoutOuvert" titre="Ajouter une personne accompagnée" @fermer="ajoutOuvert = false">
+        <form @submit.prevent="ajouterAccompagne">
+          <label>Prénom <input v-model="nouvelAccompagne.prenom" required /></label>
+          <label>Nom <input v-model="nouvelAccompagne.nom" /></label>
+          <div class="actions">
+            <button>Ajouter</button>
+            <button type="button" class="secondaire" @click="ajoutOuvert = false">Annuler</button>
+          </div>
+        </form>
+      </Modale>
     </template>
   </main>
 </template>

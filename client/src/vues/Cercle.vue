@@ -14,6 +14,7 @@ import ChoixLien from './ChoixLien.vue'
 import FenetreDeces from './FenetreDeces.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import { confirmer } from '../fenetre.js'
 import { lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
 
@@ -174,9 +175,9 @@ const rejoindre = () => action(async () => {
             ><Icone nom="arbre" /></RouterLink>
             <BoutonIcone
               v-else-if="cercle.peutGerer && !m.moi && m.role !== 'auxiliaire' && !m.decede"
-              :icone="lienOuvert?.id === m.id ? 'fermer' : 'famille'"
-              :libelle="lienOuvert?.id === m.id ? 'Fermer' : `Préciser le lien de ${m.prenom} avec la personne accompagnée`"
-              @click="lienOuvert = lienOuvert?.id === m.id ? null : { id: m.id, lien: m.lien ?? '' }"
+              :icone="'famille'"
+              :libelle="`Préciser le lien de ${m.prenom} avec la personne accompagnée`"
+              @click="lienOuvert = { id: m.id, lien: m.lien ?? '' }"
             />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
             <template v-if="cercle.peutGerer && !m.moi">
@@ -186,10 +187,15 @@ const rejoindre = () => action(async () => {
             <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
           </span>
         </div>
-        <form v-if="lienOuvert?.id === m.id" class="choix lien-form" @submit.prevent="enregistrerLien(m)">
-          <label>Lien de {{ m.prenom }} avec la personne accompagnée <ChoixLien v-model="lienOuvert.lien" /></label>
-          <div><button type="submit">Enregistrer</button></div>
-        </form>
+        <Modale v-if="lienOuvert?.id === m.id" :titre="`Lien de ${m.prenom}`" @fermer="lienOuvert = null">
+          <form class="lien-form" @submit.prevent="enregistrerLien(m)">
+            <label>Lien de {{ m.prenom }} avec la personne accompagnée <ChoixLien v-model="lienOuvert.lien" /></label>
+            <div class="actions">
+              <button type="submit">Enregistrer</button>
+              <button type="button" class="secondaire" @click="lienOuvert = null">Annuler</button>
+            </div>
+          </form>
+        </Modale>
         <Coordonnees v-if="!m.decede && aDesCoordonnees(m)" class="details" :personne="m" />
       </div>
 

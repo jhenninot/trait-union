@@ -9,6 +9,7 @@ import Avatar from './Avatar.vue'
 import Coordonnees from './Coordonnees.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import { confirmer } from '../fenetre.js'
 
 // Fiche d'une personne de l'arbre généalogique (panneau à droite sur ordinateur, plein écran
@@ -176,7 +177,8 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
             <BoutonIcone icone="effacer" :libelle="`Retirer le lien ${r.texte}`" danger @click="retirerLien(r)" />
           </li>
         </ul>
-        <form v-if="relier" class="relier" @submit.prevent="enregistrerLien">
+        <Modale v-if="relier" :titre="`Relier ${p.prenom}`" @fermer="relier = null">
+        <form class="relier" @submit.prevent="enregistrerLien">
           <select v-model="relier.type" aria-label="Lien">
             <option value="enfantDe">{{ p.prenom }} est l'enfant de</option>
             <option value="parentDe">{{ p.prenom }} est le parent de</option>
@@ -186,9 +188,10 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
             <option value="" disabled>Choisir…</option>
             <option v-for="x in arbre.personnes.filter((x) => x.id !== p.id)" :key="x.id" :value="x.id">{{ x.prenom }} {{ x.nom ?? '' }}</option>
           </select>
-          <div><button type="submit" class="petit">Relier</button> <button type="button" class="lien" @click="relier = null">Annuler</button></div>
+          <div class="actions"><button type="submit">Relier</button> <button type="button" class="secondaire" @click="relier = null">Annuler</button></div>
         </form>
-        <button v-else type="button" class="lien" @click="relier = { type: 'enfantDe', autre: '' }">Relier à une personne déjà dans l'arbre</button>
+        </Modale>
+        <button type="button" class="lien" @click="relier = { type: 'enfantDe', autre: '' }">Relier à une personne déjà dans l'arbre</button>
       </details>
 
       <button type="button" class="danger" @click="retirer">Retirer de l'arbre</button>

@@ -6,6 +6,7 @@ import { rendezVousAccompagne, debutDuJour, ajouterJours, valeurJour, valeurHeur
 import Calendrier from './Calendrier.vue'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
+import Modale from '../navigation/Modale.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import { confirmer } from '../fenetre.js'
 
@@ -239,8 +240,8 @@ async function effacer(rdv, portee) {
 
 <template>
   <main class="agenda">
-    <form v-if="saisie" class="saisie" @submit.prevent="enregistrer">
-      <h1>{{ saisie.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous' }}</h1>
+    <Modale v-if="saisie" large :titre="saisie.id ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'" @fermer="saisie = null">
+    <form class="saisie" @submit.prevent="enregistrer">
       <template v-if="saisie.estSerie">
         <p class="question">Ce rendez-vous se répète. Changer :</p>
         <div class="choix deux">
@@ -303,8 +304,8 @@ async function effacer(rdv, portee) {
         <button type="button" class="retour" @click="saisie = null">Annuler</button>
       </div>
     </form>
+    </Modale>
 
-    <template v-else>
       <div class="entete">
         <h1>Mon agenda</h1>
         <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><Icone nom="son" class="en-ligne" /><span class="texte-ecouter"> Écouter</span></button>
@@ -342,7 +343,6 @@ async function effacer(rdv, portee) {
           </div>
         </section>
       </template>
-    </template>
   </main>
 </template>
 
