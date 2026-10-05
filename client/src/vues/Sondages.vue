@@ -39,7 +39,7 @@ watch(() => route.params.id, () => {
 }, { immediate: true })
 // Les réponses arrivent en direct
 let arreter
-onMounted(() => (arreter = ecouterMessagerie((type) => type === 'message' && charger())))
+onMounted(() => (arreter = ecouterMessagerie((type) => type !== 'lu' && charger())))
 onUnmounted(() => arreter?.())
 
 async function supprimer(s) {

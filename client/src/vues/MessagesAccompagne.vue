@@ -59,6 +59,9 @@ let defileLe = 0
 const apresImage = () => Date.now() - defileLe < 5000 && zoneFil.value && (zoneFil.value.scrollTop = zoneFil.value.scrollHeight)
 
 async function chargerFil(id, { defiler = true } = {}) {
+  // Une relecture en arrière-plan ne fait défiler que si la personne est déjà en bas du fil
+  const z = zoneFil.value
+  if (!defiler && z && z.scrollHeight - z.scrollTop - z.clientHeight < 120) defiler = true
   if (defiler) defileLe = Date.now()
   const d = await api('GET', `/messagerie/conversations/${id}`)
   fil.value = { conversation: d.conversation, messages: d.messages }
@@ -73,9 +76,11 @@ let arreter
 onMounted(() => {
   charger()
   arreter = ecouterMessagerie((type, d) => {
-    if (type !== 'message') return
+    if (type === 'lu') return
     if (ecran.value === 'liste') charger()
-    else if (ecran.value === 'fil' && d.conversationId === fil.value?.conversation.id) chargerFil(d.conversationId)
+    else if (ecran.value === 'fil' && fil.value && (type === 'resynchro' || d.conversationId === fil.value.conversation.id)) {
+      chargerFil(fil.value.conversation.id, { defiler: type !== 'resynchro' })
+    }
   })
 })
 onUnmounted(() => {

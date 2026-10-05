@@ -90,7 +90,7 @@ let minuterieProgramme
 let arreterRetour
 let arreterMessagerie
 onMounted(() => {
-  arreterMessagerie = ecouterMessagerie((type) => type === 'message' && chargerMessages())
+  arreterMessagerie = ecouterMessagerie((type) => type !== 'lu' && chargerMessages())
   minuterie = setInterval(() => (maintenant.value = new Date()), 30_000)
   recharger()
   minuterieProgramme = setInterval(recharger, 5 * 60_000)

@@ -28,35 +28,87 @@ function rafraichirBientot() {
   attente = setTimeout(rafraichirNonLus, 400)
 }
 
+// Les pages ouvertes rechargent ce qu'elles affichent (type 'resynchro') : à la (re)connexion, au
+// retour sur l'application, et toutes les quelques secondes tant que le temps réel ne tient pas
+function resynchroniser() {
+  rafraichirBientot()
+  for (const f of ecouteurs) f('resynchro', {})
+}
+
+const SILENCE_MAX = 50_000 // sans le moindre battement du serveur, la connexion est considérée morte
+const SONDAGE_SANS_FLUX = 6_000
+let dernierSigne = 0
+let surveillance = null
+let sondage = null
+
+function ouvrirFlux() {
+  flux?.close()
+  dernierSigne = Date.now()
+  flux = new EventSource('/api/messagerie/flux')
+  flux.onopen = () => {
+    etatMessagerie.connecte = true
+    dernierSigne = Date.now()
+    resynchroniser() // ce qui est arrivé pendant la coupure
+  }
+  flux.onerror = () => (etatMessagerie.connecte = false)
+  flux.addEventListener('battement', () => {
+    dernierSigne = Date.now()
+    etatMessagerie.connecte = true
+  })
+  for (const type of ['message', 'lu']) {
+    flux.addEventListener(type, (e) => {
+      dernierSigne = Date.now()
+      let donnees = {}
+      try { donnees = JSON.parse(e.data) } catch { /* événement illisible */ }
+      rafraichirBientot()
+      for (const f of ecouteurs) f(type, donnees)
+    })
+  }
+}
+
+// Retour sur l'application (tablette réveillée, onglet de nouveau visible, réseau revenu) : si le
+// serveur est resté muet, on se reconnecte tout de suite, et dans tous les cas on relit
+function auRetour() {
+  if (document.visibilityState === 'hidden' || !flux) return
+  if (Date.now() - dernierSigne > 25_000) ouvrirFlux()
+  resynchroniser()
+}
+
 export function demarrerMessagerie() {
   arreterMessagerie()
   rafraichirNonLus()
   if ('EventSource' in window) {
-    flux = new EventSource('/api/messagerie/flux')
-    flux.onopen = () => (etatMessagerie.connecte = true)
-    flux.onerror = () => (etatMessagerie.connecte = false)
-    for (const type of ['message', 'lu']) {
-      flux.addEventListener(type, (e) => {
-        let donnees = {}
-        try { donnees = JSON.parse(e.data) } catch { /* événement illisible */ }
-        rafraichirBientot()
-        for (const f of ecouteurs) f(type, donnees)
-      })
-    }
+    ouvrirFlux()
+    surveillance = setInterval(() => {
+      if (flux && Date.now() - dernierSigne > SILENCE_MAX) {
+        etatMessagerie.connecte = false
+        ouvrirFlux()
+      }
+    }, 10_000)
+    document.addEventListener('visibilitychange', auRetour)
+    window.addEventListener('online', auRetour)
+    window.addEventListener('focus', auRetour)
   }
   minuterie = setInterval(() => !etatMessagerie.connecte && rafraichirNonLus(), 60_000)
+  // Sans temps réel (proxy, réseau instable), les pages ouvertes se relisent toutes seules
+  sondage = setInterval(() => !etatMessagerie.connecte && document.visibilityState !== 'hidden' && resynchroniser(), SONDAGE_SANS_FLUX)
 }
 
 export function arreterMessagerie() {
   flux?.close()
   flux = null
   clearInterval(minuterie)
+  clearInterval(surveillance)
+  clearInterval(sondage)
+  document.removeEventListener('visibilitychange', auRetour)
+  window.removeEventListener('online', auRetour)
+  window.removeEventListener('focus', auRetour)
   etatMessagerie.connecte = false
   etatMessagerie.nonLus = 0
   etatMessagerie.parCercle = {}
 }
 
-// Appelle fn(type, donnees) à chaque événement ('message' ou 'lu') ; renvoie de quoi arrêter
+// Appelle fn(type, donnees) à chaque événement ('message', 'lu' ou 'resynchro' : tout relire) ; renvoie de quoi arrêter
 export function ecouterMessagerie(fn) {
   ecouteurs.add(fn)
   return () => ecouteurs.delete(fn)

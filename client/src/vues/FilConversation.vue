@@ -144,7 +144,7 @@ let arreter
 const auRetourVisible = () => document.visibilityState === 'visible' && charger({ garderPosition: true })
 onMounted(() => {
   arreter = ecouterMessagerie((type, d) => {
-    if (d.conversationId !== props.conversationId) return
+    if (type !== 'resynchro' && d.conversationId !== props.conversationId) return
     // Ses propres lectures ne changent rien à l'affichage
     if (type === 'lu' && d.utilisateurId === session.utilisateur.id) return
     charger({ garderPosition: true })

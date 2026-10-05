@@ -43,7 +43,7 @@ watch(() => props.sondageId, async () => {
 }, { immediate: true })
 // Les réponses des autres arrivent en direct pendant qu'on regarde le tableau
 let arreter
-onMounted(() => (arreter = ecouterMessagerie((type) => type === 'message' && vue.value === 'detail' && charger())))
+onMounted(() => (arreter = ecouterMessagerie((type) => type !== 'lu' && vue.value === 'detail' && charger())))
 onUnmounted(() => arreter?.())
 
 const icone = (v) => REPONSES.find((r) => r.valeur === v)?.icone

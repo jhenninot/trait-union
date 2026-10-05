@@ -43,7 +43,7 @@ watch(cercleId, () => {
 let arreter
 onMounted(() => {
   media.addEventListener('change', suivreEcran)
-  arreter = ecouterMessagerie((type, d) => d.cercleId === cercleId.value || type === 'lu' ? charger() : null)
+  arreter = ecouterMessagerie((type, d) => d.cercleId === cercleId.value || type !== 'message' ? charger() : null)
 })
 onUnmounted(() => {
   media.removeEventListener('change', suivreEcran)
