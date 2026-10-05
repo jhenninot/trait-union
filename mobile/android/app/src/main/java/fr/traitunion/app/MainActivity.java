@@ -17,6 +17,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -27,6 +28,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import java.io.ByteArrayOutputStream;
@@ -121,8 +123,33 @@ public class MainActivity extends BridgeActivity {
         getBridge().getWebView().addJavascriptInterface(new Appli(), "TraitUnionAppli");
         // Un lien vers un fichier à télécharger s'ouvre dans le navigateur
         getBridge().getWebView().setDownloadListener((adresse, agent, disposition, type, taille) -> ouvrirNavigateur(adresse));
+        // WhatsApp, SMS, appel, email : ces liens s'ouvrent dans l'application concernée, pas dans la fenêtre
+        // de Trait d'union (qui affiche sinon « Page Web non disponible », ERR_UNKNOWN_URL_SCHEME)
+        getBridge().setWebViewClient(new BridgeWebViewClient(getBridge()) {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView vue, WebResourceRequest requete) {
+                if (ouvrirLienExterne(requete.getUrl())) return true;
+                return super.shouldOverrideUrlLoading(vue, requete);
+            }
+        });
         recevoir(getIntent());
         ouvrirAlerte(getIntent());
+    }
+
+    // Vrai si le lien a été confié à une autre application
+    private boolean ouvrirLienExterne(Uri lien) {
+        String schema = lien.getScheme() == null ? "" : lien.getScheme().toLowerCase(Locale.ROOT);
+        String hote = lien.getHost() == null ? "" : lien.getHost().toLowerCase(Locale.ROOT);
+        boolean web = schema.equals("http") || schema.equals("https");
+        boolean whatsapp = web && (hote.equals("wa.me") || hote.equals("api.whatsapp.com"));
+        if (web && !whatsapp) return false;
+        if (schema.equals("file") || schema.equals("content") || schema.equals("data") || schema.equals("blob") || schema.equals("about") || schema.equals("javascript") || schema.isEmpty()) return false;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, lien).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            // Application absente (WhatsApp non installé, par exemple) : rien à ouvrir
+        }
+        return true;
     }
 
     @Override
