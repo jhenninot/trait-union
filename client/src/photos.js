@@ -105,7 +105,14 @@ async function lireMetadonnees(fichier) {
             const latitude = coordonnee(0x0001, 0x0002)
             const longitude = coordonnee(0x0003, 0x0004)
             // (0, 0) : position vide écrite par certains appareils
-            diagnostic.gpsZero = latitude === 0 && longitude === 0
+            // Valeurs effacées : 0, ou fractions 0/0 (Android remplace les octets par des zéros)
+            const efface = (etiquette) => {
+              const val = chercher(ifdGps, etiquette)
+              if (!val || val.nombre !== 3) return false
+              for (let i = 0; i < 6; i++) if (u32(exif + val.valeur + i * 4)) return false
+              return true
+            }
+            diagnostic.gpsZero = (latitude === 0 && longitude === 0) || (efface(0x0002) && efface(0x0004))
             if (latitude != null && longitude != null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && (latitude || longitude)) {
               resultat.latitude = latitude
               resultat.longitude = longitude
