@@ -82,7 +82,7 @@ function changerDeServeur() {
         <ol class="aide">
           <li>Ouvrez le fichier téléchargé{{ surAndroid ? '' : ' sur la tablette ou le téléphone' }} ;
             Android demande d'autoriser l'installation d'applications depuis cette source.</li>
-          <li>Au premier lancement, saisissez l'adresse du serveur : <strong>{{ adresse }}</strong></li>
+          <li>Si l'application demande l'adresse du serveur, saisissez : <strong>{{ adresse }}</strong></li>
           <li>Pour une personne accompagnée, touchez « Le configurer avec un code » et saisissez le code
             à 6 chiffres créé dans la rubrique Personnes accompagnées.</li>
         </ol>

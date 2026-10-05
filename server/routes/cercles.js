@@ -270,7 +270,7 @@ router.post('/:cercleId/membres/:membreId/envoi-application', chargerCercle, exi
       `1. Ouvrez ce message sur l'appareil et touchez le lien d'installation : ${base}/apk`,
       '2. Le fichier « trait-union.apk » se télécharge. Ouvrez-le. Si Android le demande, autorisez l\'installation depuis cette source (Chrome ou le navigateur utilisé).',
       '3. Touchez « Installer », puis « Ouvrir ».',
-      `4. Au premier lancement, saisissez l'adresse du serveur : ${base}`,
+      `4. Si l'application demande l'adresse du serveur, saisissez : ${base}`,
       '5. Touchez « Le configurer avec un code » et saisissez le code à 6 chiffres que votre proche vous donnera (par téléphone ou en personne).',
       `Sur iPhone, iPad ou ordinateur : ouvrez ${base}/appareil dans le navigateur (Safari sur iPhone et iPad), puis ajoutez la page à l'écran d'accueil (bouton Partager, puis « Sur l'écran d'accueil »).`
     ],

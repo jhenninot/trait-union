@@ -109,7 +109,7 @@
       }
     }
 
-    $('reessayer').addEventListener('click', () => ouvrir(lire()))
+    $('reessayer').addEventListener('click', () => ouvrir(window.TU_SERVEUR_DEFAUT || lire()))
     $('changer').addEventListener('click', formulaire)
     $('formulaire').addEventListener('submit', async (e) => {
       e.preventDefault()
@@ -132,7 +132,10 @@
     })
 
     // ?changer : lien « Changer de serveur » de la page Application mobile
-    const enregistre = lire()
+    // Adresse fixée à la construction (variable APP_URL du dépôt GitHub) : on s'y connecte sans rien demander
+    const fixe = window.TU_SERVEUR_DEFAUT
+    const enregistre = fixe || lire()
+    if (fixe) $('changer').hidden = true
     if (enregistre && !new URLSearchParams(location.search).has('changer')) ouvrir(enregistre)
     else formulaire()
   </script>

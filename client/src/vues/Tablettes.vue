@@ -24,7 +24,7 @@ watch(() => cercle.value?.id, async (id) => {
 const utilisationDe = (m) => utilisation.value.find((u) => u.utilisateurId === m.utilisateurId) ?? null
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const envoiApp = ref(null) // { id, prenom, email, telephone, message, erreur }
-const texteApplication = (prenom) => `Bonjour ${prenom}, voici l'application Trait d'union pour votre tablette ou votre téléphone.\nAndroid : touchez ${location.origin}/apk, ouvrez le fichier téléchargé et autorisez l'installation si Android le demande. Au premier lancement, saisissez l'adresse ${location.origin} puis « Le configurer avec un code » et le code à 6 chiffres que je vous donnerai.\niPhone, iPad ou ordinateur : ouvrez ${location.origin}/appareil dans le navigateur et ajoutez la page à l'écran d'accueil.`
+const texteApplication = (prenom) => `Bonjour ${prenom}, voici l'application Trait d'union pour votre tablette ou votre téléphone.\nAndroid : touchez ${location.origin}/apk, ouvrez le fichier téléchargé et autorisez l'installation si Android le demande. Si l'application demande l'adresse du serveur, saisissez ${location.origin}. Touchez « Le configurer avec un code » et le code à 6 chiffres que je vous donnerai.\niPhone, iPad ou ordinateur : ouvrez ${location.origin}/appareil dans le navigateur et ajoutez la page à l'écran d'accueil.`
 const ouvrirEnvoiApp = async (m) => {
   envoiApp.value = envoiApp.value?.id === m.id ? null : { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' }
   if (!envoiApp.value) return
