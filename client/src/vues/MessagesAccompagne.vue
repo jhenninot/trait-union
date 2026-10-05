@@ -12,6 +12,7 @@ import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import SelecteurEmoji from './SelecteurEmoji.vue'
 import ReactionsMessage from './ReactionsMessage.vue'
+import { jouerSon, nouveauMessageRecu } from '../son.js'
 import { EMOJIS_FREQUENTS, insererDans, seulementEmojis } from '../emojis.js'
 import { confirmer } from '../fenetre.js'
 import { motDecede } from '../coordonnees.js'
@@ -64,6 +65,7 @@ async function chargerFil(id, { defiler = true } = {}) {
   if (!defiler && z && z.scrollHeight - z.scrollTop - z.clientHeight < 120) defiler = true
   if (defiler) defileLe = Date.now()
   const d = await api('GET', `/messagerie/conversations/${id}`)
+  if (fil.value?.conversation.id === id && nouveauMessageRecu(fil.value.messages, d.messages)) jouerSon()
   fil.value = { conversation: d.conversation, messages: d.messages }
   api('POST', `/messagerie/conversations/${id}/lu`).then(rafraichirNonLus).catch(() => {})
   if (defiler) {

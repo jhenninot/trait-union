@@ -22,6 +22,7 @@ import FenetreGroupe from './FenetreGroupe.vue'
 import SelecteurEmoji from './SelecteurEmoji.vue'
 import ReactionsMessage from './ReactionsMessage.vue'
 import { insererDans, seulementEmojis } from '../emojis.js'
+import { sonActif, basculerSon, jouerSon, nouveauMessageRecu } from '../son.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -90,6 +91,7 @@ async function charger({ garderPosition = false } = {}) {
   try {
     const d = await api('GET', `/messagerie/conversations/${props.conversationId}`)
     const enBas = !garderPosition || estEnBas()
+    if (nouveauMessageRecu(messages.value, d.messages)) jouerSon()
     donnees.value = d
     messages.value = d.messages
     erreur.value = ''
@@ -372,6 +374,7 @@ const vocalPossible = enregistrementPossible()
         <Avatar v-for="m in conversation.membres.slice(0, 5)" :key="m.utilisateurId" :src="m.avatar" :prenom="m.prenom" :taille="30" />
         <span v-if="conversation.membres.length > 5" class="encore">+{{ conversation.membres.length - 5 }}</span>
       </div>
+      <BoutonIcone :icone="sonActif ? 'son' : 'son-coupe'" :libelle="sonActif ? 'Désactiver le son des nouveaux messages' : 'Activer le son des nouveaux messages'" @click="basculerSon" />
       <BoutonIcone v-if="conversation.peutGerer" icone="modifier" libelle="Modifier le groupe (nom, membres)" @click="gererGroupe = true" />
       <BoutonIcone :icone="conversation.muet ? 'sourdine' : 'cloche'" :libelle="conversation.muet ? 'Réactiver les alertes de cette conversation' : 'Ne plus recevoir d\'alerte pour cette conversation'" @click="sourdine" />
     </header>
