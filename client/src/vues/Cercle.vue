@@ -152,7 +152,7 @@ const rejoindre = () => action(async () => {
           </span>
         </div>
         <template v-if="m.decede" />
-        <Coordonnees v-else-if="coordonneesOuvertes !== m.id && aDesCoordonnees(m)" class="details" :personne="m" />
+        <Coordonnees v-else-if="coordonneesOuvertes !== m.id && aDesCoordonnees(m)" class="details" :personne="m" :inscrite :membre-id="m.moi ? null : m.id" :cercle-id="cercle.id" />
         <FormulaireCoordonnees
           v-else
           class="choix"
@@ -217,7 +217,7 @@ const rejoindre = () => action(async () => {
             </div>
           </form>
         </Modale>
-        <Coordonnees v-if="!m.decede && aDesCoordonnees(m)" class="details" :personne="m" />
+        <Coordonnees v-if="!m.decede && aDesCoordonnees(m)" class="details" :personne="m" :inscrite :membre-id="m.moi ? null : m.id" :cercle-id="cercle.id" />
       </div>
 
       <div v-if="cercle.peutGerer" class="carte">

@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
       personnes: visibles.map((p) => {
         const r = moi ? parente(g, moi.id, p.id) : null
         return {
-          ...presenter(p, false),
+          ...presenter(p, false, req.utilisateur.id),
           lien: r?.lien ?? null,
           lienAide: r && r.groupe !== 'moi' ? lienPossessif(r.lien, p.genre) : null,
           groupe: r?.groupe ?? 'famille',
@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
     peutGerer: req.peutGerer,
     accompagnes: accompagnes.map((p) => ({ id: p.id, prenom: p.prenom })),
     personnes: g.personnes.map((p) => ({
-      ...presenter(p, req.peutGerer),
+      ...presenter(p, req.peutGerer, req.utilisateur.id),
       liens: Object.fromEntries(accompagnes.map((a) => {
         const r = parente(g, a.id, p.id)
         return [a.id, r ? { lien: r.lien, groupe: r.groupe, generation: r.generation } : null]
@@ -76,9 +76,10 @@ router.get('/', async (req, res) => {
   })
 })
 
-function presenter(p, gestion) {
+function presenter(p, gestion, utilisateurId) {
   return {
     id: p.id,
+    moi: Boolean(p.utilisateurId) && p.utilisateurId === utilisateurId,
     prenom: p.prenom,
     nom: p.nom,
     genre: p.genre,

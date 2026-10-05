@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { parler, arreterParole, lectureDisponible } from '../voix.js'
 import {
@@ -48,6 +49,22 @@ const fichiers = computed(() => Boolean(donnees.value?.fichiers) && reglages.val
 const vocalPossible = enregistrementPossible()
 const lecture = lectureDisponible()
 
+const route = useRoute()
+const router = useRouter()
+
+// ?ecrireA=<membre>&cercle=<cercle> : ouvre la conversation privée avec cette personne (bouton « Envoyer un message » de sa fiche)
+async function ouvrirDepuisLien() {
+  const { ecrireA: membreId, cercle } = route.query
+  if (!membreId || !cercle) return
+  router.replace({ query: {} })
+  try {
+    const { id } = await api('POST', `/messagerie/cercles/${cercle}/privee`, { membreId })
+    await ouvrir(id)
+  } catch (e) {
+    erreur.value = e.message
+  }
+}
+
 async function charger() {
   try {
     donnees.value = await api('GET', '/messagerie/accompagne/conversations')
@@ -79,6 +96,7 @@ async function chargerFil(id, { defiler = true } = {}) {
 let arreter
 onMounted(() => {
   charger()
+  ouvrirDepuisLien()
   arreter = ecouterMessagerie((type, d) => {
     if (type === 'lu') return
     if (ecran.value === 'liste') charger()

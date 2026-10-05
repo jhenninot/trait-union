@@ -115,7 +115,7 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
       <li v-if="p.decede"><Icone nom="gateau" class="en-ligne" />
         <span>{{ p.dateNaissance ? dateLongue(p.dateNaissance) : '?' }} – {{ p.dateDeces ? dateLongue(p.dateDeces) : motDecede(p.genre) }}</span></li>
     </ul>
-    <Coordonnees v-if="!p.decede" :personne="p" />
+    <Coordonnees v-if="!p.decede" :personne="p" :inscrite="p.compte" :membre-id="!p.moi ? p.membreId : null" :cercle-id="props.base.split('/').pop()" />
     <Coordonnees v-else-if="p.adresse" :personne="{ adresse: p.adresse }" />
 
     <template v-if="p.aSavoir">

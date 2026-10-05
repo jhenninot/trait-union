@@ -260,3 +260,9 @@ export function morceaux(texte) {
   if (debut < String(texte ?? '').length) resultat.push({ texte: texte.slice(debut) })
   return resultat
 }
+
+// Lien vers la messagerie pour écrire en privé à un membre du cercle (désigné par son appartenance au cercle) :
+// la conversation s'ouvre d'elle-même. La personne accompagnée a sa propre page de messages.
+export const lienMessage = (cercleId, membreId, deLaPersonneAccompagnee = false) => deLaPersonneAccompagnee
+  ? { path: '/messages', query: { ecrireA: membreId, cercle: cercleId } }
+  : { path: `/cercles/${cercleId}/messages`, query: { ecrireA: membreId } }

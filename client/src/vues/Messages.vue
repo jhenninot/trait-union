@@ -29,9 +29,22 @@ async function charger() {
     donnees.value = await api('GET', `/messagerie/cercles/${cercleId.value}`)
     erreur.value = ''
     // Grand écran : la première conversation s'ouvre d'office
-    if (grandEcran.value && !choisie.value && donnees.value.conversations.length) ouvrir(donnees.value.conversations[0].id, true)
+    if (grandEcran.value && !choisie.value && !route.query.ecrireA && donnees.value.conversations.length) ouvrir(donnees.value.conversations[0].id, true)
   } catch (e) {
     erreur.value = e.message
+  }
+}
+// ?ecrireA=<membre> : ouvre la conversation privée avec cette personne (bouton « Envoyer un message » des fiches)
+async function ouvrirDepuisLien() {
+  const membreId = route.query.ecrireA
+  if (!membreId) return
+  try {
+    const { id } = await api('POST', `/messagerie/cercles/${cercleId.value}/privee`, { membreId })
+    ecrire.value = false
+    router.replace({ query: { c: id } })
+  } catch (e) {
+    erreur.value = e.message
+    router.replace({ query: {} })
   }
 }
 watch(cercleId, () => {
@@ -42,6 +55,7 @@ watch(cercleId, () => {
 
 let arreter
 onMounted(() => {
+  ouvrirDepuisLien()
   media.addEventListener('change', suivreEcran)
   arreter = ecouterMessagerie((type, d) => d.cercleId === cercleId.value || type !== 'message' ? charger() : null)
 })

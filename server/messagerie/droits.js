@@ -44,6 +44,7 @@ export const voitGroupe = (type, role) => ROLES_GROUPE[type]?.includes(role) ?? 
 // groupe et on ne peut plus leur écrire
 export async function membresCercle(cercleId) {
   return db.select({
+    membreId: membres.id,
     utilisateurId: membres.utilisateurId,
     role: membres.role,
     lien: membres.lien,

@@ -333,7 +333,8 @@ router.delete('/conversations/:id/groupe', chargerConversation, async (req, res)
 router.post('/cercles/:cercleId/privee', async (req, res) => {
   const { liste, moi } = await vueCercle(req, req.params.cercleId)
   if (!moi) return res.status(403).json({ erreur: 'Seuls les membres du cercle ont accès à ses messages' })
-  const autre = liste.find((m) => m.utilisateurId === req.body.utilisateurId)
+  // La personne est désignée par son compte, ou par son appartenance au cercle (fiches de l'arbre, famille)
+  const autre = liste.find((m) => m.utilisateurId === req.body.utilisateurId || (req.body.membreId && m.membreId === req.body.membreId))
   if (!peutEcrirePrive(moi, autre)) return res.status(403).json({ erreur: 'Vous ne pouvez pas écrire en privé à cette personne' })
   const [personneA, personneB] = [moi.utilisateurId, autre.utilisateurId].sort()
   const valeurs = { cercleId: req.params.cercleId, type: 'privee', personneA, personneB }

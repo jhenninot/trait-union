@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { dateLongue, ageTexte, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import { parler, lectureDisponible } from '../voix.js'
+import { lienMessage } from '../messagerie.js'
 import Avatar from './Avatar.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
@@ -32,7 +33,11 @@ const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].
           <Icone nom="telephone" class="em" />
           <span>Appeler<br /><span class="numero">{{ p.telephone }}</span></span>
         </a>
-        <div v-if="p.telephone" class="ecrire">
+        <!-- Inscrite dans l'application : la messagerie ; sinon SMS et WhatsApp -->
+        <div v-if="p.membreId && p.cercleId && !p.moi" class="ecrire">
+          <RouterLink :to="lienMessage(p.cercleId, p.membreId, true)" @click="emit('fermer')"><Icone nom="message" class="em" /> Envoyer un message</RouterLink>
+        </div>
+        <div v-else-if="p.telephone && !p.membreId" class="ecrire">
           <a :href="lienSms(p.telephone)"><Icone nom="sms" class="em" /> SMS</a>
           <a :href="lienWhatsApp(p.telephone)" target="_blank" rel="noopener"><Icone nom="whatsapp" class="em" /> WhatsApp</a>
         </div>

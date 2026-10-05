@@ -14,13 +14,15 @@ export async function chargerFamille() {
     ])
     const dansArbre = new Set()
     if (arbre?.moi) {
+      // Chaque personne sait de quel cercle elle vient (bouton « Envoyer un message » de sa fiche)
+      for (const p of arbre.personnes) p.cercleId = c.id
       arbres.push(arbre)
       for (const p of arbre.personnes) {
         dansArbre.add(p.id)
         const cle = `${p.prenom} ${p.nom ?? ''}`
         if (p.id === arbre.moi || vus.has(cle)) continue
         vus.add(cle)
-        personnes.push({ ...p, dansArbre: true })
+        personnes.push({ ...p, dansArbre: true, cercleId: c.id })
       }
     }
     for (const m of cercle?.membres ?? []) {
@@ -30,7 +32,7 @@ export async function chargerFamille() {
       // Placé dans l'arbre mais caché à la personne accompagnée
       if (m.personneId && arbre?.moi) continue
       vus.add(cle)
-      personnes.push({ ...m, groupe: m.role === 'auxiliaire' || !m.lien ? 'aide' : 'famille' })
+      personnes.push({ ...m, membreId: m.id, cercleId: c.id, groupe: m.role === 'auxiliaire' || !m.lien ? 'aide' : 'famille' })
     }
   }
   return { personnes, arbres }

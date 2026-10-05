@@ -6,6 +6,7 @@ import { cercleMemorise, memoriserCercle } from '../cercleCourant.js'
 import { aLesDroits, estAuxiliaire } from '../roles.js'
 import { visibilites, debutDuJour, ajouterJours, heureCourte, horaire, parJour } from '../agenda.js'
 import { lienTelephone, lienSms, lienWhatsApp, ans, age, ageTexte, estAnniversaire } from '../coordonnees.js'
+import { lienMessage } from '../messagerie.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
@@ -241,8 +242,12 @@ const aujourdhui = (() => {
           </div>
           <div v-if="!a.moi && a.telephone" class="contacts">
             <a :href="lienTelephone(a.telephone)" class="bouton petit appeler" :aria-label="`Appeler ${a.prenom}`"><Icone nom="telephone" class="en-ligne" /><span class="texte-appeler"> Appeler</span></a>
-            <a :href="lienSms(a.telephone)" class="rond" :title="`SMS à ${a.prenom}`" :aria-label="`Envoyer un SMS à ${a.prenom}`"><Icone nom="sms" /></a>
-            <a :href="lienWhatsApp(a.telephone)" class="rond" target="_blank" rel="noopener" :title="`WhatsApp à ${a.prenom}`" :aria-label="`Écrire à ${a.prenom} sur WhatsApp`"><Icone nom="whatsapp" /></a>
+            <!-- Inscrite dans l'application : messagerie ; sinon (fiche de l'arbre sans compte) SMS ou WhatsApp -->
+            <RouterLink v-if="a.role" :to="lienMessage(cercleId, a.id)" class="rond" :title="`Message à ${a.prenom}`" :aria-label="`Envoyer un message à ${a.prenom} dans l'application`"><Icone nom="message" /></RouterLink>
+            <template v-else>
+              <a :href="lienSms(a.telephone)" class="rond" :title="`SMS à ${a.prenom}`" :aria-label="`Envoyer un SMS à ${a.prenom}`"><Icone nom="sms" /></a>
+              <a :href="lienWhatsApp(a.telephone)" class="rond" target="_blank" rel="noopener" :title="`WhatsApp à ${a.prenom}`" :aria-label="`Écrire à ${a.prenom} sur WhatsApp`"><Icone nom="whatsapp" /></a>
+            </template>
           </div>
         </div>
       </section>
@@ -339,8 +344,7 @@ const aujourdhui = (() => {
             </div>
             <div v-if="m.telephone" class="contacts">
               <a :href="lienTelephone(m.telephone)" class="rond" :title="`Appeler ${m.prenom}`" :aria-label="`Appeler ${m.prenom}`"><Icone nom="telephone" /></a>
-              <a :href="lienSms(m.telephone)" class="rond" :title="`SMS à ${m.prenom}`" :aria-label="`Envoyer un SMS à ${m.prenom}`"><Icone nom="sms" /></a>
-              <a :href="lienWhatsApp(m.telephone)" class="rond" target="_blank" rel="noopener" :title="`WhatsApp à ${m.prenom}`" :aria-label="`Écrire à ${m.prenom} sur WhatsApp`"><Icone nom="whatsapp" /></a>
+              <RouterLink :to="lienMessage(cercleId, m.id)" class="rond" :title="`Message à ${m.prenom}`" :aria-label="`Envoyer un message à ${m.prenom} dans l'application`"><Icone nom="message" /></RouterLink>
             </div>
           </div>
         </section>
