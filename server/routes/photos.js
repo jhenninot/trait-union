@@ -209,7 +209,12 @@ const ORIGINES = { choix: 'choisie dans l\'appli', 'partage-pwa': 'partagée ver
 function journaliserLecture(req, photo) {
   const d = req.body.diagnostic
   if (!d || typeof d !== 'object') return
-  const lieu = photo.latitude != null ? 'lieu trouvé' : d.gpsPresent ? 'bloc GPS présent mais vide' : 'pas de lieu'
+  const lieu = photo.latitude != null
+    ? 'lieu trouvé'
+    : !d.gpsPresent ? 'pas de lieu'
+      : d.gpsZero ? 'bloc GPS mis à zéro (position retirée par Android ou l\'appli source)'
+        : d.gpsLatLon === false ? `bloc GPS sans latitude/longitude (${Number(d.gpsEtiquettes) || 0} étiquette(s))`
+          : 'bloc GPS présent mais illisible'
   const date = d.dateSource === 'exif' ? 'date EXIF' : d.dateSource === 'fichier' ? 'date du fichier' : 'pas de date'
   const message = `Photo ${ORIGINES[d.origine] ?? 'd\'origine inconnue'} : ${lieu}, ${date}${d.exif ? '' : ', pas d\'EXIF'}`
   const agent = String(req.get('user-agent') ?? '')

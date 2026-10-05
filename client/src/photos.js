@@ -85,6 +85,9 @@ async function lireMetadonnees(fichier) {
           const gps = chercher(ifd0, 0x8825)
           if (gps) {
             diagnostic.gpsPresent = true // bloc GPS présent (il peut être vide)
+            // Pourquoi il serait vide, sans rien révéler : étiquettes présentes et valeurs à zéro ou non
+            diagnostic.gpsEtiquettes = u16(exif + gps.valeur)
+            diagnostic.gpsLatLon = Boolean(chercher(exif + gps.valeur, 0x0002) && chercher(exif + gps.valeur, 0x0004))
             const ifdGps = exif + gps.valeur
             const coordonnee = (etiquetteRef, etiquette) => {
               const ref = chercher(ifdGps, etiquetteRef)
@@ -102,6 +105,7 @@ async function lireMetadonnees(fichier) {
             const latitude = coordonnee(0x0001, 0x0002)
             const longitude = coordonnee(0x0003, 0x0004)
             // (0, 0) : position vide écrite par certains appareils
+            diagnostic.gpsZero = latitude === 0 && longitude === 0
             if (latitude != null && longitude != null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && (latitude || longitude)) {
               resultat.latitude = latitude
               resultat.longitude = longitude
