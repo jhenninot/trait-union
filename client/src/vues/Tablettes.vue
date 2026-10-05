@@ -2,7 +2,8 @@
 import { ref, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
-import { mentionDeces } from '../coordonnees.js'
+import { mentionDeces, lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
+import { session } from '../session.js'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
@@ -22,6 +23,20 @@ watch(() => cercle.value?.id, async (id) => {
 }, { immediate: true })
 const utilisationDe = (m) => utilisation.value.find((u) => u.utilisateurId === m.utilisateurId) ?? null
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
+const envoiApp = ref(null) // { id, prenom, email, telephone, message, erreur }
+const texteApplication = (prenom) => `Bonjour ${prenom}, voici l'application Trait d'union pour votre tablette ou votre téléphone.\nAndroid : touchez ${location.origin}/apk, ouvrez le fichier téléchargé et autorisez l'installation si Android le demande. Au premier lancement, saisissez l'adresse ${location.origin} puis « Le configurer avec un code » et le code à 6 chiffres que je vous donnerai.\niPhone, iPad ou ordinateur : ouvrez ${location.origin}/appareil dans le navigateur et ajoutez la page à l'écran d'accueil.`
+const ouvrirEnvoiApp = (m) => { envoiApp.value = envoiApp.value?.id === m.id ? null : { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' } }
+const partagerApp = () => navigator.share({ text: texteApplication(envoiApp.value.prenom) }).catch(() => {})
+async function envoyerApp() {
+  envoiApp.value.erreur = ''
+  envoiApp.value.message = ''
+  try {
+    const { envoyeA } = await api('POST', `${url.value}/membres/${envoiApp.value.id}/envoi-application`, { email: envoiApp.value.email })
+    envoiApp.value.message = `Email envoyé à ${envoyeA}.`
+  } catch (e) {
+    envoiApp.value.erreur = e.message
+  }
+}
 const nouvelAccompagne = ref({ prenom: '', nom: '' })
 
 const ajouterAccompagne = () => action(async () => {
@@ -133,10 +148,33 @@ const adresseApk = `${location.host}/apk`
         </div>
         <div v-if="cercle.peutGerer" class="actions">
           <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>
+          <button class="secondaire" @click="ouvrirEnvoiApp(m)">Envoyer l'application</button>
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
         </template>
+      </div>
+
+      <div v-if="envoiApp" class="carte encart">
+        <strong>Envoyer l'application à {{ envoiApp.prenom }}</strong>
+        <p class="aide">Le message contient le lien de l'application, le lien d'installation de l'APK Android et la marche à suivre.
+          Le code de connexion se crée avec « Configurer un appareil » et se donne à part.</p>
+        <label v-if="session.email" class="champ">Adresse email de {{ envoiApp.prenom }}
+          <input v-model="envoiApp.email" type="email" />
+        </label>
+        <div v-if="session.email" class="actions">
+          <button class="secondaire" :disabled="!envoiApp.email" @click="envoyerApp">Envoyer par email</button>
+        </div>
+        <p v-if="envoiApp.message" class="aide">{{ envoiApp.message }}</p>
+        <p v-if="envoiApp.erreur" class="erreur">{{ envoiApp.erreur }}</p>
+        <label class="champ">Numéro de téléphone (SMS ou WhatsApp)
+          <input v-model="envoiApp.telephone" type="tel" placeholder="06 12 34 56 78" />
+        </label>
+        <div class="actions">
+          <a class="rond" :href="lienWhatsAppMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer par WhatsApp"><Icone nom="whatsapp" /></a>
+          <a class="rond" :href="lienSmsMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" title="Envoyer par SMS" aria-label="Envoyer par SMS"><Icone nom="sms" /></a>
+          <BoutonIcone v-if="typeof navigator.share === 'function'" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
+        </div>
       </div>
 
       <div v-if="codeAppareil" class="carte encart">
@@ -185,5 +223,7 @@ const adresseApk = `${location.host}/apk`
 .alertes .aide { flex-basis: 100%; margin: 0; }
 .case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
+.rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
+.encart .actions { align-items: center; margin-top: 8px; }
 .code { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--bleu-nuit); margin: 8px 0; }
 </style>

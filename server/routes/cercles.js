@@ -255,6 +255,35 @@ router.post('/:cercleId/membres/:membreId/code', chargerCercle, exigerGestion, c
   res.status(201).json({ code, expireLe })
 })
 
+// Envoie par email à la personne accompagnée les liens de l'application et de l'APK, avec la marche à suivre
+router.post('/:cercleId/membres/:membreId/envoi-application', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const destinataire = valider.email(req.body.email)
+  if (!(await emailActif())) return res.status(400).json({ erreur: 'L\'envoi d\'emails n\'est pas configuré' })
+  const base = urlApplication(req)
+  const u = req.utilisateur
+  const { html, texte } = gabarit({
+    titre: `${u.prenom} vous envoie l'application Trait d'union`,
+    paragraphes: [
+      `Bonjour ${req.membre.prenom},`,
+      `${[u.prenom, u.nom].filter(Boolean).join(' ')} vous propose d'installer Trait d'union sur votre tablette ou votre téléphone, pour retrouver vos proches, vos photos et vos rendez-vous.`,
+      'Sur une tablette ou un téléphone Android (conseillé) :',
+      `1. Ouvrez ce message sur l'appareil et touchez le lien d'installation : ${base}/apk`,
+      '2. Le fichier « trait-union.apk » se télécharge. Ouvrez-le. Si Android le demande, autorisez l\'installation depuis cette source (Chrome ou le navigateur utilisé).',
+      '3. Touchez « Installer », puis « Ouvrir ».',
+      `4. Au premier lancement, saisissez l'adresse du serveur : ${base}`,
+      '5. Touchez « Le configurer avec un code » et saisissez le code à 6 chiffres que votre proche vous donnera (par téléphone ou en personne).',
+      `Sur iPhone, iPad ou ordinateur : ouvrez ${base}/appareil dans le navigateur (Safari sur iPhone et iPad), puis ajoutez la page à l'écran d'accueil (bouton Partager, puis « Sur l'écran d'accueil »).`
+    ],
+    bouton: { texte: 'Installer l\'application Android', lien: `${base}/apk` }
+  })
+  try {
+    await envoyerEmail({ a: { email: destinataire }, sujet: 'Installer l\'application Trait d\'union', html, texte })
+  } catch (e) {
+    return res.status(502).json({ erreur: e.message })
+  }
+  res.json({ envoyeA: destinataire })
+})
+
 // Déconnecte tous les appareils d'une personne accompagnée (tablette perdue, changée...)
 router.post('/:cercleId/membres/:membreId/deconnecter', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
   await db.delete(sessions).where(and(eq(sessions.utilisateurId, req.membre.utilisateurId), eq(sessions.type, 'appareil')))
