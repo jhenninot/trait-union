@@ -1,9 +1,9 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { api } from '../api.js'
-import { copier } from '../cercle.js'
+import { copier, heure } from '../cercle.js'
 import { libellesRoles } from '../roles.js'
-import { dateLongue, motDecede } from '../coordonnees.js'
+import { dateLongue, motDecede, lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
 import { dates } from '../arbre.js'
 import Avatar from './Avatar.vue'
 import Coordonnees from './Coordonnees.vue'
@@ -84,11 +84,14 @@ const retirer = () => action(async () => {
 })
 
 // Invitation : le compte créé sera rattaché à cette fiche
-const invitation = reactive({ ouverte: false, role: 'proche', email: '', lien: null, emailEnvoye: null, erreurEmail: null })
+const invitation = reactive({ ouverte: false, role: 'proche', email: '', lien: null, expireLe: null, telephone: '', emailEnvoye: null, erreurEmail: null })
 const inviter = () => action(async () => {
   const r = await api('POST', `${props.base}/invitations`, { role: invitation.role, email: invitation.email || undefined, personneId: p.value.id })
-  Object.assign(invitation, { lien: `${location.origin}/invitation/${r.jeton}`, emailEnvoye: r.emailEnvoye, erreurEmail: r.erreurEmail })
+  Object.assign(invitation, { lien: `${location.origin}/invitation/${r.jeton}`, expireLe: r.expireLe, telephone: invitation.telephone || p.value.telephone || '', emailEnvoye: r.emailEnvoye, erreurEmail: r.erreurEmail })
 })
+const texteInvitation = () => `Bonjour ${p.value.prenom}, je vous invite à rejoindre le cercle de ${aides.value} sur Trait d'union (${libellesRoles[invitation.role].toLowerCase()}). Voici votre lien personnel, valable une seule fois jusqu'au ${heure(invitation.expireLe)} : ${invitation.lien}`
+const partageNatif = typeof navigator.share === 'function' // « navigator » n'est pas accessible dans le modèle
+const partager = () => navigator.share({ text: texteInvitation() }).catch(() => {})
 const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join(' et ') || 'la personne accompagnée')
 </script>
 
@@ -156,6 +159,12 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
           <div class="ligne-lien">
             <input :value="invitation.lien" readonly @focus="$event.target.select()" />
             <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(invitation.lien)" />
+          </div>
+          <label>Son numéro de téléphone (facultatif) <input v-model="invitation.telephone" type="tel" placeholder="06 12 34 56 78" /></label>
+          <div class="envoi-invitation">
+            <a class="rond" :href="lienWhatsAppMessage(invitation.telephone, texteInvitation())" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer l'invitation par WhatsApp"><Icone nom="whatsapp" /></a>
+            <a class="rond" :href="lienSmsMessage(invitation.telephone, texteInvitation())" title="Envoyer par SMS" aria-label="Envoyer l'invitation par SMS"><Icone nom="sms" /></a>
+            <BoutonIcone v-if="partageNatif" icone="partager" libelle="Partager avec une autre application" @click="partager" />
           </div>
         </template>
       </div>
@@ -229,4 +238,6 @@ button.petit { padding: 7px 12px; font-size: 0.88rem; display: inline-flex; alig
 .liens li span { flex: 1; }
 .relier { gap: 8px; margin-top: 6px; }
 .danger { align-self: flex-start; }
+.envoi-invitation { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.rond { width: 44px; height: 44px; border-radius: 50%; background: white; color: var(--vert); display: grid; place-items: center; flex: none; }
 </style>
