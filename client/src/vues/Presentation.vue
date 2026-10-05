@@ -122,6 +122,16 @@ const SONDAGE_POINTS = [
   'La date choisie part dans l\'agenda de tous ; le sondage peut être rouvert'
 ]
 
+// Jeu d'exemple, vu par la personne accompagnée : une photo, trois prénoms, une réponse toujours bienveillante
+const JEUX_CHOIX = ['Claire', 'Sylvie', 'Marie']
+const JEUX_POINTS = [
+  '« Qui est-ce ? » : retrouver le prénom d\'un proche, parmi trois',
+  '« Quel âge ? » : deviner une tranche d\'âge, sans avoir à être précis',
+  'Ni score ni chrono : une erreur ou « Je ne sais pas » donne la réponse avec le sourire',
+  'La question et la réponse sont lues à voix haute, avec le lien de parenté',
+  'Les photos viennent de l\'arbre de la famille, les proches d\'abord'
+]
+
 // Agenda d'exemple : chaque rendez-vous a son niveau de visibilité
 const RENDEZ_VOUS = [
   { heure: '09h00', titre: 'Toilette', visibilite: [{ nom: 'Aidants', classe: 'aidants' }, { nom: 'Auxiliaires', classe: 'auxiliaires' }], alerte: '15 minutes avant' },
@@ -377,6 +387,29 @@ function contacter() {
             <ul class="points">
               <li v-for="pt in SONDAGE_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Les jeux -->
+      <section class="section">
+        <div class="encadre">
+          <div>
+            <span class="pastille">Les jeux</span>
+            <h2>Reconnaître les siens, sans jamais se tromper</h2>
+            <p>Sur sa tablette ou son smartphone, elle joue avec les photos de sa famille : retrouver un prénom, deviner
+              un âge. Il n'y a pas de mauvaise réponse. Quand elle hésite, l'application lui dit qui c'est et comment il
+              ou elle s'appelle, comme une petite leçon de souvenirs plutôt qu'un examen.</p>
+            <ul class="points">
+              <li v-for="pt in JEUX_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
+          </div>
+          <div class="demo-jeux" aria-hidden="true">
+            <span class="demo-titre">Qui est-ce ?</span>
+            <img class="jeux-photo" src="/avatars/young-woman-fair-ginger.webp" alt="" />
+            <strong class="jeux-question">Quel est son prénom ?</strong>
+            <div class="jeux-reponses"><span v-for="c in JEUX_CHOIX" :key="c">{{ c }}</span></div>
+            <span class="jeux-pas-sur"><Icone nom="question" class="en-ligne" /> Je ne sais pas</span>
           </div>
         </div>
       </section>
@@ -1112,6 +1145,12 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .sondage-ligne > strong { color: var(--bleu-nuit); font-size: 0.95rem; }
 .sondage-choix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .sondage-choix span { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 4px; border-radius: 10px; background: #f1eee9; color: var(--gris); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.demo-jeux { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border-radius: 18px; background: var(--fond); border: 1px solid #ece9e3; }
+.jeux-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: var(--vert-clair); }
+.jeux-question { color: var(--bleu-nuit); font-size: 1.05rem; }
+.jeux-reponses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.jeux-reponses span { display: flex; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 14px; background: white; border: 2px solid #e3dfd7; color: var(--bleu-nuit); font-weight: 700; font-size: 0.95rem; }
+.jeux-pas-sur { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 12px; background: #f1eee9; color: var(--bleu-nuit); font-weight: 700; font-size: 0.85rem; }
 .sondage-choix .oui.on { background: var(--vert); color: white; }
 .sondage-choix .peut_etre.on { background: #fdf0d8; color: #9a5b12; }
 .sondage-choix .non.on { background: #fbe3e0; color: #b03a2e; }
