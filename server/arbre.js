@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.js'
 import { personnes, relations, utilisateurs, membres } from './db/schema.js'
-import { liensAvatars } from './avatars.js'
+import { liensAvatars, copierPhotoFiche } from './avatars.js'
 import { ageTexte } from './anniversaires.js'
 
 // Arbre généalogique d'un cercle : chargement, liens de parenté calculés à partir des seules
@@ -253,8 +253,12 @@ export async function rattacherCompte(tx, personneId, utilisateur) {
   for (const champ of ['telephone', 'dateNaissance', 'adresse']) {
     if (!u[champ] && p[champ]) complement[champ] = p[champ]
   }
-  // Un modèle d'avatar se recopie ; une photo reste rangée sous la fiche (lien gardé en secours)
+  // Un modèle d'avatar se recopie ; une photo est copiée chez le compte (la fiche garde la sienne)
   if (!u.avatar && p.avatar?.startsWith('modele:')) complement.avatar = p.avatar
+  else if (!u.avatar && p.avatar?.startsWith('photo:')) {
+    const photo = await copierPhotoFiche(p.id, u.id, p.avatar)
+    if (photo) complement.avatar = photo
+  }
   if (Object.keys(complement).length) await tx.update(utilisateurs).set(complement).where(eq(utilisateurs.id, u.id))
 }
 

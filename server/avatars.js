@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from './db/index.js'
 import { utilisateurs } from './db/schema.js'
 import { ErreurSaisie } from './auth/validation.js'
-import { stockageActif, lienSigne, infoObjet, supprimerObjet } from './stockage/s3.js'
+import { stockageActif, lienSigne, infoObjet, supprimerObjet, copierObjet } from './stockage/s3.js'
 
 // Avatar d'un compte, enregistré dans utilisateurs.avatar :
 // - « modele:<id> » : un des modèles 3D fournis avec l'application (client/public/avatars/<id>.webp)
@@ -45,6 +45,22 @@ export async function liensAvatars() {
 export async function presenterAvatar(utilisateur) {
   const lien = await liensAvatars()
   return { avatar: lien(utilisateur.id, utilisateur.avatar), avatarChoix: utilisateur.avatar ?? null }
+}
+
+// Photo d'une fiche de l'arbre reprise par le compte qui l'accepte : l'image est copiée sous
+// l'identifiant du compte (la fiche garde la sienne). Renvoie le nouvel avatar, ou null si la copie échoue.
+export async function copierPhotoFiche(personneId, utilisateurId, avatar) {
+  const jeton = avatar?.startsWith('photo:') ? avatar.slice(6) : null
+  if (!jeton) return null
+  try {
+    const stockage = await stockageActif()
+    if (!stockage) return null
+    await copierObjet(stockage, cleObjet(personneId, jeton), cleObjet(utilisateurId, jeton))
+    return avatar
+  } catch (e) {
+    console.error('Copie de la photo de la fiche :', e.message)
+    return null
+  }
 }
 
 // 1re étape d'un changement de photo : lien d'envoi signé pour une nouvelle photo

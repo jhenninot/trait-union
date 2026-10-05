@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { invitations, cercles, membres, utilisateurs } from '../db/schema.js'
+import { invitations, cercles, membres, utilisateurs, personnes } from '../db/schema.js'
 import { empreinte, hacherMotDePasse } from '../auth/securite.js'
 import { ouvrirSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
@@ -22,7 +22,11 @@ export async function invitationValide(jeton) {
 router.get('/:jeton', async (req, res) => {
   const ligne = await invitationValide(req.params.jeton)
   if (!ligne) return res.status(404).json({ erreur: 'Cette invitation n\'est plus valable. Demandez-en une nouvelle.' })
-  res.json({ cercle: ligne.cercle.nom, role: ligne.invitation.role, email: ligne.invitation.email })
+  // Invitation envoyée depuis l'arbre : on propose le prénom et le nom de la fiche
+  const [fiche] = ligne.invitation.personneId
+    ? await db.select({ prenom: personnes.prenom, nom: personnes.nom }).from(personnes).where(eq(personnes.id, ligne.invitation.personneId))
+    : []
+  res.json({ cercle: ligne.cercle.nom, role: ligne.invitation.role, email: ligne.invitation.email, prenom: fiche?.prenom ?? null, nom: fiche?.nom ?? null })
 })
 
 // Rattache l'utilisateur (existant, ou à créer à partir de `nouveau`) au cercle de l'invitation.

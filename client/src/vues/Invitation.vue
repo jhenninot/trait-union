@@ -22,6 +22,9 @@ onMounted(async () => {
     invitation.value = await api('GET', `/invitations/${jeton}`)
     // Adresse à laquelle l'invitation a été envoyée, modifiable
     if (invitation.value.email && !f.value.email) f.value.email = invitation.value.email
+    // Invitation envoyée depuis une fiche de l'arbre : prénom et nom déjà connus
+    if (invitation.value.prenom && !f.value.prenom) f.value.prenom = invitation.value.prenom
+    if (invitation.value.nom && !f.value.nom) f.value.nom = invitation.value.nom
   } catch (e) {
     erreur.value = e.message
   }

@@ -163,6 +163,12 @@ export async function supprimerObjet(c, cle) {
   if (reponse.status !== 404) await verifierReponse(reponse, 'la suppression d\'une photo')
 }
 
+// Copie un objet à l'intérieur du conteneur (sans le faire transiter par le serveur)
+export async function copierObjet(c, source, destination) {
+  const reponse = await requete(c, 'PUT', destination, { entetes: { 'x-amz-copy-source': `/${c.bucket}/${source}` } })
+  await verifierReponse(reponse, 'la copie d\'une photo')
+}
+
 // Autorise le navigateur à envoyer et lire les photos depuis l'adresse de l'application
 async function configurerCors(c, origines) {
   const corps = '<?xml version="1.0" encoding="UTF-8"?><CORSConfiguration><CORSRule>' +
