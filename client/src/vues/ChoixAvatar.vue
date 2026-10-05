@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { MODELES, choisirAvatar, envoyerPhotoAvatar } from '../avatars.js'
 import Avatar from './Avatar.vue'
+import RecadrageAvatar from './RecadrageAvatar.vue'
 
 // Choix d'un avatar : importer une photo, prendre un modèle 3D ou revenir à l'initiale.
 // `base` : '/profil' ou '/cercles/<id>/membres/<id>' (voir avatars.js).
@@ -14,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits(['change'])
 
 const fichier = ref(null)
+const aRecadrer = ref(null) // photo choisie, en attente de recadrage
 const enCours = ref(false)
 const erreur = ref('')
 
@@ -32,7 +34,12 @@ async function executer(fn) {
 function importer(event) {
   const f = event.target.files?.[0]
   event.target.value = ''
-  if (f) executer(() => envoyerPhotoAvatar(props.base, f))
+  if (f) aRecadrer.value = f
+}
+
+function recadree(blob) {
+  aRecadrer.value = null
+  executer(() => envoyerPhotoAvatar(props.base, blob))
 }
 
 const choisir = (valeur) => executer(() => choisirAvatar(props.base, valeur))
@@ -50,9 +57,11 @@ const choisir = (valeur) => executer(() => choisirAvatar(props.base, valeur))
         <button v-if="choix" type="button" class="lien" :disabled="enCours" @click="choisir(null)">Revenir à l'initiale</button>
         <p v-if="enCours" class="aide">Enregistrement…</p>
         <p v-else-if="erreur" class="erreur">{{ erreur }}</p>
-        <p v-else class="aide">La photo est recadrée en carré, au centre.</p>
+        <p v-else class="aide">Vous pourrez recadrer la photo avant de l'enregistrer.</p>
       </div>
     </div>
+
+    <RecadrageAvatar v-if="aRecadrer" :fichier="aRecadrer" @valider="recadree" @annuler="aRecadrer = null" />
 
     <p class="aide">Ou choisissez un modèle :</p>
     <template v-for="g in MODELES" :key="g.groupe">
