@@ -127,6 +127,9 @@ const JEUX_CHOIX = ['Claire', 'Sylvie', 'Marie']
 const JEUX_POINTS = [
   '« Qui est-ce ? » : retrouver le prénom d\'un proche, parmi trois',
   '« Quel âge ? » : deviner une tranche d\'âge, sans avoir à être précis',
+  '« Quelle est cette chanson ? » : un extrait de musique de sa jeunesse, avec « J\'aime » ou « J\'aime moins »',
+  'Les aidants ajoutent les chansons préférées de la personne, qui passent en premier',
+  'Chaque jeu se règle par personne, ou se coupe tout à fait',
   'Ni score ni chrono : une erreur ou « Je ne sais pas » donne la réponse avec le sourire',
   'La question et la réponse sont lues à voix haute, avec le lien de parenté',
   'Les photos viennent de l\'arbre de la famille, les proches d\'abord'
@@ -398,7 +401,7 @@ function contacter() {
             <span class="pastille">Les jeux</span>
             <h2>Reconnaître les siens, sans jamais se tromper</h2>
             <p>Sur sa tablette ou son smartphone, elle joue avec les photos de sa famille : retrouver un prénom, deviner
-              un âge. Il n'y a pas de mauvaise réponse. Quand elle hésite, l'application lui dit qui c'est et comment il
+              un âge, reconnaître une chanson d'autrefois. Il n'y a pas de mauvaise réponse. Quand elle hésite, l'application lui dit qui c'est et comment il
               ou elle s'appelle, comme une petite leçon de souvenirs plutôt qu'un examen.</p>
             <ul class="points">
               <li v-for="pt in JEUX_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
