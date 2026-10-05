@@ -31,6 +31,8 @@ const ouvrirEnvoiApp = async (m) => {
   await nextTick()
   document.getElementById(`envoi-app-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
+// Le modèle n'a pas accès à « navigator » : on le teste ici
+const partageNatif = typeof navigator.share === 'function'
 const partagerApp = () => navigator.share({ text: texteApplication(envoiApp.value.prenom) }).catch(() => {})
 async function envoyerApp() {
   envoiApp.value.erreur = ''
@@ -175,7 +177,7 @@ const adresseApk = `${location.host}/apk`
           <div class="actions">
             <a class="rond" :href="lienWhatsAppMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer par WhatsApp"><Icone nom="whatsapp" /></a>
             <a class="rond" :href="lienSmsMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" title="Envoyer par SMS" aria-label="Envoyer par SMS"><Icone nom="sms" /></a>
-            <BoutonIcone v-if="typeof navigator.share === 'function'" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
+            <BoutonIcone v-if="partageNatif" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
           </div>
         </div>
         </template>
