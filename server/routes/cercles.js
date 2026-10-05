@@ -366,7 +366,7 @@ router.put('/:cercleId/membres/:membreId/messagerie', chargerCercle, exigerGesti
 })
 
 // Jeux d'une personne accompagnée : accès, jeux proposés, nombre de propositions et de questions.
-// Corps : { actif, qui, age, niveau: 2 | 3, questions: 3 | 5 | 8 }
+// Corps : { actif, qui, age, decedes, niveau: 2 | 3, questions: 3 | 5 | 8 }
 router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
   const jeux = lireJeux(req.body)
   await db.update(utilisateurs).set({ jeux }).where(eq(utilisateurs.id, req.membre.utilisateurId))

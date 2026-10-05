@@ -139,6 +139,7 @@ const adresseApk = `${location.host}/apk`
           <template v-if="m.jeux.actif">
             <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">
               <span class="libelle-reglage">Niveau</span>
               <label class="case"><input type="radio" :name="`niveau-${m.id}`" :checked="m.jeux.niveau === 2" @change="changerJeux(m, { niveau: 2 })" /> Très facile (2 propositions)</label>
@@ -149,7 +150,7 @@ const adresseApk = `${location.host}/apk`
               <label v-for="n in [3, 5, 8]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
             </div>
           </template>
-          <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Les personnes décédées ne sont jamais proposées.</span>
+          <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Par défaut, les personnes décédées ne sont pas proposées.</span>
         </div>
         <div v-if="m.messagerie" class="messagerie">
           <span class="titre-alertes"><Icone nom="message" class="en-ligne" /> Messages</span>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { api } from '../api.js'
 import { chargerFamille } from '../famille.js'
 import { ageTexte, dateLongue } from '../coordonnees.js'
 import { questionsQui, questionsAge, candidats, reglagesJeux, chargerReglagesJeux, jeuxDisponibles } from '../jeux.js'
@@ -32,7 +33,7 @@ onMounted(async () => {
 })
 onUnmounted(arreterParole)
 
-const nbQui = computed(() => candidats(personnes.value).length)
+const nbQui = computed(() => candidats(personnes.value, { decedes: reglagesJeux.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
 const propose = (k) => reglagesJeux[k]
 const dispo = (k) => (k === 'qui' ? nbQui.value : nbAge.value) >= 2
@@ -40,6 +41,7 @@ const dispo = (k) => (k === 'qui' ? nbQui.value : nbAge.value) >= 2
 function jouer(k) {
   arreterParole()
   jeu.value = k
+  api('POST', '/jeux/partie').catch(() => {})
   questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, reglagesJeux)
   n.value = 0
   reponse.value = null

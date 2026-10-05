@@ -5,7 +5,7 @@ import { api } from './api.js'
 import { age } from './coordonnees.js'
 
 // Réglages des jeux de la personne connectée, choisis par ses aidants (null tant qu'ils ne sont pas chargés)
-export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, niveau: 3, questions: 5 })
+export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, decedes: false, niveau: 3, questions: 5 })
 export const jeuxDisponibles = () => reglagesJeux.actif && (reglagesJeux.qui || reglagesJeux.age)
 export async function chargerReglagesJeux() {
   try { Object.assign(reglagesJeux, await api('GET', '/jeux/reglages'), { charge: true }) } catch { /* hors ligne : on garde l'état précédent */ }
@@ -24,9 +24,10 @@ const melanger = (liste) => {
 const PROCHES = ['conjoint', 'enfants', 'petits-enfants']
 const rang = (p) => (PROCHES.includes(p.groupe) ? 0 : 1)
 
-// Personnes qu'on peut proposer : en vie, avec une photo, sans les auxiliaires
-export function candidats(personnes, { age: avecAge = false } = {}) {
-  return personnes.filter((p) => p.avatar && !p.decede && p.groupe !== 'aide' && p.prenom && (!avecAge || p.dateNaissance))
+// Personnes qu'on peut proposer : avec une photo, sans les auxiliaires ; les personnes décédées
+// seulement si les aidants l'ont choisi, et jamais pour deviner un âge
+export function candidats(personnes, { age: avecAge = false, decedes = false } = {}) {
+  return personnes.filter((p) => p.avatar && (!p.decede || (decedes && !avecAge)) && p.groupe !== 'aide' && p.prenom && (!avecAge || p.dateNaissance))
 }
 
 function tirer(liste, n) {
@@ -35,8 +36,8 @@ function tirer(liste, n) {
 }
 
 // « Qui est-ce ? » : un prénom à retrouver parmi 3 (2 si peu de personnes)
-export function questionsQui(personnes, { niveau = 3, questions = 5 } = {}) {
-  const pool = candidats(personnes)
+export function questionsQui(personnes, { niveau = 3, questions = 5, decedes = false } = {}) {
+  const pool = candidats(personnes, { decedes })
   return tirer(pool, questions).map((p) => {
     const memeGenre = pool.filter((x) => x.id !== p.id && x.prenom !== p.prenom && (!p.genre || !x.genre || x.genre === p.genre))
     const autres = pool.filter((x) => x.id !== p.id && x.prenom !== p.prenom)

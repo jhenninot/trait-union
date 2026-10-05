@@ -5,7 +5,7 @@ import { db } from './db/index.js'
 // (page Personnes accompagnées et accueil des aidants) : par jour, combien de fois chaque écran a
 // été ouvert. Rien sur ce qui a été regardé, dit ou écrit.
 
-export const ECRANS = ['accueil', 'photos', 'agenda', 'famille', 'arbre', 'messages', 'voix']
+export const ECRANS = ['accueil', 'photos', 'agenda', 'famille', 'arbre', 'messages', 'voix', 'jeux']
 const JOURS_FRISE = 30
 
 // Seuls les appareils configurés pour une personne accompagnée sont suivis

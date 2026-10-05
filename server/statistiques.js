@@ -11,7 +11,7 @@ import * as presentation from './presentation/config.js'
 
 const JOUR = 24 * 60 * 60 * 1000
 export const SEMAINES = 12
-export const CANAUX = ['voix', 'alertes', 'presentation']
+export const CANAUX = ['voix', 'alertes', 'presentation', 'jeux']
 
 // --- Compteurs journaliers (une écriture par événement, sans attendre ni bloquer la requête)
 
@@ -25,15 +25,18 @@ export function compter(canal, cercleId = null, nombre = 1) {
   `).catch((e) => console.error('[Statistiques] Compteur :', e.message))
 }
 
-// Commande vocale : comptée dans le cercle de la personne accompagnée (le premier s'il y en a plusieurs)
-export async function compterVoix(utilisateurId) {
+// Commande vocale ou partie de jeu : comptée dans le cercle de la personne accompagnée (le premier s'il y en a plusieurs)
+export const compterVoix = (utilisateurId) => compterPourUtilisateur('voix', utilisateurId)
+export const compterJeux = (utilisateurId) => compterPourUtilisateur('jeux', utilisateurId)
+
+async function compterPourUtilisateur(canal, utilisateurId) {
   try {
     const { rows } = await db.execute(sql`
       select cercle_id from membres where utilisateur_id = ${utilisateurId}
       order by (role = 'accompagne') desc, cree_le limit 1`)
-    compter('voix', rows[0]?.cercle_id ?? null)
+    compter(canal, rows[0]?.cercle_id ?? null)
   } catch (e) {
-    console.error('[Statistiques] Voix :', e.message)
+    console.error(`[Statistiques] ${canal} :`, e.message)
   }
 }
 
@@ -56,6 +59,7 @@ const MODULES = [
   { cle: 'invitations', table: sql`invitations` },
   { cle: 'messages', table: sql`messages`, filtre: sql`publie` },
   { cle: 'voix', canal: 'voix' },
+  { cle: 'jeux', canal: 'jeux' },
   { cle: 'alertes', canal: 'alertes' }
 ]
 
@@ -226,6 +230,13 @@ export async function statistiques(maintenant = new Date()) {
            max(modifie_le) as derniere
     from compteurs where canal = 'voix'`)
 
+  const [jeux] = await lignes(sql`
+    select coalesce(sum(nombre) filter (where jour >= ${j30}::date), 0) as n30,
+           coalesce(sum(nombre) filter (where jour >= ${j7}::date), 0) as n7,
+           count(distinct cercle_id) filter (where jour >= ${j30}::date) as cercles,
+           max(modifie_le) as derniere
+    from compteurs where canal = 'jeux'`)
+
   const [invitations] = await lignes(sql`
     select count(*) filter (where acceptee_le is null and expire_le > now()) as en_attente,
            count(*) filter (where cree_le >= ${j30}) as envoyees30,
@@ -331,6 +342,7 @@ export async function statistiques(maintenant = new Date()) {
       liens: nb(arbre.liens)
     },
     voix: { n30: nb(voix.n30), n7: nb(voix.n7), cercles: nb(voix.cercles), derniere: date(voix.derniere) },
+    jeux: { n30: nb(jeux.n30), n7: nb(jeux.n7), cercles: nb(jeux.cercles), derniere: date(jeux.derniere) },
     invitations: {
       enAttente: nb(invitations.en_attente),
       envoyees30: nb(invitations.envoyees30),

@@ -4,7 +4,7 @@ import { session } from './session.js'
 // Sur l'appareil d'une personne accompagnée : chaque écran ouvert est signalé au serveur, pour que
 // ses aidants voient si elle se sert de l'application (server/utilisation.js). Un retour sur
 // l'application (écran rallumé, appli rouverte) compte aussi, au plus une fois tous les quarts d'heure.
-const ECRANS = { '/': 'accueil', '/photos': 'photos', '/agenda': 'agenda', '/famille': 'famille', '/mon-arbre': 'arbre', '/messages': 'messages' }
+const ECRANS = { '/': 'accueil', '/photos': 'photos', '/agenda': 'agenda', '/famille': 'famille', '/mon-arbre': 'arbre', '/messages': 'messages', '/jeux': 'jeux' }
 const QUART_D_HEURE = 15 * 60 * 1000
 
 let ecranCourant = null
@@ -57,6 +57,7 @@ export const LIBELLES_ECRANS = {
   photos: { nom: 'Photos', icone: 'photo' },
   agenda: { nom: 'Agenda', icone: 'agenda' },
   famille: { nom: 'Ma famille', icone: 'famille' },
+  jeux: { nom: 'Jeux', icone: 'jeux' },
   arbre: { nom: 'Mon arbre', icone: 'arbre' },
   messages: { nom: 'Mes messages', icone: 'message' },
   voix: { nom: 'Voix', icone: 'micro' }

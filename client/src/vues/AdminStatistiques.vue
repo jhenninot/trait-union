@@ -100,6 +100,7 @@ const MODULES = [
   { cle: 'invitations', nom: 'Invitations envoyées', icone: 'email' },
   { cle: 'messages', nom: 'Messages envoyés', icone: 'message' },
   { cle: 'voix', nom: 'Commandes vocales', icone: 'micro' },
+  { cle: 'jeux', nom: 'Parties de jeux', icone: 'jeux' },
   { cle: 'alertes', nom: 'Alertes reçues', icone: 'cloche', sansCercle: true }
 ]
 const lignesModules = computed(() => {
@@ -397,6 +398,17 @@ const cerclesEnSommeil = computed(() => (stats.value?.cercles ?? []).filter(enSo
             <div><dt>Fiches avec « À savoir »</dt><dd>{{ nombre(stats.arbre.aSavoir) }}</dd></div>
             <div><dt>Cercles avec un arbre</dt><dd>{{ stats.arbre.cercles }} / {{ stats.cerclesTotal }}</dd></div>
           </dl>
+        </div>
+
+        <div class="carte module">
+          <h2><Icone nom="jeux" /> Jeux</h2>
+          <dl>
+            <div><dt>Parties (7 jours)</dt><dd>{{ nombre(stats.jeux.n7) }}</dd></div>
+            <div><dt>Parties (30 jours)</dt><dd>{{ nombre(stats.jeux.n30) }}</dd></div>
+            <div><dt>Cercles qui y jouent</dt><dd>{{ stats.jeux.cercles }} / {{ stats.cerclesTotal }}</dd></div>
+            <div><dt>Dernière partie</dt><dd>{{ ilYA(stats.jeux.derniere) }}</dd></div>
+          </dl>
+          <p class="aide note">« Qui est-ce ? » et « Quel âge ? » : une partie est comptée au démarrage, rien d'autre n'est retenu.</p>
         </div>
 
         <div class="carte module">
