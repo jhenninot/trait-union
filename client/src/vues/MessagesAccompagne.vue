@@ -10,6 +10,8 @@ import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
 import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
+import SelecteurEmoji from './SelecteurEmoji.vue'
+import { EMOJIS_FREQUENTS, insererDans, seulementEmojis } from '../emojis.js'
 import { confirmer } from '../fenetre.js'
 import { motDecede } from '../coordonnees.js'
 import { RouterLink } from 'vue-router'
@@ -27,6 +29,10 @@ const zoneFil = ref(null)
 const cible = ref(null) // { titre, prenom, avatar, lien, famille, conversationId, cercleId, utilisateurId }
 const envoi = ref(false)
 const texte = ref('')
+// Émojis : une rangée des plus courants, et tous les autres sur demande
+const champTexte = ref(null)
+const tousLesEmojis = ref(false)
+const ajouterEmoji = (e) => (texte.value = insererDans(champTexte.value, texte.value, e))
 const enregistrement = ref(null) // { session, secondes }
 const enGrand = ref(null)
 const choixPhoto = ref(null)
@@ -373,7 +379,7 @@ async function terminerVocal() {
                   <RouterLink to="/agenda" class="choisir-jours secondaire-lien"><Icone nom="agenda" class="en-ligne" /> Voir dans mon agenda</RouterLink>
                 </template>
               </div>
-              <p v-else-if="b.texte" class="texte"><TexteMessage :texte="b.texte" /></p>
+              <p v-else-if="b.texte" class="texte" :class="{ 'gros-emoji': b.type === 'texte' && seulementEmojis(b.texte) }"><TexteMessage :texte="b.texte" /></p>
               <ApercuLien v-if="b.lien" :lien="b.lien" grand @charge="apresImage" />
               <div class="pied-bulle">
                 <button v-if="b.vocal || lecture" class="ecouter" :aria-label="audio?.id === b.id ? 'Arrêter' : 'Écouter'" @click="audio?.id === b.id ? arreterAudio() : ecouter(b)">
@@ -403,9 +409,16 @@ async function terminerVocal() {
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <form class="formulaire-clavier" @submit.prevent="envoyerClavier">
-        <textarea v-model="texte" rows="2" maxlength="2000" placeholder="Écrire votre message ici" aria-label="Votre message" />
+        <textarea ref="champTexte" v-model="texte" rows="2" maxlength="2000" placeholder="Écrire votre message ici" aria-label="Votre message" />
         <button :disabled="envoi || !texte.trim()"><Icone nom="envoyer" class="en-ligne" /> Envoyer</button>
       </form>
+      <div class="emojis-aide">
+        <button v-for="e in EMOJIS_FREQUENTS" :key="e" type="button" class="emoji-aide" :aria-label="`Ajouter ${e}`" @click="ajouterEmoji(e)">{{ e }}</button>
+        <button type="button" class="autres-emojis" :class="{ actif: tousLesEmojis }" @click="tousLesEmojis = !tousLesEmojis">
+          <Icone :nom="tousLesEmojis ? 'fermer' : 'emoji'" class="en-ligne" /> {{ tousLesEmojis ? 'Fermer' : 'Autres' }}
+        </button>
+      </div>
+      <SelecteurEmoji v-if="tousLesEmojis" grand @choisir="ajouterEmoji" />
       <p class="petit-gris ou">ou choisir :</p>
       <div class="rapides">
         <button v-for="r in reglages.reponses" :key="r" class="rapide-bouton" :disabled="envoi" @click="envoyerReponse(r)">
@@ -560,6 +573,10 @@ h1 { font-size: 2.4rem; margin: 0; }
 .formulaire-clavier { display: flex; gap: 12px; align-items: stretch; }
 .formulaire-clavier textarea { flex: 1; min-width: 0; font: inherit; font-size: 1.6rem; padding: 16px; border-radius: 18px; border: 3px solid var(--vert); background: #fff; resize: none; }
 .formulaire-clavier textarea::placeholder { color: #7a8580; }
+.emojis-aide { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: -4px; }
+.emoji-aide { background: white; border: 2px solid #ebe7e0; border-radius: 16px; width: 64px; height: 60px; padding: 0; font-size: 2.1rem; line-height: 1; display: grid; place-items: center; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+.autres-emojis { background: var(--vert-clair); color: var(--vert); font-size: 1.25rem; font-weight: 700; padding: 0 18px; height: 60px; border-radius: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.bulle .texte.gros-emoji { font-size: 3.4rem; line-height: 1.15; }
 .formulaire-clavier button { flex: none; font-size: 1.5rem; font-weight: 700; padding: 14px 24px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .ou { margin: -4px 0 -6px; }
 .envoi { font-size: 1.4rem; color: var(--gris); text-align: center; }
@@ -607,6 +624,10 @@ h1 { font-size: 2.4rem; margin: 0; }
   .trois { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .choix-jour { font-size: 1.05rem; padding: 10px 4px; gap: 4px; flex-direction: column; }
   .formulaire-clavier { flex-direction: column; }
+  .emojis-aide { gap: 6px; }
+  .emoji-aide { width: calc((100% - 30px) / 6); height: 50px; font-size: 1.7rem; }
+  .autres-emojis { height: 50px; font-size: 1.1rem; width: 100%; justify-content: center; }
+  .bulle .texte.gros-emoji { font-size: 2.6rem; }
   .formulaire-clavier textarea { font-size: 1.3rem; padding: 12px; }
   .formulaire-clavier button { font-size: 1.3rem; padding: 12px; }
   .ecran-photo textarea { font-size: 1.15rem; }

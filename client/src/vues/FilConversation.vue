@@ -19,6 +19,8 @@ import CarteSondage from './CarteSondage.vue'
 import DetailSondage from './DetailSondage.vue'
 import FenetreSondage from './FenetreSondage.vue'
 import FenetreGroupe from './FenetreGroupe.vue'
+import SelecteurEmoji from './SelecteurEmoji.vue'
+import { insererDans, seulementEmojis } from '../emojis.js'
 
 // Fil d'une conversation, côté aidants, proches et auxiliaires : messages, accusés de lecture,
 // envoi de texte, de photos et de messages vocaux, sourdine et modération par les aidants.
@@ -40,7 +42,10 @@ const selection = ref(null) // message dont on montre les actions
 const zone = ref(null)
 const champ = ref(null)
 const choixPhoto = ref(null)
-const photo = ref(null) // { fichier, apercu, legende, album }
+const photos = ref(null) // { liste: [{ fichier, apercu, legende }], index, album } : aperçu avant envoi
+const camera = ref(null)
+const emojis = ref(false) // panneau d'émojis ouvert
+const joindre = ref(false) // menu du trombone ouvert
 const enregistrement = ref(null) // { session, secondes }
 let chrono = null
 
@@ -127,7 +132,9 @@ watch(() => props.conversationId, () => {
   texte.value = ''
   filtre.value = null
   pour.value = null
-  photo.value = null
+  annulerPhotos()
+  emojis.value = false
+  joindre.value = false
   annulerVocal()
   charger()
 }, { immediate: true })
@@ -197,24 +204,81 @@ async function chargerAlbums() {
 }
 // album : false = pas dans les photos du cercle, 'aucun' = « Non classé », sinon l'id de l'album
 const albumId = (album) => (album === 'aucun' ? null : album)
+// Photos choisies (galerie, appareil photo, collées ou glissées) : aperçu en plein écran comme sur
+// WhatsApp, une légende par photo, puis envoi l'une après l'autre
+function ajouterPhotos(fichiers) {
+  const images = [...fichiers].filter((f) => f.type.startsWith('image/'))
+  if (!images.length) return
+  joindre.value = false
+  emojis.value = false
+  const nouvelles = images.map((fichier) => ({ fichier, apercu: URL.createObjectURL(fichier), legende: '' }))
+  if (!photos.value) {
+    // Le texte déjà tapé devient la légende de la première photo
+    nouvelles[0].legende = texte.value.trim()
+    photos.value = { liste: nouvelles, index: 0, album: false }
+    chargerAlbums()
+  } else {
+    photos.value.liste.push(...nouvelles)
+    photos.value.index = photos.value.liste.length - nouvelles.length
+  }
+}
 function photoChoisie(e) {
-  const fichier = e.target.files?.[0]
+  ajouterPhotos(e.target.files ?? [])
   e.target.value = ''
-  if (!fichier) return
-  photo.value = { fichier, apercu: URL.createObjectURL(fichier), legende: texte.value.trim(), album: false }
-  chargerAlbums()
 }
-function annulerPhoto() {
-  if (photo.value) URL.revokeObjectURL(photo.value.apercu)
-  photo.value = null
+function retirerPhoto(i) {
+  const p = photos.value
+  URL.revokeObjectURL(p.liste[i].apercu)
+  p.liste.splice(i, 1)
+  if (!p.liste.length) return annulerPhotos()
+  p.index = Math.min(p.index, p.liste.length - 1)
 }
-const envoyerLaPhoto = () => action(async () => {
-  const { fichier, legende, album } = photo.value
-  await envoyerPhotoMessage(props.conversationId, fichier, legende, extra())
-  if (album !== false) await envoyerPhoto(conversation.value.cercleId, fichier, legende, albumId(album)).catch((e) => { throw new Error(`Message envoyé, mais pas ajouté aux photos : ${e.message}`) })
+function annulerPhotos() {
+  for (const p of photos.value?.liste ?? []) URL.revokeObjectURL(p.apercu)
+  photos.value = null
+}
+const photoActive = computed(() => photos.value?.liste[photos.value.index])
+const envoyerLesPhotos = () => action(async () => {
+  const { liste, album } = photos.value
+  for (const [i, { fichier, legende }] of liste.entries()) {
+    await envoyerPhotoMessage(props.conversationId, fichier, legende.trim(), extra())
+      .catch((e) => { throw new Error(i ? `${i} photo${i > 1 ? 's' : ''} envoyée${i > 1 ? 's' : ''}, puis : ${e.message}` : e.message) })
+    if (album !== false) await envoyerPhoto(conversation.value.cercleId, fichier, legende.trim(), albumId(album)).catch((e) => { throw new Error(`Message envoyé, mais pas ajouté aux photos : ${e.message}`) })
+  }
   texte.value = ''
-  annulerPhoto()
+  annulerPhotos()
 })
+// Coller une image (Ctrl+V) ou la glisser dans la conversation
+function colle(e) {
+  const fichiers = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
+  if (!fichiers.length || !donnees.value?.fichiers) return
+  e.preventDefault()
+  ajouterPhotos(fichiers)
+}
+const survol = ref(false)
+function depose(e) {
+  survol.value = false
+  if (donnees.value?.fichiers && conversation.value?.peutEcrire) ajouterPhotos(e.dataTransfer?.files ?? [])
+}
+
+// --- Émojis : le panneau remplace le clavier sur téléphone, comme sur WhatsApp
+const tactile = () => window.matchMedia('(pointer: coarse)').matches
+function basculerEmojis() {
+  emojis.value = !emojis.value
+  joindre.value = false
+  // Sur tablette ou smartphone, le panneau prend la place du clavier
+  if (emojis.value && tactile()) champ.value?.blur()
+  if (!emojis.value) nextTick(() => champ.value?.focus())
+}
+function ajouterEmoji(e) {
+  texte.value = insererDans(champ.value, texte.value, e)
+  if (!tactile()) nextTick(() => champ.value?.focus())
+}
+const legende = ref(null)
+const emojisLegende = ref(false)
+function ajouterEmojiLegende(e) {
+  photoActive.value.legende = insererDans(legende.value, photoActive.value.legende, e)
+}
 
 // --- Photo d'une conversation : l'ajouter aux photos du cercle, dans l'album choisi
 const ajout = ref(null) // { message, album }
@@ -294,7 +358,7 @@ const vocalPossible = enregistrementPossible()
 </script>
 
 <template>
-  <section class="fil">
+  <section class="fil" @dragover.prevent="survol = Boolean(donnees?.fichiers && conversation?.peutEcrire)" @dragleave.self="survol = false" @drop.prevent="depose">
     <header v-if="conversation" class="tete-fil">
       <button v-if="retour" class="retour" aria-label="Retour aux conversations" @click="emit('retour')"><Icone nom="precedent" /></button>
       <Avatar v-if="conversation.autre" :src="conversation.autre.avatar" :prenom="conversation.autre.prenom" :taille="42" :decede="conversation.autre.decede" />
@@ -354,7 +418,7 @@ const vocalPossible = enregistrementPossible()
             <div class="auteur">{{ b.deMoi ? 'Vous' : b.auteur.prenom }}<span v-if="b.auteur.decede" class="mention-deces">{{ motDecede(b.auteur.genre) }}</span></div>
             <CarteSondage v-if="b.sondage" :sondage="b.sondage" :class="{ choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id"
               @repondre="detail = { id: b.sondage.id, mode: 'repondre' }" @detail="detail = { id: b.sondage.id, mode: 'detail' }" />
-            <div v-else class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id }" @click="selection = selection === b.id ? null : b.id">
+            <div v-else class="bulle" :class="{ rapide: b.type === 'rapide', choisie: selection === b.id, 'gros-emoji': b.type === 'texte' && !b.photo && seulementEmojis(b.texte) }" @click="selection = selection === b.id ? null : b.id">
               <img v-if="b.photo" :src="b.photo.miniature" alt="Photo" class="photo-msg" @load="apresImage" :style="b.photo.largeur ? { aspectRatio: `${b.photo.largeur} / ${b.photo.hauteur}` } : null" @click.stop="enGrand = { ...b.photo, message: b }" />
               <p v-else-if="b.type === 'photo'" class="aide">Photo (stockage non configuré)</p>
               <div v-if="b.vocal" class="vocal"><Icone nom="micro" class="en-ligne" /><audio :src="b.vocal.lien" controls preload="none" /><span>{{ duree(b.vocal.duree) }}</span></div>
@@ -384,47 +448,91 @@ const vocalPossible = enregistrementPossible()
 
     <p v-if="erreur" class="erreur bandeau-erreur">{{ erreur }}</p>
 
-    <!-- Photo choisie : aperçu avant envoi -->
-    <div v-if="photo" class="apercu-photo">
-      <img :src="photo.apercu" alt="" />
-      <div class="grandit">
-        <textarea v-model="photo.legende" rows="2" placeholder="Ajouter un commentaire (facultatif)" maxlength="1000" aria-label="Commentaire" />
-        <select v-if="peutAlbum" v-model="photo.album" aria-label="Photos du cercle">
-          <option :value="false">Pas dans les photos du cercle</option>
-          <option value="aucun">Photos du cercle : Non classé</option>
-          <option v-for="a in albums ?? []" :key="a.id" :value="a.id">Album « {{ a.nom }} »</option>
-        </select>
-      </div>
-      <div class="boutons-apercu">
-        <button class="secondaire" :disabled="envoi" @click="annulerPhoto">Annuler</button>
-        <button :disabled="envoi" @click="envoyerLaPhoto"><Icone nom="envoyer" class="en-ligne" /> {{ envoi ? 'Envoi…' : 'Envoyer' }}</button>
-      </div>
-    </div>
-
     <!-- Enregistrement en cours -->
-    <div v-else-if="enregistrement" class="saisie enregistrement">
+    <div v-if="enregistrement" class="saisie enregistrement">
       <span class="point-rouge" />
       <span class="grandit">Enregistrement… {{ duree(enregistrement.secondes) }} <span class="aide">(2 minutes au plus)</span></span>
       <button class="secondaire" @click="annulerVocal"><Icone nom="effacer" class="en-ligne" /> Effacer</button>
       <button @click="terminerVocal"><Icone nom="envoyer" class="en-ligne" /> Envoyer</button>
     </div>
 
+    <!-- Barre d'écriture façon WhatsApp : émojis et pièces jointes dans le champ, micro ou envoi à droite -->
     <form v-else-if="conversation?.peutEcrire" class="saisie" @submit.prevent="envoyer">
       <select v-if="estLiaison && donnees.accompagnes.length" v-model="pour" class="pour" aria-label="Personne concernée">
         <option :value="null">Tous</option>
         <option v-for="a in donnees.accompagnes" :key="a.utilisateurId" :value="a.utilisateurId">{{ a.prenom }}</option>
       </select>
-      <BoutonIcone v-if="donnees.peutSonder" icone="sondage" libelle="Proposer des dates (sondage)" :disabled="envoi" @click="nouveauSondage = true" />
-      <BoutonIcone v-if="donnees.fichiers" icone="photo" libelle="Envoyer une photo" :disabled="envoi" @click="choixPhoto.click()" />
-      <input ref="choixPhoto" type="file" accept="image/*" hidden @change="photoChoisie" />
-      <textarea ref="champ" v-model="texte" :placeholder="placeholder" rows="1" maxlength="4000" @keydown="touche" />
-      <BoutonIcone v-if="donnees.fichiers && vocalPossible && !texte.trim()" icone="micro" :libelle="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :disabled="envoi" @click="commencerVocal" />
+      <div class="champ-saisie">
+        <button type="button" class="dans-champ" :class="{ actif: emojis }" :aria-label="emojis ? 'Revenir au clavier' : 'Émojis'" :title="emojis ? 'Revenir au clavier' : 'Émojis'" @click="basculerEmojis">
+          <Icone :nom="emojis ? 'clavier' : 'emoji'" />
+        </button>
+        <textarea ref="champ" v-model="texte" :placeholder="placeholder" rows="1" maxlength="4000" @keydown="touche" @paste="colle" @focus="joindre = false; tactile() && (emojis = false)" />
+        <div v-if="donnees.fichiers || donnees.peutSonder" class="ancre-joindre">
+          <button type="button" class="dans-champ" :class="{ actif: joindre }" aria-label="Joindre" title="Joindre une photo ou un sondage" @click="joindre = !joindre; emojis = false">
+            <Icone nom="trombone" />
+          </button>
+          <div v-if="joindre" class="menu-joindre">
+            <button v-if="donnees.fichiers" type="button" @click="choixPhoto.click()"><span class="rond-menu galerie"><Icone nom="photo" /></span> Galerie</button>
+            <button v-if="donnees.fichiers" type="button" @click="camera.click()"><span class="rond-menu camera"><Icone nom="appareil" /></span> Appareil photo</button>
+            <button v-if="donnees.peutSonder" type="button" @click="joindre = false; nouveauSondage = true"><span class="rond-menu sondage"><Icone nom="sondage" /></span> Sondage de dates</button>
+          </div>
+        </div>
+        <button v-if="donnees.fichiers && !texte.trim()" type="button" class="dans-champ" aria-label="Prendre une photo" title="Prendre une photo" @click="camera.click()">
+          <Icone nom="appareil" />
+        </button>
+      </div>
+      <input ref="choixPhoto" type="file" accept="image/*" multiple hidden @change="photoChoisie" />
+      <input ref="camera" type="file" accept="image/*" capture="environment" hidden @change="photoChoisie" />
+      <button v-if="donnees.fichiers && vocalPossible && !texte.trim()" type="button" class="envoyer" :aria-label="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :title="`Message vocal (${DUREE_VOCAL_MAX / 60} minutes au plus)`" :disabled="envoi" @click="commencerVocal"><Icone nom="micro" /></button>
       <button v-else class="envoyer" :disabled="envoi || !texte.trim()" aria-label="Envoyer" title="Envoyer"><Icone nom="envoyer" /></button>
     </form>
+    <SelecteurEmoji v-if="emojis && conversation?.peutEcrire && !enregistrement" @choisir="ajouterEmoji" />
     <p v-else-if="conversation?.autre?.decede" class="fin-conversation">
       {{ conversation.autre.prenom }} est {{ motDecede(conversation.autre.genre) }} : vos messages restent ici, mais on ne peut plus lui écrire.
     </p>
     <p v-else-if="conversation" class="aide ferme">Vous ne pouvez plus écrire dans cette conversation.</p>
+
+    <!-- Photos choisies : aperçu en grand, une légende par photo, comme sur WhatsApp -->
+    <div v-if="photos" class="envoi-photos">
+      <div class="haut-photos">
+        <button class="sur-noir" aria-label="Annuler" title="Annuler" :disabled="envoi" @click="annulerPhotos"><Icone nom="fermer" /></button>
+        <span>{{ photos.liste.length > 1 ? `${photos.index + 1} / ${photos.liste.length}` : '' }}</span>
+        <button v-if="photos.liste.length > 1" class="sur-noir" aria-label="Retirer cette photo" title="Retirer cette photo" :disabled="envoi" @click="retirerPhoto(photos.index)"><Icone nom="effacer" /></button>
+        <span v-else />
+      </div>
+      <div class="grande-photo"><img :src="photoActive.apercu" alt="Photo à envoyer" /></div>
+      <div class="bas-photos">
+        <div class="legende-ligne">
+          <div class="champ-saisie sombre">
+            <button type="button" class="dans-champ" :aria-label="emojisLegende ? 'Revenir au clavier' : 'Émojis'" @click="emojisLegende = !emojisLegende"><Icone :nom="emojisLegende ? 'clavier' : 'emoji'" /></button>
+            <textarea ref="legende" v-model="photoActive.legende" rows="1" maxlength="1000" placeholder="Ajouter une légende…" aria-label="Légende" />
+          </div>
+        </div>
+        <SelecteurEmoji v-if="emojisLegende" class="emojis-legende" @choisir="ajouterEmojiLegende" />
+        <div class="vignettes-ligne">
+          <div class="vignettes">
+            <button v-for="(p, i) in photos.liste" :key="p.apercu" class="vignette" :class="{ active: i === photos.index }" :aria-label="`Photo ${i + 1}`" @click="photos.index = i">
+              <img :src="p.apercu" alt="" />
+            </button>
+            <button class="vignette ajouter" aria-label="Ajouter des photos" title="Ajouter des photos" :disabled="envoi" @click="choixPhoto.click()"><Icone nom="ajouter" /></button>
+          </div>
+        </div>
+        <div class="envoi-ligne">
+          <select v-if="peutAlbum" v-model="photos.album" aria-label="Photos du cercle">
+            <option :value="false">Pas dans les photos du cercle</option>
+            <option value="aucun">Aussi dans les photos : Non classé</option>
+            <option v-for="a in albums ?? []" :key="a.id" :value="a.id">Aussi dans l'album « {{ a.nom }} »</option>
+          </select>
+          <span class="pour-qui">{{ conversation.titre }}</span>
+          <button class="envoyer gros" :disabled="envoi" :aria-label="`Envoyer ${photos.liste.length > 1 ? `les ${photos.liste.length} photos` : 'la photo'}`" @click="envoyerLesPhotos">
+            <Icone nom="envoyer" /><span v-if="photos.liste.length > 1" class="compte">{{ photos.liste.length }}</span>
+          </button>
+        </div>
+        <p v-if="envoi" class="envoi-cours">Envoi en cours…</p>
+        <p v-if="erreur" class="erreur">{{ erreur }}</p>
+      </div>
+    </div>
+    <div v-if="survol" class="zone-depot"><Icone nom="photo" /><p>Déposez les photos ici</p></div>
 
     <FenetreSondage v-if="nouveauSondage" :conversation-id="conversationId" @fermer="nouveauSondage = false" @enregistre="sondageLance" />
     <FenetreGroupe v-if="gererGroupe" :cercle-id="conversation.cercleId" :groupe="conversation" @fermer="gererGroupe = false" @enregistre="gererGroupe = false; charger(); emit('change')" @supprime="gererGroupe = false; emit('supprime')" />
@@ -494,17 +602,63 @@ const vocalPossible = enregistrementPossible()
 .texte-note { margin: 8px 0 2px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pastille { background: var(--vert-clair); color: var(--vert); border-radius: 999px; padding: 1px 10px; font-size: 0.8rem; }
 .saisie { display: flex; gap: 8px; align-items: flex-end; padding: 10px 16px; background: white; border-top: 1px solid #ebe8e3; margin: 0; flex-direction: row; }
-.saisie textarea { flex: 1; font: inherit; border: 1px solid #e2ded7; border-radius: 22px; padding: 10px 16px; resize: none; max-height: 160px; min-height: 44px; field-sizing: content; }
+.champ-saisie { flex: 1; min-width: 0; display: flex; align-items: flex-end; background: white; border: 1px solid #e2ded7; border-radius: 24px; padding: 2px 4px; }
+.champ-saisie:focus-within { border-color: var(--vert); }
+.champ-saisie textarea { flex: 1; min-width: 0; font: inherit; border: none; outline: none; background: none; padding: 10px 4px; resize: none; max-height: 160px; min-height: 40px; field-sizing: content; box-shadow: none; }
+.dans-champ { background: none; color: var(--gris); width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.dans-champ:hover, .dans-champ.actif { color: var(--vert); background: var(--vert-clair); }
+.dans-champ .icone { width: 22px; height: 22px; }
+.ancre-joindre { position: relative; }
+.menu-joindre { position: absolute; bottom: 52px; right: -40px; z-index: 20; background: white; border-radius: 16px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.16); padding: 8px; display: flex; flex-direction: column; gap: 2px; min-width: 210px; }
+.menu-joindre button { display: flex; align-items: center; gap: 12px; background: none; color: #2b2b2b; padding: 8px 10px; border-radius: 10px; font-weight: 500; text-align: left; }
+.menu-joindre button:hover { background: #f4f2ee; }
+.rond-menu { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: white; flex: none; }
+.rond-menu .icone { width: 20px; height: 20px; }
+.rond-menu.galerie { background: #8e5bd0; }
+.rond-menu.camera { background: #d6487e; }
+.rond-menu.sondage { background: #2f8f9d; }
+.bulle.gros-emoji { background: none; box-shadow: none; padding: 0 2px; }
+.bulle.gros-emoji .texte { font-size: 2.6rem; line-height: 1.2; }
+.moi .bulle.gros-emoji { color: inherit; }
+.moi .bulle.gros-emoji .h { color: var(--gris); }
+.envoi-photos { position: fixed; inset: 0; z-index: 150; background: #0b141a; color: white; display: flex; flex-direction: column; }
+.haut-photos { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; }
+.sur-noir { background: rgb(255 255 255 / 0.12); color: white; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+.grande-photo { flex: 1; min-height: 0; display: grid; place-items: center; padding: 0 12px; }
+.grande-photo img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.bas-photos { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; max-width: 900px; width: 100%; margin: 0 auto; }
+.champ-saisie.sombre { background: #1f2c33; border-color: #1f2c33; }
+.champ-saisie.sombre textarea { color: white; }
+.champ-saisie.sombre .dans-champ { color: #aebac1; }
+.champ-saisie.sombre .dans-champ:hover { background: rgb(255 255 255 / 0.08); color: white; }
+.emojis-legende { border-radius: 14px; overflow: hidden; color: #2b2b2b; }
+.vignettes-ligne { overflow-x: auto; }
+.vignettes { display: flex; gap: 8px; justify-content: center; min-width: min-content; }
+.vignette { width: 56px; height: 56px; padding: 0; border-radius: 10px; overflow: hidden; border: 2px solid transparent; background: #1f2c33; flex: none; opacity: 0.7; }
+.vignette.active { border-color: var(--vert); opacity: 1; }
+.vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vignette.ajouter { display: grid; place-items: center; color: white; opacity: 1; border: 2px dashed #54656f; }
+.envoi-ligne { display: flex; align-items: center; gap: 12px; }
+.envoi-ligne select { background: #1f2c33; color: white; border: none; border-radius: 10px; padding: 8px 10px; max-width: 60%; }
+@media (max-width: 600px) {
+  .envoi-ligne { flex-wrap: wrap; }
+  .envoi-ligne select { order: 3; flex: 1 1 100%; max-width: none; }
+  .pour-qui { text-align: left; }
+  .envoyer.gros { margin-left: auto; }
+}
+.pour-qui { flex: 1; min-width: 0; color: #aebac1; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.envoyer.gros { width: 56px; height: 56px; position: relative; }
+.envoyer.gros .compte { position: absolute; top: -4px; right: -4px; background: white; color: var(--vert); border-radius: 999px; font-size: 0.75rem; font-weight: 700; min-width: 20px; height: 20px; display: grid; place-items: center; }
+.envoi-cours { margin: 0; color: #aebac1; text-align: center; }
+.envoi-photos .erreur { margin: 0; }
+.fil { position: relative; }
+.zone-depot { position: absolute; inset: 0; z-index: 40; background: rgb(46 140 104 / 0.12); border: 3px dashed var(--vert); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--vert); pointer-events: none; font-weight: 600; }
+.zone-depot .icone { width: 56px; height: 56px; }
 .saisie .pour { padding: 8px; border-radius: 10px; max-width: 120px; align-self: center; }
 .envoyer { width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .enregistrement { align-items: center; }
 .point-rouge { width: 14px; height: 14px; border-radius: 50%; background: var(--rouge); animation: clignote 1s infinite; flex: none; }
 @keyframes clignote { 50% { opacity: 0.3; } }
-.apercu-photo { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: white; border-top: 1px solid #ebe8e3; flex-wrap: wrap; }
-.apercu-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
-.apercu-photo .grandit { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
-.apercu-photo textarea { font: inherit; width: 100%; resize: vertical; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; }
-.apercu-photo input:not([type]) { width: 100%; }
 .case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; margin-top: 6px; font-size: 0.92rem; }
 .boutons-apercu { display: flex; gap: 8px; }
 .bandeau-erreur { margin: 0; padding: 6px 16px; background: #fbeceb; }
