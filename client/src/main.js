@@ -13,6 +13,7 @@ import AdminEmail from './vues/AdminEmail.vue'
 import AdminCercles from './vues/AdminCercles.vue'
 import Tablettes from './vues/Tablettes.vue'
 import FamilleAccompagne from './vues/FamilleAccompagne.vue'
+import Jeux from './vues/Jeux.vue'
 import ApplicationMobile from './vues/ApplicationMobile.vue'
 import Agenda from './vues/Agenda.vue'
 import AgendaAccompagne from './vues/AgendaAccompagne.vue'
@@ -47,6 +48,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: Accueil, meta: { connecte: true, appareil: true } },
     { path: '/famille', component: FamilleAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
+    { path: '/jeux', component: Jeux, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/agenda', component: AgendaAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/photos', component: PhotosAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id', component: Cercle, meta: { connecte: true } },

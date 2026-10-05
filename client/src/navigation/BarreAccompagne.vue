@@ -15,7 +15,8 @@ const boutons = [
   { chemin: '/agenda', icone: 'agenda', libelle: 'Mon agenda' },
   { chemin: '/photos', icone: 'photo', libelle: 'Mes photos' },
   { chemin: '/famille', icone: 'famille', libelle: 'Ma famille', aussi: ['/mon-arbre'] },
-  { chemin: '/messages', icone: 'message', libelle: 'Mes messages', badge: true }
+  { chemin: '/messages', icone: 'message', libelle: 'Mes messages', badge: true },
+  { chemin: '/jeux', icone: 'jeux', libelle: 'Jeux' }
 ]
 const route = useRoute()
 // « Parler » ouvre l'assistant vocal, si l'appareil sait reconnaître la voix

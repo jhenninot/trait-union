@@ -225,6 +225,17 @@ const FICHES_ACCOMPAGNE = {
     ],
     voix: []
   },
+  jeux: {
+    titre: 'Jeux', icone: 'jeux',
+    intro: 'Des petits jeux avec les photos de votre famille. Il n\'y a pas de mauvaise réponse : on vous donne toujours la réponse avec le sourire.',
+    comment: [
+      { q: 'Jouer à « Qui est-ce ? »', r: 'Regardez la photo et touchez le prénom qui convient.' },
+      { q: 'Jouer à « Quel âge ? »', r: 'Regardez la photo et touchez l\'âge qui convient. Pas besoin d\'être précis.' },
+      { q: 'Si je ne sais pas', r: 'Touchez « Je ne sais pas » : on vous donne la réponse.' },
+      { q: 'Écouter', r: 'Touchez le haut-parleur : la tablette lit la question ou la réponse.' }
+    ],
+    voix: []
+  },
   messages: {
     titre: 'Mes messages', icone: 'message',
     intro: 'Les messages de votre famille, comme sur un téléphone. Un rond vert indique un nouveau message.',
