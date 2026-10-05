@@ -51,6 +51,14 @@ export function numeroInternational(tel) {
 // Lien WhatsApp : ouvre la conversation dans l'application (ou WhatsApp Web)
 export const lienWhatsApp = (tel) => `https://wa.me/${numeroInternational(tel)}`
 
+// Message d'invitation prérempli pour WhatsApp / SMS ; sans numéro, l'application propose de choisir le destinataire
+export const lienWhatsAppMessage = (tel, texte) =>
+  `https://wa.me/${tel ? numeroInternational(tel) : ''}?text=${encodeURIComponent(texte)}`
+export const lienSmsMessage = (tel, texte) => {
+  const sep = /iPhone|iPad|iPod/.test(navigator.userAgent) ? '&' : '?'
+  return `sms:${tel ? tel.replace(/[^\d+]/g, '') : ''}${sep}body=${encodeURIComponent(texte)}`
+}
+
 export const aDesCoordonnees = (p) => Boolean(p.telephone || p.dateNaissance || p.adresse)
 
 export const ans = (n) => `${n} an${n > 1 ? 's' : ''}`

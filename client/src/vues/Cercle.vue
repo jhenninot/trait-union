@@ -15,12 +15,18 @@ import FenetreDeces from './FenetreDeces.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import { confirmer } from '../fenetre.js'
+import { lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
 
 // Page « Famille et aidants » d'un cercle : membres et invitations
 const router = useRouter()
 const { url, cercle, erreur, charger, action, accompagnes, autres } = utiliserCercle()
 const invitation = ref(null) // { role, lien, expireLe, emailEnvoye, erreurEmail }
 const emailInvite = ref('')
+const telInvite = ref('')
+const texteInvitation = (i) => `Bonjour, je vous invite à rejoindre le cercle « ${cercle.value.nom} » sur Trait d'union (${libellesRoles[i.role].toLowerCase()}). Voici votre lien personnel, valable une seule fois jusqu'au ${heure(i.expireLe)} : ${i.lien}`
+// Partage natif du téléphone (choix de l'application) quand il existe
+const partageNatif = () => typeof navigator.share === 'function'
+const partagerInvitation = () => navigator.share({ text: texteInvitation(invitation.value) }).catch(() => {})
 const avatarOuvert = ref(null) // personne accompagnée dont on choisit l'avatar
 const coordonneesOuvertes = ref(null) // personne accompagnée dont on modifie les coordonnées
 const erreurCoordonnees = ref('')
@@ -207,7 +213,15 @@ const rejoindre = () => action(async () => {
           </template>
           <input :value="invitation.lien" readonly @focus="$event.target.select()" />
           <p class="aide">Valable une seule fois, jusqu'au {{ heure(invitation.expireLe) }}.</p>
-          <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(invitation.lien)" />
+          <label class="champ-email">Son numéro de téléphone (facultatif)
+            <input v-model="telInvite" type="tel" placeholder="06 12 34 56 78" />
+          </label>
+          <div class="actions">
+            <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(invitation.lien)" />
+            <a class="rond" :href="lienWhatsAppMessage(telInvite, texteInvitation(invitation))" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer l'invitation par WhatsApp"><Icone nom="whatsapp" /></a>
+            <a class="rond" :href="lienSmsMessage(telInvite, texteInvitation(invitation))" title="Envoyer par SMS" aria-label="Envoyer l'invitation par SMS"><Icone nom="sms" /></a>
+            <BoutonIcone v-if="partageNatif()" icone="partager" libelle="Partager avec une autre application" @click="partagerInvitation" />
+          </div>
         </div>
       </div>
       <FenetreDeces v-if="deces" :url="url" :membre="deces" :seul-aidant="seulAidant(deces)" @fermer="deces = null" @fait="decesFait" />
@@ -230,5 +244,7 @@ const rejoindre = () => action(async () => {
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .encart input { width: 100%; }
+.rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
+.encart .actions { align-items: center; margin-top: 8px; }
 .champ-email { margin-top: 12px; }
 </style>
