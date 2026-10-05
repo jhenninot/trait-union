@@ -9,6 +9,7 @@ import { etatMessagerie } from '../messagerie.js'
 import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
+import { ouvrirAide } from '../aide.js'
 import Avatar from '../vues/Avatar.vue'
 
 // Menu des aidants, proches et administrateurs : barre latérale sur grand écran,
@@ -77,6 +78,7 @@ const estActif = (chemin) => route.path === chemin
     <select v-if="choix.length" class="selecteur" :value="cercleId" aria-label="Cercle" @change="changerCercle($event.target.value)">
       <option v-for="c in choix" :key="c.id" :value="c.id">{{ c.nom }}</option>
     </select>
+    <button class="aide-mobile" aria-label="Aide sur cet écran" @click="ouvrirAide"><Icone nom="question" /></button>
   </header>
 
   <div v-if="ouvert" class="voile" @click="ouvert = false" />
@@ -128,6 +130,7 @@ const estActif = (chemin) => route.path === chemin
     </template>
 
     <div class="bas-menu">
+      <button class="lien" @click="ouvrirAide"><Icone nom="question" /> Aide sur cet écran</button>
       <RouterLink to="/alertes" class="lien" :class="{ actif: estActif('/alertes') }"><Icone nom="cloche" /> Mes alertes</RouterLink>
       <RouterLink to="/application" class="lien" :class="{ actif: estActif('/application') }"><Icone nom="mobile" /> Application mobile</RouterLink>
       <RouterLink to="/profil" class="lien qui" :class="{ actif: estActif('/profil') }" title="Mon profil">
@@ -204,7 +207,7 @@ const estActif = (chemin) => route.path === chemin
 }
 .bas-menu { margin-top: auto; border-top: 1px solid #ebe8e3; padding-top: 10px; }
 .badge { margin-left: auto; background: var(--rouge); color: white; border-radius: 999px; font-size: 0.75rem; font-weight: 700; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; }
-.entete-mobile, .onglets, .voile { display: none; }
+.entete-mobile, .onglets, .voile, .aide-mobile { display: none; }
 
 @media (max-width: 760px) {
   .entete-mobile {
@@ -219,7 +222,8 @@ const estActif = (chemin) => route.path === chemin
     z-index: 5;
   }
   .icone-appli { height: 32px; display: block; }
-  .entete-mobile .selecteur { margin: 0 0 0 auto; width: auto; max-width: 65%; padding: 6px 10px; }
+  .aide-mobile { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; background: var(--vert-clair); color: var(--vert); flex: none; }
+  .entete-mobile .selecteur { margin: 0 0 0 auto; width: auto; max-width: 55%; padding: 6px 10px; }
   .menu {
     display: none;
     position: fixed;

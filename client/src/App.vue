@@ -7,6 +7,9 @@ import BarreAccompagne from './navigation/BarreAccompagne.vue'
 import BandeauApplication from './navigation/BandeauApplication.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
 import FenetreDialogue from './navigation/FenetreDialogue.vue'
+import PanneauAide from './navigation/PanneauAide.vue'
+import Icone from './navigation/Icone.vue'
+import { ouvrirAide } from './aide.js'
 import { etatPartage } from './partage.js'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
@@ -21,6 +24,7 @@ const miseEnPage = computed(() => {
 
 <template>
   <div v-if="miseEnPage === 'accompagne'" class="mise-en-page-accompagne">
+    <button class="bouton-aide" aria-label="Aide sur cet écran" @click="ouvrirAide"><Icone nom="question" /></button>
     <RouterView />
     <BarreAccompagne />
     <AssistantVoix />
@@ -34,6 +38,7 @@ const miseEnPage = computed(() => {
   </div>
   <RouterView v-else />
   <p v-if="etatPartage.message" class="bulle-partage" role="status">{{ etatPartage.message }}</p>
+  <PanneauAide v-if="miseEnPage !== 'publique'" />
   <FenetreDialogue />
 </template>
 
@@ -64,6 +69,26 @@ h1 { color: var(--bleu-nuit); }
 .mise-en-page-aidant .page { flex: 1; min-width: 0; }
 .mise-en-page-accompagne { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 .mise-en-page-accompagne > main { width: 100%; }
+.bouton-aide {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 50;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--vert-clair);
+  color: var(--vert);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+.bouton-aide .icone { width: 34px; height: 34px; stroke-width: 2.4; }
+@media (max-width: 600px) {
+  .bouton-aide { width: 48px; height: 48px; top: 8px; right: 8px; }
+  .bouton-aide .icone { width: 28px; height: 28px; }
+}
 @media (max-width: 760px) {
   .mise-en-page-aidant { display: block; }
   .mise-en-page-aidant .page { padding-bottom: 80px; }
