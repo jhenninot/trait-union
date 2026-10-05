@@ -69,9 +69,10 @@ router.get('/', async (req, res) => {
     // Les albums où une photo vient d'arriver d'abord
     // L'album « Conversations » (photos des messages) est virtuel : ni modifiable ni compté dans le total
     albums: [
-      ...liste.map(presenter),
-      ...(conversations ? [{ id: ALBUM_CONVERSATIONS, nom: 'Conversations', nombre: conversations.nombre, nouvelles: 0, couverture: conversations.couverture, peutModifier: false, derniere: conversations.derniere }] : [])
-    ].sort((a, b) => new Date(b.derniere) - new Date(a.derniere)),
+      // « Photos des conversations » toujours en premier (juste après « Toutes les photos » côté écran)
+      ...(conversations ? [{ id: ALBUM_CONVERSATIONS, nom: 'Photos des conversations', nombre: conversations.nombre, nouvelles: 0, couverture: conversations.couverture, peutModifier: false, derniere: conversations.derniere }] : []),
+      ...liste.map(presenter).sort((a, b) => new Date(b.derniere) - new Date(a.derniere))
+    ],
     total: comptes.reduce((n, c) => n + c.nombre, 0),
     sansAlbum: compte.get(null)?.nombre ?? 0,
     sansAlbumNouvelles: nouvelles.get(null) ?? 0,

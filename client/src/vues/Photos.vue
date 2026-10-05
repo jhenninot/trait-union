@@ -41,7 +41,7 @@ const nomAlbumEnvoi = ref('') // nom de l'album créé au moment de l'envoi
 const erreurAlbum = ref('')
 const nomAlbum = ref(null) // saisie d'un nouvel album ou d'un nouveau nom
 
-// Albums où l'on peut ranger une photo (pas l'album « Conversations »)
+// Albums où l'on peut ranger une photo (pas l'album « Photos des conversations »)
 const albumsRangement = computed(() => albums.value.filter((a) => a.id !== ALBUM_CONVERSATIONS))
 const albumCourant = computed(() => albums.value.find((a) => a.id === filtre.value) ?? null)
 
@@ -446,7 +446,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <template v-if="selection.size">
           <BoutonIcone v-if="partage" icone="partager" libelle="Partager" @click="partagerPhotos(choisies)" />
           <BoutonIcone v-if="telechargement" icone="telecharger" libelle="Télécharger" @click="telechargerPhotos(choisies)" />
-          <label class="ranger">
+          <label v-if="filtre !== ALBUM_CONVERSATIONS" class="ranger">
             <span class="aide">Ranger dans</span>
             <select v-model="rangerVers" @change="rangerSelection">
               <option value="" disabled>Choisir un album</option>
@@ -454,7 +454,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
               <option v-for="a in albumsRangement" :key="a.id" :value="a.id">{{ a.nom }}</option>
             </select>
           </label>
-          <BoutonIcone icone="effacer" libelle="Supprimer" danger @click="supprimerSelection" />
+          <BoutonIcone v-if="filtre !== ALBUM_CONVERSATIONS" icone="effacer" libelle="Supprimer" danger @click="supprimerSelection" />
         </template>
       </div>
       <div class="grille">
