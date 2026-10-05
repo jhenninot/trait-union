@@ -103,5 +103,5 @@ suivreUtilisation(router)
 watch(() => session.utilisateur?.id, (id) => id && rafraichirAlertes())
 // Messages non lus et temps réel de la messagerie, tant qu'une personne est connectée
 watch(() => session.utilisateur?.id, (id) => (id ? demarrerMessagerie() : arreterMessagerie()), { immediate: true })
-surveillerErreurs()
+surveillerErreurs(router)
 createApp(App).use(router).mount('#app')

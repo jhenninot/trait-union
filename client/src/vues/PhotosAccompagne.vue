@@ -6,7 +6,7 @@ import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../pho
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
-import { partagerPhoto, partageDisponible, telechargerPhoto, telechargementDisponible, recues } from '../partage.js'
+import { choixNatifDisponible, choisirPhotosNatif, partagerPhoto, partageDisponible, telechargerPhoto, telechargementDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { revenir } from '../historique.js'
@@ -110,9 +110,19 @@ const lirePhoto = () => {
 watch(photo, () => prechargerVoisines(liste.value, index.value))
 // Photos choisies sur l'appareil : même écran que les photos partagées depuis une autre
 // application (choix de l'album, puis « Envoyer »)
+// Dans l'application Android : sélecteur natif, qui garde le lieu de prise de vue
+const choixNatif = choixNatifDisponible()
+async function choisirNatif(evenement) {
+  if (!choixNatif) return
+  evenement.preventDefault()
+  envoyerFichiers(await choisirPhotosNatif())
+}
 function ajouter(evenement) {
   const fichiers = [...evenement.target.files]
   evenement.target.value = ''
+  envoyerFichiers(fichiers)
+}
+function envoyerFichiers(fichiers) {
   if (!fichiers.length) return
   recues.fichiers = [...recues.fichiers, ...fichiers]
   router.push('/recevoir')
@@ -169,7 +179,7 @@ function glisser(sens) {
     <template v-if="album === undefined">
       <div class="entete">
         <h1>Mes photos</h1>
-        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @click="choisirNatif" @change="ajouter" /></label>
       </div>
       <div class="albums">
         <button class="album" @click="ouvrirAlbum(null)">
@@ -187,7 +197,7 @@ function glisser(sens) {
       <div v-if="!diaporama" class="haut">
         <button v-if="albums.length" class="retour" @click="retourAlbums"><Icone nom="precedent" class="en-ligne" /> Albums</button>
         <span v-if="albums.length" class="titre-album">{{ titre }}</span>
-        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @click="choisirNatif" @change="ajouter" /></label>
       </div>
       <div v-balayage="{ suivante: () => glisser(1), precedente: () => glisser(-1), duree: diaporama ? 900 : 450 }" v-zoom="pleinEcran" class="cadre" :class="{ 'plein-ecran': pleinEcran }" @click="toucherPhoto">
         <div class="piste">
@@ -218,7 +228,7 @@ function glisser(sens) {
     <template v-else-if="charge">
       <div class="haut">
         <button v-if="albums.length" class="retour" @click="retourAlbums"><Icone nom="precedent" class="en-ligne" /> Albums</button>
-        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @change="ajouter" /></label>
+        <label class="ajouter"><Icone nom="appareil" class="en-ligne" /> Ajouter des photos<input type="file" accept="image/*" multiple @click="choisirNatif" @change="ajouter" /></label>
       </div>
       <p class="vide">Pas encore de photo.<br />Votre famille peut vous en envoyer.</p>
     </template>

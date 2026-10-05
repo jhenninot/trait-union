@@ -147,6 +147,29 @@ async function lireSources() {
   return fichiers.length
 }
 
+// --- Sélecteur natif de l'application Android (« Ajouter des photos ») ---
+// La WebView et le sélecteur de photos d'Android effacent la position GPS ; le sélecteur natif
+// lit la photo d'origine (avec l'autorisation « position des photos »). Ancienne APK : non disponible.
+export const choixNatifDisponible = () => Boolean(natif()?.choisirPhotos)
+let choixEnAttente = null
+export function choisirPhotosNatif() {
+  return new Promise((resolve) => {
+    choixEnAttente = resolve
+    natif().choisirPhotos()
+  })
+}
+window.addEventListener('tu-choix', () => {
+  const fichiers = []
+  const n = natif()?.nombreChoisies?.() ?? 0
+  for (let i = 0; i < n; i++) {
+    const json = natif().photoChoisie(i)
+    if (json) fichiers.push(Object.assign(depuisBase64(json), { origineTU: 'choix-apk' }))
+  }
+  natif()?.effacerChoisies?.()
+  choixEnAttente?.(fichiers)
+  choixEnAttente = null
+})
+
 // Photos reçues abandonnées
 export function effacerRecues() {
   recues.fichiers = []

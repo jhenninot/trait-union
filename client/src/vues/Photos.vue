@@ -6,7 +6,7 @@ import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi, datePrise } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
-import { partagerPhoto, partagerPhotos, partageDisponible, telechargerPhoto, telechargerPhotos, telechargementDisponible, prendreRecues } from '../partage.js'
+import { choixNatifDisponible, choisirPhotosNatif, partagerPhoto, partagerPhotos, partageDisponible, telechargerPhoto, telechargerPhotos, telechargementDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
@@ -145,6 +145,13 @@ function ajouter(fichiers) {
   for (const fichier of fichiers) {
     aEnvoyer.value.push({ fichier, apercu: URL.createObjectURL(fichier), legende: '', etat: 'attente', message: '' })
   }
+}
+// Dans l'application Android : sélecteur natif, qui garde le lieu de prise de vue
+const choixNatif = choixNatifDisponible()
+async function choisirNatif(evenement) {
+  if (!choixNatif) return
+  evenement.preventDefault()
+  ajouter(await choisirPhotosNatif())
 }
 function choisir(evenement) {
   ajouter(evenement.target.files)
@@ -394,7 +401,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <button v-if="actif && liste.length && !selectionActive" class="secondaire" @click="selectionActive = true">Sélectionner</button>
         <label v-if="actif" class="bouton-fichier" :class="{ inactif: envoiEnCours }">
           Ajouter des photos
-          <input type="file" accept="image/*" multiple :disabled="envoiEnCours" @change="choisir" />
+          <input type="file" accept="image/*" multiple :disabled="envoiEnCours" @click="choisirNatif" @change="choisir" />
         </label>
       </div>
 

@@ -205,7 +205,7 @@ router.post('/', exigerStockage, async (req, res) => {
 // Journal (niveau info) : ce que le navigateur a trouvé dans la photo envoyée, pour savoir si un lieu
 // manque à cause de l'application ou de la source (Google Photos retire souvent le GPS au partage).
 // Jamais les coordonnées : seulement trouvé ou non.
-const ORIGINES = { choix: 'choisie dans l\'appli', 'partage-pwa': 'partagée vers la PWA', 'partage-apk': 'partagée vers l\'APK', message: 'reprise d\'un message' }
+const ORIGINES = { choix: 'choisie dans l\'appli', 'choix-apk': 'choisie avec le sélecteur de l\'APK', 'partage-pwa': 'partagée vers la PWA', 'partage-apk': 'partagée vers l\'APK', message: 'reprise d\'un message' }
 function journaliserLecture(req, photo) {
   const d = req.body.diagnostic
   if (!d || typeof d !== 'object') return

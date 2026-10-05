@@ -68,6 +68,11 @@ public class MainActivity extends BridgeActivity {
     private ActivityResultLauncher<Intent> reconnaissance;
     private static final int MAX_RECUES = 30;
     private final List<JSONObject> recues = new ArrayList<>(); // { nom, type, fichier }
+    // Photos choisies avec le sélecteur natif (« Ajouter des photos ») : file à part, pour que la
+    // page qui les a demandées les reprenne sans passer par l'écran /recevoir
+    private final List<JSONObject> choisies = new ArrayList<>();
+    private ActivityResultLauncher<String[]> choixPhotos;
+    private ActivityResultLauncher<String> autorisationPosition;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -103,6 +108,15 @@ public class MainActivity extends BridgeActivity {
             }
             envoyer("tu-alertes", detail);
         });
+        // Sélecteur de fichiers (pas le sélecteur de photos d'Android 13+, qui efface toujours le GPS)
+        choixPhotos = registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), (liste) -> {
+            List<Uri> uris = liste == null ? new ArrayList<>() : liste;
+            copierPhotos(uris, choisies, "tu-choix");
+        });
+        // Autorisation de lire la position des photos (sinon Android met le GPS à zéro) ; on ouvre le
+        // sélecteur quelle que soit la réponse
+        autorisationPosition = registerForActivityResult(new ActivityResultContracts.RequestPermission(),
+            (accordee) -> choixPhotos.launch(new String[] { "image/*" }));
         getBridge().getWebView().addJavascriptInterface(new Alertes(), "TraitUnionAlertes");
         getBridge().getWebView().addJavascriptInterface(new Appli(), "TraitUnionAppli");
         // Un lien vers un fichier à télécharger s'ouvre dans le navigateur
@@ -143,6 +157,12 @@ public class MainActivity extends BridgeActivity {
         }
         if (uris.isEmpty()) return;
         setIntent(new Intent(Intent.ACTION_MAIN)); // ne pas recevoir deux fois (rotation, retour)
+        copierPhotos(uris, recues, "tu-partage");
+    }
+
+    // Copie les photos dans le cache (l'autorisation de les lire ne dure pas), dans `file`, puis
+    // prévient la page par l'événement `evenement` ({ recues: nombre })
+    private void copierPhotos(List<Uri> uris, List<JSONObject> file, String evenement) {
         new Thread(() -> {
             File dossier = new File(getCacheDir(), "recues");
             dossier.mkdirs();
@@ -152,7 +172,7 @@ public class MainActivity extends BridgeActivity {
                     String type = getContentResolver().getType(uri);
                     if (type == null || !type.startsWith("image/")) type = "image/jpeg";
                     File fichier = File.createTempFile("photo", null, dossier);
-                    try (InputStream entree = getContentResolver().openInputStream(uri); OutputStream sortie = new FileOutputStream(fichier)) {
+                    try (InputStream entree = ouvrirOriginal(uri); OutputStream sortie = new FileOutputStream(fichier)) {
                         copier(entree, sortie);
                     }
                     JSONObject photo = new JSONObject();
@@ -164,8 +184,8 @@ public class MainActivity extends BridgeActivity {
                     // Fichier illisible : on passe au suivant
                 }
             }
-            synchronized (recues) {
-                recues.addAll(copiees);
+            synchronized (file) {
+                file.addAll(copiees);
             }
             JSONObject detail = new JSONObject();
             try {
@@ -173,8 +193,30 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 return;
             }
-            envoyer("tu-partage", detail);
+            envoyer(evenement, detail);
         }).start();
+    }
+
+    // Ouvre la photo d'origine, GPS compris, quand c'est possible : avec l'autorisation « position des
+    // photos », une photo de la galerie (MediaStore) est lue sans que la position soit effacée. Sinon
+    // (Google Photos, autorisation refusée, Android 9 ou moins) : lecture normale.
+    private InputStream ouvrirOriginal(Uri uri) throws Exception {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                Uri media = uri;
+                if (android.provider.DocumentsContract.isDocumentUri(this, uri)) media = MediaStore.getMediaUri(this, uri);
+                if (media != null && MediaStore.AUTHORITY.equals(media.getAuthority())) {
+                    InputStream entree = getContentResolver().openInputStream(MediaStore.setRequireOriginal(media));
+                    if (entree != null) return entree;
+                }
+            } catch (Exception e) {
+                // Pas d'accès à l'original : on lit la photo telle qu'on nous la donne
+            }
+        }
+        InputStream entree = getContentResolver().openInputStream(uri);
+        if (entree == null) throw new Exception("illisible");
+        return entree;
     }
 
     private static void copier(InputStream entree, OutputStream sortie) throws Exception {
@@ -317,6 +359,37 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private SharedPreferences preferencesPosition() {
+        return getSharedPreferences("position-photos", MODE_PRIVATE);
+    }
+
+    private static String lirePhoto(List<JSONObject> file, int i) {
+        try {
+            JSONObject photo;
+            synchronized (file) {
+                photo = file.get(i);
+            }
+            ByteArrayOutputStream octets = new ByteArrayOutputStream();
+            try (InputStream entree = new FileInputStream(photo.getString("fichier"))) {
+                copier(entree, octets);
+            }
+            JSONObject resultat = new JSONObject();
+            resultat.put("nom", photo.getString("nom"));
+            resultat.put("type", photo.getString("type"));
+            resultat.put("donnees", Base64.encodeToString(octets.toByteArray(), Base64.NO_WRAP));
+            return resultat.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static void effacer(List<JSONObject> file) {
+        synchronized (file) {
+            for (JSONObject photo : file) new File(photo.optString("fichier")).delete();
+            file.clear();
+        }
+    }
+
     private class Partage {
 
         // Photos reçues d'une autre application, en attente dans le cache
@@ -330,31 +403,45 @@ public class MainActivity extends BridgeActivity {
         // Une photo reçue : { nom, type, donnees (base64) }, ou "" si elle n'existe plus
         @JavascriptInterface
         public String photoRecue(int i) {
-            try {
-                JSONObject photo;
-                synchronized (recues) {
-                    photo = recues.get(i);
-                }
-                ByteArrayOutputStream octets = new ByteArrayOutputStream();
-                try (InputStream entree = new FileInputStream(photo.getString("fichier"))) {
-                    copier(entree, octets);
-                }
-                JSONObject resultat = new JSONObject();
-                resultat.put("nom", photo.getString("nom"));
-                resultat.put("type", photo.getString("type"));
-                resultat.put("donnees", Base64.encodeToString(octets.toByteArray(), Base64.NO_WRAP));
-                return resultat.toString();
-            } catch (Exception e) {
-                return "";
-            }
+            return lirePhoto(recues, i);
         }
 
         @JavascriptInterface
         public void effacerRecues() {
-            synchronized (recues) {
-                for (JSONObject photo : recues) new File(photo.optString("fichier")).delete();
-                recues.clear();
+            effacer(recues);
+        }
+
+        // Ouvre le sélecteur natif (résultat : événement « tu-choix », puis nombreChoisies/photoChoisie)
+        @JavascriptInterface
+        public void choisirPhotos() {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_MEDIA_LOCATION) != PackageManager.PERMISSION_GRANTED
+                    && !preferencesPosition().getBoolean("demandee", false)) {
+                    // Une seule demande : après un refus, Android ne la montrerait plus de toute façon
+                    preferencesPosition().edit().putBoolean("demandee", true).apply();
+                    autorisationPosition.launch(Manifest.permission.ACCESS_MEDIA_LOCATION);
+                } else {
+                    choixPhotos.launch(new String[] { "image/*" });
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public int nombreChoisies() {
+            synchronized (choisies) {
+                return choisies.size();
             }
+        }
+
+        @JavascriptInterface
+        public String photoChoisie(int i) {
+            return lirePhoto(choisies, i);
+        }
+
+        @JavascriptInterface
+        public void effacerChoisies() {
+            effacer(choisies);
         }
 
         // Télécharge la photo (lien signé de l'hébergeur) puis ouvre le menu de partage d'Android

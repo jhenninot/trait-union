@@ -50,6 +50,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lire la position GPS des photos choisies (sinon Android la met à zéro) -->
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
     <!-- Enregistrer une photo dans la galerie avant Android 10 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- Alertes (Android 13 et plus : demandée depuis la page « Mes alertes ») -->
