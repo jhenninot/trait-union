@@ -48,6 +48,7 @@ export async function preparerPhoto(fichier) {
 // l'appareil photo ; GPS en degrés décimaux). À défaut de date, celle du fichier ; null si rien de crédible.
 async function lireMetadonnees(fichier) {
   const resultat = { priseLe: null, latitude: null, longitude: null }
+  const diagnostic = { exif: false, gpsPresent: false, dateSource: 'aucune' } // pour le journal, sans coordonnées
   try {
     const d = new DataView(await fichier.slice(0, 256 * 1024).arrayBuffer())
     if (d.getUint16(0) === 0xffd8) {
@@ -56,6 +57,7 @@ async function lireMetadonnees(fichier) {
         const marqueur = d.getUint16(o)
         const longueur = d.getUint16(o + 2)
         if (marqueur === 0xffe1 && d.getUint32(o + 4) === 0x45786966) { // « Exif »
+          diagnostic.exif = true
           const exif = o + 10
           const petit = d.getUint16(exif) === 0x4949
           const u16 = (x) => d.getUint16(x, petit)
@@ -76,12 +78,13 @@ async function lireMetadonnees(fichier) {
             const m = /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/.exec(texte(exif + entree.valeur, 19))
             if (m) {
               const date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])
-              if (m[1] > '1900' && !Number.isNaN(date.getTime())) resultat.priseLe = date.toISOString()
+              if (m[1] > '1900' && !Number.isNaN(date.getTime())) { resultat.priseLe = date.toISOString(); diagnostic.dateSource = 'exif' }
             }
           }
           // GPS : latitude/longitude en degrés, minutes, secondes (3 fractions) et leur référence N/S, E/O
           const gps = chercher(ifd0, 0x8825)
           if (gps) {
+            diagnostic.gpsPresent = true // bloc GPS présent (il peut être vide)
             const ifdGps = exif + gps.valeur
             const coordonnee = (etiquetteRef, etiquette) => {
               const ref = chercher(ifdGps, etiquetteRef)
@@ -111,16 +114,18 @@ async function lireMetadonnees(fichier) {
       }
     }
   } catch { /* EXIF absent ou illisible : on se rabat sur la date du fichier */ }
-  if (!resultat.priseLe && fichier.lastModified) resultat.priseLe = new Date(fichier.lastModified).toISOString()
-  return resultat
+  if (!resultat.priseLe && fichier.lastModified) { resultat.priseLe = new Date(fichier.lastModified).toISOString(); diagnostic.dateSource = 'fichier' }
+  return { ...resultat, diagnostic }
 }
 
 // Prépare, envoie et publie une photo dans un cercle ; renvoie la photo publiée
 export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
-  const [p, lieuEtDate] = await Promise.all([preparerPhoto(fichier), lireMetadonnees(fichier)])
+  const [p, { diagnostic, ...lieuEtDate }] = await Promise.all([preparerPhoto(fichier), lireMetadonnees(fichier)])
   const { id, envois } = await api('POST', `/cercles/${cercleId}/photos`, {
     legende,
     ...lieuEtDate,
+    // Pour le journal : d'où vient la photo et ce qu'on a trouvé dedans (jamais les coordonnées)
+    diagnostic: { ...diagnostic, origine: fichier.origineTU ?? 'choix', type: fichier.type || 'inconnu', taille: fichier.size },
     albumId,
     largeur: p.largeur,
     hauteur: p.hauteur,

@@ -49,6 +49,25 @@ async function vider() {
   }
 }
 
+// Export des lignes affichées (mêmes filtres) dans un fichier à transmettre
+async function exporter(format) {
+  erreur.value = ''
+  try {
+    const params = new URLSearchParams({ format })
+    for (const [k, v] of Object.entries(filtres)) if (v.trim()) params.set(k, v.trim())
+    const reponse = await fetch(`/api/admin/journal/export?${params}`)
+    if (!reponse.ok) throw new Error('L\'export du journal a échoué')
+    const nom = /filename="([^"]+)"/.exec(reponse.headers.get('Content-Disposition') ?? '')?.[1] ?? `journal.${format}`
+    const lien = document.createElement('a')
+    lien.href = URL.createObjectURL(await reponse.blob())
+    lien.download = nom
+    lien.click()
+    setTimeout(() => URL.revokeObjectURL(lien.href), 10_000)
+  } catch (e) {
+    erreur.value = e.message
+  }
+}
+
 const LIBELLES = { erreur: 'Erreur', avertissement: 'Avertissement', info: 'Info' }
 const date = (d) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 </script>
@@ -57,7 +76,8 @@ const date = (d) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month:
   <main>
     <h1>Journal</h1>
     <section class="carte">
-      <p>Les erreurs du serveur et celles vues par le navigateur des utilisateurs (envoi de photos, emails, alertes...).
+      <p>Les erreurs du serveur et celles vues par le navigateur des utilisateurs (envoi de photos, emails, alertes...),
+        ainsi que, en info, ce que contient chaque photo envoyée (lieu trouvé ou non, sans les coordonnées).
         Ni mot de passe, ni contenu de message n'y figure. Les lignes sont effacées automatiquement après
         {{ donnees?.jours ?? 30 }} jours.</p>
       <p v-if="donnees" class="aide">
@@ -115,6 +135,10 @@ const date = (d) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month:
       </li>
     </ul>
     <button v-if="donnees?.suite" class="secondaire" :disabled="occupe" @click="charger(true)">Afficher plus</button>
+    <div v-if="donnees?.total" class="exports">
+      <button class="secondaire" @click="exporter('txt')"><Icone nom="telecharger" class="em" /> Exporter en texte</button>
+      <button class="secondaire" @click="exporter('json')"><Icone nom="telecharger" class="em" /> Exporter en JSON</button>
+    </div>
     <button v-if="donnees?.total" class="secondaire danger" @click="vider"><Icone nom="effacer" class="em" /> Vider le journal</button>
   </main>
 </template>
@@ -137,4 +161,5 @@ const date = (d) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month:
 .detail pre { margin: 6px 0 0; padding: 10px; background: #f6f5f1; border-radius: 8px; font-size: 0.8rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .vide { margin: 16px 0; }
 .danger { color: var(--rouge); }
+.exports { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 </style>

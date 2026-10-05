@@ -299,7 +299,7 @@ const ajouterAuxPhotos = () => action(async () => {
   } catch {
     throw new Error('Impossible de récupérer la photo chez l\'hébergeur')
   }
-  await envoyerPhoto(conversation.value.cercleId, image, message.texte ?? '', albumId(album))
+  await envoyerPhoto(conversation.value.cercleId, Object.assign(image, { origineTU: 'message' }), message.texte ?? '', albumId(album))
   ajoutees.value = new Set([...ajoutees.value, message.id])
   ajout.value = null
   selection.value = null

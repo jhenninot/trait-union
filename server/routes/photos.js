@@ -7,6 +7,7 @@ import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif, lienSigne, infoObjet, supprimerObjet } from '../stockage/s3.js'
 import { lienAvatar } from '../avatars.js'
 import { ALBUM_CONVERSATIONS, photosAlbumConversations } from '../messagerie/album.js'
+import { journaliser } from '../journal.js'
 
 // Photos d'un cercle, montées sous /api/cercles/:cercleId/photos après chargerCercle
 // (req.cercle, req.role, req.peutGerer). Tout membre du cercle voit et ajoute des photos.
@@ -196,9 +197,26 @@ router.post('/', exigerStockage, async (req, res) => {
     duree: DUREE_ENVOI,
     entetes: { 'content-type': 'image/jpeg', 'content-length': tailles[v] }
   })]))
+  journaliserLecture(req, photo)
   nettoyerEnvoisAbandonnes(req.stockage, req.cercle.id).catch((e) => console.error('Nettoyage des photos :', e.message))
   res.status(201).json({ id: photo.id, envois })
 })
+
+// Journal (niveau info) : ce que le navigateur a trouvé dans la photo envoyée, pour savoir si un lieu
+// manque à cause de l'application ou de la source (Google Photos retire souvent le GPS au partage).
+// Jamais les coordonnées : seulement trouvé ou non.
+const ORIGINES = { choix: 'choisie dans l\'appli', 'partage-pwa': 'partagée vers la PWA', 'partage-apk': 'partagée vers l\'APK', message: 'reprise d\'un message' }
+function journaliserLecture(req, photo) {
+  const d = req.body.diagnostic
+  if (!d || typeof d !== 'object') return
+  const lieu = photo.latitude != null ? 'lieu trouvé' : d.gpsPresent ? 'bloc GPS présent mais vide' : 'pas de lieu'
+  const date = d.dateSource === 'exif' ? 'date EXIF' : d.dateSource === 'fichier' ? 'date du fichier' : 'pas de date'
+  const message = `Photo ${ORIGINES[d.origine] ?? 'd\'origine inconnue'} : ${lieu}, ${date}${d.exif ? '' : ', pas d\'EXIF'}`
+  const agent = String(req.get('user-agent') ?? '')
+  const appareil = agent.includes('TraitUnionAndroid') ? 'APK Android' : /Android/.test(agent) ? 'navigateur Android' : 'navigateur'
+  const details = `type ${String(d.type).slice(0, 40)} · ${Math.round(Number(d.taille) / 1024) || '?'} Ko · ${appareil}\n${agent}`
+  journaliser('info', 'navigateur', 'photos', message, { details, utilisateurId: req.utilisateur.id })
+}
 
 async function chargerPhoto(req, res, next) {
   const [photo] = await db.select().from(photos)

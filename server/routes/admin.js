@@ -244,9 +244,9 @@ router.get('/statistiques', async (req, res) => {
 
 // --- Journal (erreurs du serveur et du navigateur, voir server/journal.js)
 
-router.get('/journal', async (req, res) => {
-  const { niveau, source, module, q, avant } = req.query
-  const limite = Math.min(Math.max(parseInt(req.query.limite) || 100, 1), 300)
+// Lignes du journal selon les filtres de la page (niveau, source, module, q, avant), les plus récentes d'abord
+async function lignesJournal(query, limite) {
+  const { niveau, source, module, q, avant } = query
   const conditions = [sql`true`]
   if (NIVEAUX.includes(niveau)) conditions.push(sql`j.niveau = ${niveau}`)
   if (SOURCES.includes(source)) conditions.push(sql`j.source = ${source}`)
@@ -261,7 +261,13 @@ router.get('/journal', async (req, res) => {
       nullif(trim(concat(u.prenom, ' ', coalesce(u.nom, ''))), '') as utilisateur
     from journal j left join utilisateurs u on u.id = j.utilisateur_id
     where ${sql.join(conditions, sql` and `)}
-    order by j.cree_le desc limit ${limite + 1}`)
+    order by j.cree_le desc limit ${limite}`)
+  return rows
+}
+
+router.get('/journal', async (req, res) => {
+  const limite = Math.min(Math.max(parseInt(req.query.limite) || 100, 1), 300)
+  const rows = await lignesJournal(req.query, limite + 1)
   const { rows: modules } = await db.execute(sql`select distinct module from journal order by module`)
   const { rows: [total] } = await db.execute(sql`select count(*)::int as n, count(*) filter (where niveau = 'erreur' and cree_le > now() - interval '24 hours')::int as erreurs24 from journal`)
   res.json({
@@ -272,6 +278,22 @@ router.get('/journal', async (req, res) => {
     erreurs24h: total.erreurs24,
     jours: JOURS_CONSERVATION
   })
+})
+
+// Export du journal (mêmes filtres que la page) en fichier : ?format=json (défaut) ou txt
+router.get('/journal/export', async (req, res) => {
+  const lignes = await lignesJournal(req.query, 20000)
+  const horodatage = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')
+  if (req.query.format === 'txt') {
+    const texte = lignes.map((l) => [
+      `${l.creeLe} [${l.niveau}] ${l.source}/${l.module}${l.utilisateur ? ` (${l.utilisateur})` : ''} : ${l.message}`,
+      ...(l.details ? l.details.split('\n').map((d) => `    ${d}`) : [])
+    ].join('\n')).join('\n')
+    res.setHeader('Content-Disposition', `attachment; filename="journal-${horodatage}.txt"`)
+    return res.type('text/plain; charset=utf-8').send(texte + '\n')
+  }
+  res.setHeader('Content-Disposition', `attachment; filename="journal-${horodatage}.json"`)
+  res.type('application/json').send(JSON.stringify({ exporteLe: new Date().toISOString(), filtres: req.query, lignes }, null, 2))
 })
 
 router.delete('/journal', async (req, res) => {

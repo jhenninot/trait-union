@@ -113,7 +113,7 @@ function depuisBase64(json) {
   const octets = Uint8Array.from(atob(donnees), (c) => c.charCodeAt(0))
   const extension = type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'
   // lastModified 0 : la date de copie dans le cache n'est pas la date de prise de vue
-  return new File([octets], /\.\w+$/.test(nom) ? nom : `${nom}.${extension}`, { type, lastModified: 0 })
+  return Object.assign(new File([octets], /\.\w+$/.test(nom) ? nom : `${nom}.${extension}`, { type, lastModified: 0 }), { origineTU: 'partage-apk' })
 }
 
 // Déplace ici les photos en attente dans l'application Android ou la PWA (elles y sont effacées) ;
@@ -139,7 +139,7 @@ async function lireSources() {
     for (const requete of await cache.keys()) {
       const reponse = await cache.match(requete)
       const blob = await reponse.blob()
-      fichiers.push(new File([blob], decodeURIComponent(reponse.headers.get('X-Nom') ?? 'photo.jpg'), { type: blob.type, lastModified: 0 }))
+      fichiers.push(Object.assign(new File([blob], decodeURIComponent(reponse.headers.get('X-Nom') ?? 'photo.jpg'), { type: blob.type, lastModified: 0 }), { origineTU: 'partage-pwa' }))
     }
     await caches.delete(CACHE_PARTAGE)
   }

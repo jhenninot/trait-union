@@ -157,6 +157,8 @@ const FICHES = {
     comment: [
       { q: 'Filtrer', r: 'Choisissez un niveau, un module ou une origine, ou cherchez un mot. Touchez une ligne pour voir le détail technique.' },
       { q: 'Voir plus ancien', r: 'Touchez « Afficher plus » en bas de la liste.' },
+      { q: 'Savoir pourquoi une photo n\'a pas de lieu', r: 'Filtrez le module « photos » et le niveau « Infos » : chaque envoi indique d\'où vient la photo (choisie, partagée vers la PWA ou l\'APK) et si un lieu et une date ont été trouvés dedans. Les coordonnées ne sont jamais écrites.' },
+      { q: 'Transmettre le journal', r: 'Touchez « Exporter en texte » ou « Exporter en JSON » en bas de la page : le fichier reprend les filtres choisis.' },
       { q: 'Vider le journal', r: '« Vider le journal » efface tout, après confirmation.' }
     ],
     astuces: ['Les lignes les plus anciennes sont effacées automatiquement après 30 jours.']
