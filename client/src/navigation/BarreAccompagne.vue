@@ -1,11 +1,12 @@
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api.js'
 import { assistant, ecouteDisponible, parler, lectureDisponible } from '../voix.js'
 import { etatMessagerie, ecouterMessagerie } from '../messagerie.js'
 import Icone from './Icone.vue'
 import { ouvrirAide } from '../aide.js'
+import { reglagesJeux, jeuxDisponibles, chargerReglagesJeux } from '../jeux.js'
 
 // Barre de la personne accompagnée : quelques gros boutons, toujours au même endroit,
 // avec les mêmes pictogrammes que le menu des aidants.
@@ -16,9 +17,11 @@ const boutons = [
   { chemin: '/photos', icone: 'photo', libelle: 'Mes photos' },
   { chemin: '/famille', icone: 'famille', libelle: 'Ma famille', aussi: ['/mon-arbre'] },
   { chemin: '/messages', icone: 'message', libelle: 'Mes messages', badge: true },
-  { chemin: '/jeux', icone: 'jeux', libelle: 'Jeux' }
+  { chemin: '/jeux', icone: 'jeux', libelle: 'Jeux', jeux: true }
 ]
 const route = useRoute()
+// Le bouton « Jeux » disparaît quand les aidants ont coupé l'accès
+const visibles = computed(() => boutons.filter((b) => !b.jeux || (reglagesJeux.charge && jeuxDisponibles())))
 // « Parler » ouvre l'assistant vocal, si l'appareil sait reconnaître la voix
 const voix = ecouteDisponible()
 
@@ -40,6 +43,7 @@ async function lireNouveaux() {
 }
 let arreter
 onMounted(() => {
+  chargerReglagesJeux()
   arreter = ecouterMessagerie((type, d) => type === 'message' && d.auteurId && route.path !== '/messages' && lireNouveaux())
 })
 onUnmounted(() => arreter?.())
@@ -49,7 +53,7 @@ onUnmounted(() => arreter?.())
   <nav class="barre" aria-label="Menu">
     <!-- Bouton d'aide : juste au-dessus de la barre, à droite, sans gêner les boutons des pages -->
     <button type="button" class="aide" aria-label="Aide sur cet écran" @click="ouvrirAide"><Icone nom="question" /></button>
-    <RouterLink v-for="b in boutons" :key="b.chemin" :to="b.chemin" class="bouton" exact-active-class="actif" :class="{ actif: b.aussi?.includes(route.path) }">
+    <RouterLink v-for="b in visibles" :key="b.chemin" :to="b.chemin" class="bouton" exact-active-class="actif" :class="{ actif: b.aussi?.includes(route.path) }">
       <span class="pictogramme"><Icone :nom="b.icone" /><span v-if="b.badge && etatMessagerie.nonLus" class="badge">{{ etatMessagerie.nonLus }}</span></span>
       {{ b.libelle }}
     </RouterLink>

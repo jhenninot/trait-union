@@ -71,6 +71,10 @@ const changerAlertes = (m, cle, valeur) => action(async () => {
 
 // Messagerie de la personne accompagnée : qui peut lui écrire en privé, réponses toutes faites,
 // lecture à voix haute, photos et messages vocaux
+// Jeux de la personne accompagnée : accès, jeux proposés, nombre de propositions et de questions
+const changerJeux = (m, modifs) => action(async () => {
+  m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
+})
 const nouvelleReponse = ref({})
 const changerMessagerie = (m, modifs) => action(async () => {
   m.messagerie = await api('PUT', `${url.value}/membres/${m.id}/messagerie`, { ...m.messagerie, ...modifs })
@@ -128,6 +132,24 @@ const adresseApk = `${location.host}/apk`
           <span class="aide">{{ m.alertes.appareils
             ? `Reçues sur ${m.alertes.appareils} appareil${m.alertes.appareils > 1 ? 's' : ''}.`
             : `Pas encore activées : sur l'appareil de ${m.prenom}, touchez « Recevoir les alertes » sur l'écran d'accueil.` }}</span>
+        </div>
+        <div v-if="m.jeux" class="messagerie">
+          <span class="titre-alertes"><Icone nom="jeux" class="en-ligne" /> Jeux</span>
+          <label class="case"><input type="checkbox" :checked="m.jeux.actif" @change="changerJeux(m, { actif: $event.target.checked })" /> {{ m.prenom }} a accès aux jeux</label>
+          <template v-if="m.jeux.actif">
+            <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
+            <div class="reglage">
+              <span class="libelle-reglage">Niveau</span>
+              <label class="case"><input type="radio" :name="`niveau-${m.id}`" :checked="m.jeux.niveau === 2" @change="changerJeux(m, { niveau: 2 })" /> Très facile (2 propositions)</label>
+              <label class="case"><input type="radio" :name="`niveau-${m.id}`" :checked="m.jeux.niveau === 3" @change="changerJeux(m, { niveau: 3 })" /> Normal (3 propositions)</label>
+            </div>
+            <div class="reglage">
+              <span class="libelle-reglage">Questions par partie</span>
+              <label v-for="n in [3, 5, 8]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
+            </div>
+          </template>
+          <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Les personnes décédées ne sont jamais proposées.</span>
         </div>
         <div v-if="m.messagerie" class="messagerie">
           <span class="titre-alertes"><Icone nom="message" class="en-ligne" /> Messages</span>

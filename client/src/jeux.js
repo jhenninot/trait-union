@@ -1,8 +1,15 @@
 // Jeux de la personne accompagnée : choix des questions à partir de sa famille (« Ma famille »).
 // Aucun score, aucune erreur : une mauvaise réponse devient une occasion de se souvenir.
+import { reactive } from 'vue'
+import { api } from './api.js'
 import { age } from './coordonnees.js'
 
-export const NB_QUESTIONS = 5
+// Réglages des jeux de la personne connectée, choisis par ses aidants (null tant qu'ils ne sont pas chargés)
+export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, niveau: 3, questions: 5 })
+export const jeuxDisponibles = () => reglagesJeux.actif && (reglagesJeux.qui || reglagesJeux.age)
+export async function chargerReglagesJeux() {
+  try { Object.assign(reglagesJeux, await api('GET', '/jeux/reglages'), { charge: true }) } catch { /* hors ligne : on garde l'état précédent */ }
+}
 
 const melanger = (liste) => {
   const l = [...liste]
@@ -28,14 +35,14 @@ function tirer(liste, n) {
 }
 
 // « Qui est-ce ? » : un prénom à retrouver parmi 3 (2 si peu de personnes)
-export function questionsQui(personnes) {
+export function questionsQui(personnes, { niveau = 3, questions = 5 } = {}) {
   const pool = candidats(personnes)
-  return tirer(pool, NB_QUESTIONS).map((p) => {
+  return tirer(pool, questions).map((p) => {
     const memeGenre = pool.filter((x) => x.id !== p.id && x.prenom !== p.prenom && (!p.genre || !x.genre || x.genre === p.genre))
     const autres = pool.filter((x) => x.id !== p.id && x.prenom !== p.prenom)
     const faux = []
     for (const x of [...melanger(memeGenre), ...melanger(autres)]) {
-      if (faux.length < 2 && !faux.some((f) => f.prenom === x.prenom) && x.prenom !== p.prenom) faux.push(x)
+      if (faux.length < niveau - 1 && !faux.some((f) => f.prenom === x.prenom) && x.prenom !== p.prenom) faux.push(x)
     }
     const choix = melanger([p, ...faux]).map((x) => ({ texte: x.prenom, bonne: x.id === p.id }))
     return { personne: p, choix }
@@ -54,12 +61,12 @@ export const TRANCHES = [
 const trancheDe = (a) => TRANCHES.find((t) => a <= t.max)
 
 // « Quel âge ? » : la tranche d'âge à retrouver parmi 3 propositions
-export function questionsAge(personnes) {
-  return tirer(candidats(personnes, { age: true }), NB_QUESTIONS).map((p) => {
+export function questionsAge(personnes, { niveau = 3, questions = 5 } = {}) {
+  return tirer(candidats(personnes, { age: true }), questions).map((p) => {
     const bonne = trancheDe(age(p.dateNaissance))
     const i = TRANCHES.indexOf(bonne)
     // Propositions éloignées les unes des autres pour que le choix reste net
-    const faux = melanger(TRANCHES.filter((t, k) => t !== bonne && Math.abs(k - i) >= 1)).slice(0, 2)
+    const faux = melanger(TRANCHES.filter((t, k) => t !== bonne && Math.abs(k - i) >= 1)).slice(0, niveau - 1)
     return { personne: p, choix: melanger([bonne, ...faux]).map((t) => ({ texte: t.texte, bonne: t === bonne })) }
   })
 }

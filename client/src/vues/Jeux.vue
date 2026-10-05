@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { chargerFamille } from '../famille.js'
 import { ageTexte, dateLongue } from '../coordonnees.js'
-import { questionsQui, questionsAge, candidats, NB_QUESTIONS } from '../jeux.js'
+import { questionsQui, questionsAge, candidats, reglagesJeux, chargerReglagesJeux, jeuxDisponibles } from '../jeux.js'
+import { useRouter } from 'vue-router'
 import { lectureDisponible, parler, arreterParole } from '../voix.js'
 import Avatar from './Avatar.vue'
 import Icone from '../navigation/Icone.vue'
@@ -21,7 +22,11 @@ const fini = ref(false)
 const petit = window.matchMedia('(max-width: 600px)').matches
 const parle = lectureDisponible()
 
+const routeur = useRouter()
 onMounted(async () => {
+  await chargerReglagesJeux()
+  // Les aidants ont coupé l'accès aux jeux : retour à l'accueil
+  if (!jeuxDisponibles()) return routeur.replace('/')
   personnes.value = (await chargerFamille()).personnes
   charge.value = true
 })
@@ -29,12 +34,13 @@ onUnmounted(arreterParole)
 
 const nbQui = computed(() => candidats(personnes.value).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
+const propose = (k) => reglagesJeux[k]
 const dispo = (k) => (k === 'qui' ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
-  questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value)
+  questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, reglagesJeux)
   n.value = 0
   reponse.value = null
   choisi.value = null
@@ -90,16 +96,16 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
       <h1>Jeux</h1>
       <p class="sous">À quoi voulez-vous jouer ?</p>
       <div class="cartes">
-        <button type="button" class="jeu" :disabled="!dispo('qui')" @click="jouer('qui')">
+        <button v-if="propose('qui')" type="button" class="jeu" :disabled="!dispo('qui')" @click="jouer('qui')">
           <strong>Qui est-ce ?</strong><span>Retrouver les prénoms de la famille</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
-        <button type="button" class="jeu" :disabled="!dispo('age')" @click="jouer('age')">
+        <button v-if="propose('age')" type="button" class="jeu" :disabled="!dispo('age')" @click="jouer('age')">
           <strong>Quel âge ?</strong><span>Deviner l'âge des personnes</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
       </div>
-      <p v-if="charge && (!dispo('qui') || !dispo('age'))" class="manque">
+      <p v-if="charge && ((propose('qui') && !dispo('qui')) || (propose('age') && !dispo('age')))" class="manque">
         Il faut quelques photos de la famille (et leurs dates de naissance) pour jouer. Vos proches peuvent les ajouter.
       </p>
     </template>

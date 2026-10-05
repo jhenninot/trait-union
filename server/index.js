@@ -10,6 +10,7 @@ import routesCercles from './routes/cercles.js'
 import routesInvitations from './routes/invitations.js'
 import routesAdmin from './routes/admin.js'
 import routesVoix from './routes/voix.js'
+import routesJeux from './routes/jeux.js'
 import routesProfil from './routes/profil.js'
 import routesAlertes from './routes/alertes.js'
 import routesPresentation from './routes/presentation.js'
@@ -61,6 +62,7 @@ app.use('/api/cercles', routesCercles)
 app.use('/api/invitations', routesInvitations)
 app.use('/api/admin', routesAdmin)
 app.use('/api/voix', routesVoix)
+app.use('/api/jeux', routesJeux)
 app.use('/api/profil', routesProfil)
 app.use('/api/alertes', routesAlertes)
 app.use('/api/presentation', routesPresentation)

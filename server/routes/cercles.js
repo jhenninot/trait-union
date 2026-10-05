@@ -18,6 +18,7 @@ import { liensAvatars, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { preferences, lirePreferences } from './alertes.js'
 import { derniereApkConnue } from '../application.js'
 import { resumeUtilisation } from '../utilisation.js'
+import { reglages as reglagesJeux, lireReglages as lireJeux } from '../jeux.js'
 import { reglages as reglagesMessagerie, REPONSES_DEFAUT } from '../messagerie/droits.js'
 import { supprimerFichiersDe } from '../messagerie/conservation.js'
 import { marquerDeces, annulerDeces } from '../deces.js'
@@ -90,7 +91,7 @@ router.post('/', exigerAdmin, async (req, res) => {
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, jeux: utilisateurs.jeux, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -128,7 +129,7 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, avatar, alertes, messagerie, dateNaissance, adresse, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, alertes, messagerie, jeux, dateNaissance, adresse, ...m }) => ({
       ...m,
       lien: liens.get(utilisateurId) ?? m.lien,
       lienCalcule: liens.has(utilisateurId),
@@ -151,7 +152,9 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       // Les aidants choisissent les alertes des personnes accompagnées
       alertes: req.peutGerer && m.role === 'accompagne' ? { ...preferences({ alertes }), appareils: alertesParUtilisateur.get(utilisateurId) ?? 0 } : undefined,
       // Les aidants règlent la messagerie des personnes accompagnées
-      messagerie: req.peutGerer && m.role === 'accompagne' ? reglagesMessagerie(messagerie) : undefined
+      messagerie: req.peutGerer && m.role === 'accompagne' ? reglagesMessagerie(messagerie) : undefined,
+      // Les aidants règlent les jeux des personnes accompagnées
+      jeux: req.peutGerer && m.role === 'accompagne' ? reglagesJeux(jeux) : undefined
     }))
   })
 })
@@ -360,6 +363,14 @@ router.put('/:cercleId/membres/:membreId/messagerie', chargerCercle, exigerGesti
   const messagerie = { prive, reponses, lectureAuto: Boolean(req.body.lectureAuto), vocal: req.body.vocal !== false }
   await db.update(utilisateurs).set({ messagerie }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(reglagesMessagerie(messagerie))
+})
+
+// Jeux d'une personne accompagnée : accès, jeux proposés, nombre de propositions et de questions.
+// Corps : { actif, qui, age, niveau: 2 | 3, questions: 3 | 5 | 8 }
+router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const jeux = lireJeux(req.body)
+  await db.update(utilisateurs).set({ jeux }).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  res.json(reglagesJeux(jeux))
 })
 
 // Décès d'un membre (n'importe quel rôle), indiqué par un aidant : { dateDeces } (facultative).
