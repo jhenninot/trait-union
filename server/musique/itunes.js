@@ -71,7 +71,9 @@ async function chercherArtiste(artiste, cle) {
     for (const r of resultats) {
       if (!r.previewUrl || !r.trackName) continue
       const a = normaliser(r.artistName)
-      if (motsArtiste.length && motsArtiste.filter((m) => a.includes(m)).length / motsArtiste.length < 0.5) continue
+      // Musique classique : le compositeur figure dans le titre ou l'album, l'artiste est l'interprète
+      const classique = /classi/i.test(r.primaryGenreName ?? '') && normaliser(`${r.trackName} ${r.collectionName ?? ''}`).includes(normaliser(artiste))
+      if (!classique && motsArtiste.length && motsArtiste.filter((m) => a.includes(m)).length / motsArtiste.length < 0.5) continue
       if (MAUVAISES_VERSIONS.test(normaliser(r.trackName))) continue
       const titre = nettoyer(r.trackName)
       if (vus.has(normaliser(titre))) continue
@@ -101,10 +103,11 @@ function parmi(liste, titre) {
 }
 
 // → { apercu, pochette } ou null. D'abord dans la liste de l'artiste, sinon recherche du titre seul.
-export async function trouverExtrait(titre, artiste) {
+export async function trouverExtrait(titre, artiste, { classique = false, terme = null } = {}) {
   const cle = `chanson|${normaliser(titre)}|${normaliser(artiste)}`
   const connu = lire(cle)
   if (connu) return connu.valeur
+  if (classique) return trouverClassique(cle, artiste, terme ?? titre)
   const trouve = parmi(await chansonsDeArtiste(artiste), titre)
   if (trouve) {
     const valeur = { apercu: trouve.apercu, pochette: trouve.pochette }
@@ -120,6 +123,27 @@ export async function trouverExtrait(titre, artiste) {
       .map((r) => presenter(r))
     const r = parmi(candidates, titre)
     const valeur = r ? { apercu: r.apercu, pochette: r.pochette } : null
+    garder(cle, valeur, valeur ? DUREE_CACHE : DUREE_SANS_RESULTAT)
+    return valeur
+  } catch (e) {
+    console.error('[Musique]', e.message)
+    return null
+  }
+}
+
+// Œuvre classique : les morceaux sont rangés sous le nom des interprètes, avec le nom de l'œuvre dans
+// le titre ou l'album. On garde un résultat où figurent le compositeur et les mots de la recherche.
+async function trouverClassique(cle, compositeur, terme) {
+  try {
+    const resultats = await recherche(`${terme} ${compositeur}`, '', 25)
+    const motsTerme = mots(terme)
+    const nomCompositeur = normaliser(compositeur)
+    const r = resultats.find((x) => {
+      if (!x.previewUrl) return false
+      const texte = normaliser(`${x.trackName} ${x.collectionName ?? ''} ${x.artistName}`)
+      return texte.includes(nomCompositeur) && (!motsTerme.length || motsTerme.filter((m) => texte.includes(m)).length / motsTerme.length >= 0.7)
+    })
+    const valeur = r ? { apercu: r.previewUrl, pochette: r.artworkUrl100 ? r.artworkUrl100.replace('100x100', '400x400') : null } : null
     garder(cle, valeur, valeur ? DUREE_CACHE : DUREE_SANS_RESULTAT)
     return valeur
   } catch (e) {

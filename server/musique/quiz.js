@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { chansons } from '../db/schema.js'
 import { chansonsDeJeunesse } from './catalogue.js'
-import { STYLES } from './styles.js'
+import { STYLES, PIECES_CLASSIQUES } from './styles.js'
 import { trouverExtrait, chansonsDeArtiste, cleChanson } from './itunes.js'
 
 const melanger = (liste) => {
@@ -38,7 +38,11 @@ export async function construireQuiz(utilisateur, { niveau = 3, questions = 5 } 
     ...lignes.filter((l) => l.type === 'artiste').map((l) => l.artiste),
     ...lignes.filter((l) => l.type === 'style').flatMap((l) => melanger(STYLES[l.style] ?? []).slice(0, 2))
   ])]
-  const deArtistes = entrelacer(await Promise.all(artistes.map(chansonsDeArtiste)))
+  // Style « musique classique » : quelques œuvres célèbres au hasard
+  const classiques = lignes.some((l) => l.type === 'style' && l.style === 'Musique classique')
+    ? melanger(PIECES_CLASSIQUES).slice(0, 8).map((c) => ({ ...c, preferee: true }))
+    : []
+  const deArtistes = [...entrelacer(await Promise.all(artistes.map(chansonsDeArtiste))), ...classiques]
     .filter((c) => !moins.has(cleChanson(c.titre, c.artiste)))
     .map((c) => ({ ...c, preferee: true }))
 
@@ -64,23 +68,32 @@ export async function construireQuiz(utilisateur, { niveau = 3, questions = 5 } 
     const groupe = candidates.slice(i, i + Math.max(3, questions - trouvees.length + 1))
     i += groupe.length
     // Les chansons venues de la recherche d'un artiste ont déjà leur extrait
-    const extraits = await Promise.all(groupe.map((c) => (c.apercu ? c : trouverExtrait(c.titre, c.artiste))))
+    const extraits = await Promise.all(groupe.map((c) => (c.apercu ? c : trouverExtrait(c.titre, c.artiste, c))))
     groupe.forEach((c, k) => { if (extraits[k]?.apercu && trouvees.length < questions) trouvees.push({ ...c, ...extraits[k] }) })
   }
   // Préférences et chansons de la jeunesse sont mélangées : les préférées ne passent pas toujours en premier
   melanger(trouvees).forEach((c, k) => { trouvees[k] = c })
 
   // Titres proposés en plus de la bonne réponse : d'autres chansons du même genre d'époque
+  // Avec 3 propositions, deux titres sont du même artiste (la bonne réponse et un autre de ses titres)
   const autres = [...catalogue, ...prefs]
-  return trouvees.map((c) => {
+  const memeTitre = (a, b) => cleChanson(a, '') === cleChanson(b, '')
+  const questionsPrets = []
+  for (const c of trouvees) {
     const faux = []
+    if (niveau >= 3) {
+      let memeArtiste = [...autres, ...PIECES_CLASSIQUES].filter((a) => a.artiste === c.artiste && !memeTitre(a.titre, c.titre)).map((a) => a.titre)
+      if (!memeArtiste.length && !c.classique) memeArtiste = (await chansonsDeArtiste(c.artiste)).filter((a) => !memeTitre(a.titre, c.titre)).map((a) => a.titre)
+      if (memeArtiste.length) faux.push(melanger(memeArtiste)[0])
+    }
     for (const a of melanger(autres)) {
       if (faux.length >= niveau - 1) break
-      if (cleChanson(a.titre, '') !== cleChanson(c.titre, '') && !faux.includes(a.titre)) faux.push(a.titre)
+      if (!memeTitre(a.titre, c.titre) && !faux.includes(a.titre)) faux.push(a.titre)
     }
-    return {
+    questionsPrets.push({
       titre: c.titre, artiste: c.artiste, annee: c.annee, apercu: c.apercu, pochette: c.pochette ?? null, preferee: Boolean(c.preferee),
       choix: melanger([{ texte: c.titre, bonne: true }, ...faux.map((texte) => ({ texte, bonne: false }))])
-    }
-  })
+    })
+  }
+  return questionsPrets
 }
