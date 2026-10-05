@@ -562,9 +562,11 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
           <template v-if="photo.priseLe"> · prise le {{ datePrise(photo) }}</template>
         </p>
-        <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
-        <BoutonIcone v-if="telechargement && legendeEnEdition == null" icone="telecharger" libelle="Télécharger" class="partager" @click="telechargerPhoto(photo)" />
-        <BoutonIcone v-if="aUnLieu(photo) && legendeEnEdition == null" icone="lieu" libelle="Voir sur la carte" class="partager" @click="carteDeLaPhoto(photo)" />
+        <div v-if="legendeEnEdition == null" class="actions">
+          <BoutonIcone v-if="partage" icone="partager" libelle="Partager" @click="partagerPhoto(photo)" />
+          <BoutonIcone v-if="telechargement" icone="telecharger" libelle="Télécharger" @click="telechargerPhoto(photo)" />
+          <BoutonIcone v-if="aUnLieu(photo)" icone="lieu" libelle="Voir sur la carte" @click="carteDeLaPhoto(photo)" />
+        </div>
         <label v-if="photo.peutSupprimer && albumsRangement.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Non classé</option>
@@ -650,7 +652,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .ligne-album input { flex: 1; min-width: 200px; }
 .actions-album { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .choix-album { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
-.album-photo { flex-direction: row; justify-content: center; align-items: center; gap: 8px; font-weight: normal; margin: 6px 0; }
+.album-photo { flex-direction: row; justify-content: center; align-items: center; gap: 8px; font-weight: normal; margin: 8px 0; }
 .album-photo select { padding: 4px 8px; }
 .visionneuse {
   position: fixed;
@@ -682,7 +684,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
 .infos { color: white; text-align: center; max-width: 700px; }
 .infos .aide { color: #c9cbd6; margin: 4px 0; }
 .legende { font-size: 1.15rem; margin: 0; }
-.infos .actions { justify-content: center; }
+.infos .actions { justify-content: center; gap: 12px; margin: 8px 0; }
 .infos .lien { color: white; }
 .partager { margin: 6px 0; }
 .edition { flex-direction: row; flex-wrap: wrap; justify-content: center; }
