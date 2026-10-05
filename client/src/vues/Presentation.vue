@@ -45,7 +45,7 @@ const ESSENTIEL = [
 
 const ROLES = [
   { icone: 'compte', nom: 'Les personnes accompagnées', texte: 'Une ou plusieurs par cercle, un couple par exemple. Pas d\'email ni de mot de passe : un aidant tape un code à 6 chiffres sur sa tablette ou son smartphone, qui reste ensuite connecté.' },
-  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, arbre de la famille, appareils et coordonnées des personnes accompagnées, réglages de leurs alertes.' },
+  { icone: 'coeur', nom: 'Les aidants', texte: 'Ils gèrent le cercle : invitations, arbre de la famille, appareils (lien d\'installation de l\'application envoyé par email, SMS ou WhatsApp, avec la marche à suivre) et coordonnées des personnes accompagnées, réglages de leurs alertes.' },
   { icone: 'famille', nom: 'Les proches', texte: 'Enfants, petits-enfants, amis : ils suivent l\'agenda, partagent leurs photos, écrivent à toute la famille, consultent l\'arbre et gardent le contact, même de loin.' },
   { icone: 'maison', nom: 'Les auxiliaires de vie', texte: 'Ils voient seulement les rendez-vous qui les concernent et le téléphone de chacun, et tiennent le cahier de liaison avec les aidants. Ni les photos de famille, ni l\'arbre, ni les messages de la famille.' }
 ]
@@ -142,7 +142,7 @@ const AUSSI = [
 
 const ETAPES = [
   { titre: 'Créer le cercle', texte: 'Un cercle par famille, avec une ou plusieurs personnes accompagnées et leurs aidants.' },
-  { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé par email ou par message. Chacun choisit son mot de passe, puis complète son profil : photo, téléphone, lien avec la personne accompagnée.' },
+  { titre: 'Inviter la famille', texte: 'Un lien d\'invitation, envoyé en un geste par email, SMS ou WhatsApp, avec un message déjà rédigé. Chacun choisit son mot de passe, puis complète son profil : photo, téléphone, lien avec la personne accompagnée.' },
   { titre: 'Installer son appareil', texte: 'Un code à 6 chiffres sur sa tablette ou son smartphone, et c\'est prêt. Rien à retenir pour elle.' }
 ]
 
