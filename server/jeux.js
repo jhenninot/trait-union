@@ -14,6 +14,6 @@ export function lireReglages(corps = {}) {
     musique: corps.musique !== false,
     decedes: corps.decedes === true,
     niveau: [2, 3].includes(Number(corps.niveau)) ? Number(corps.niveau) : base.niveau,
-    questions: [3, 5, 8].includes(Number(corps.questions)) ? Number(corps.questions) : base.questions
+    questions: [3, 5, 8, 10, 15, 20].includes(Number(corps.questions)) ? Number(corps.questions) : base.questions
   }
 }

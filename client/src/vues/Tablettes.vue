@@ -165,13 +165,13 @@ const adresseApk = `${location.host}/apk`
               <label class="case"><input type="radio" :name="`niveau-${m.id}`" :checked="m.jeux.niveau === 3" @change="changerJeux(m, { niveau: 3 })" /> Normal (3 propositions)</label>
             </div>
             <div class="reglage">
-              <span class="libelle-reglage">Questions par partie</span>
-              <label v-for="n in [3, 5, 8]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
+              <span class="libelle-reglage">Questions par partie (jusqu'à 20 chansons pour le quiz musical)</span>
+              <label v-for="n in [3, 5, 8, 10, 15, 20]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
             </div>
           </template>
           <div v-if="m.jeux.actif && m.jeux.musique" class="reglage">
             <span class="libelle-reglage">Préférences musicales de {{ m.prenom }}</span>
-            <p class="aide">Une chanson, un artiste (tous ses titres) ou un style : le quiz commence par là. Ensuite, l'application choisit des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
+            <p class="aide">Une chanson, un artiste (tous ses titres) ou un style : le quiz les mélange avec des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
             <div class="etiquettes">
               <span v-for="c in chansons[m.id]?.chansons ?? []" :key="c.id" class="etiquette">
                 {{ libelleChanson(c) }}
