@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { mentionDeces, lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
@@ -25,7 +25,12 @@ const utilisationDe = (m) => utilisation.value.find((u) => u.utilisateurId === m
 const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const envoiApp = ref(null) // { id, prenom, email, telephone, message, erreur }
 const texteApplication = (prenom) => `Bonjour ${prenom}, voici l'application Trait d'union pour votre tablette ou votre téléphone.\nAndroid : touchez ${location.origin}/apk, ouvrez le fichier téléchargé et autorisez l'installation si Android le demande. Au premier lancement, saisissez l'adresse ${location.origin} puis « Le configurer avec un code » et le code à 6 chiffres que je vous donnerai.\niPhone, iPad ou ordinateur : ouvrez ${location.origin}/appareil dans le navigateur et ajoutez la page à l'écran d'accueil.`
-const ouvrirEnvoiApp = (m) => { envoiApp.value = envoiApp.value?.id === m.id ? null : { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' } }
+const ouvrirEnvoiApp = async (m) => {
+  envoiApp.value = envoiApp.value?.id === m.id ? null : { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' }
+  if (!envoiApp.value) return
+  await nextTick()
+  document.getElementById(`envoi-app-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 const partagerApp = () => navigator.share({ text: texteApplication(envoiApp.value.prenom) }).catch(() => {})
 async function envoyerApp() {
   envoiApp.value.erreur = ''
@@ -152,29 +157,28 @@ const adresseApk = `${location.host}/apk`
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
+        <div v-if="envoiApp?.id === m.id" :id="`envoi-app-${m.id}`" class="encart">
+          <strong>Envoyer l'application à {{ envoiApp.prenom }}</strong>
+          <p class="aide">Le message contient le lien de l'application, le lien d'installation de l'APK Android et la marche à suivre.
+            Le code de connexion se crée avec « Configurer un appareil » et se donne à part.</p>
+          <label v-if="session.email" class="champ">Adresse email de {{ envoiApp.prenom }}
+            <input v-model="envoiApp.email" type="email" />
+          </label>
+          <div v-if="session.email" class="actions">
+            <button class="secondaire" :disabled="!envoiApp.email" @click="envoyerApp">Envoyer par email</button>
+          </div>
+          <p v-if="envoiApp.message" class="aide">{{ envoiApp.message }}</p>
+          <p v-if="envoiApp.erreur" class="erreur">{{ envoiApp.erreur }}</p>
+          <label class="champ">Numéro de téléphone (SMS ou WhatsApp)
+            <input v-model="envoiApp.telephone" type="tel" placeholder="06 12 34 56 78" />
+          </label>
+          <div class="actions">
+            <a class="rond" :href="lienWhatsAppMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer par WhatsApp"><Icone nom="whatsapp" /></a>
+            <a class="rond" :href="lienSmsMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" title="Envoyer par SMS" aria-label="Envoyer par SMS"><Icone nom="sms" /></a>
+            <BoutonIcone v-if="typeof navigator.share === 'function'" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
+          </div>
+        </div>
         </template>
-      </div>
-
-      <div v-if="envoiApp" class="carte encart">
-        <strong>Envoyer l'application à {{ envoiApp.prenom }}</strong>
-        <p class="aide">Le message contient le lien de l'application, le lien d'installation de l'APK Android et la marche à suivre.
-          Le code de connexion se crée avec « Configurer un appareil » et se donne à part.</p>
-        <label v-if="session.email" class="champ">Adresse email de {{ envoiApp.prenom }}
-          <input v-model="envoiApp.email" type="email" />
-        </label>
-        <div v-if="session.email" class="actions">
-          <button class="secondaire" :disabled="!envoiApp.email" @click="envoyerApp">Envoyer par email</button>
-        </div>
-        <p v-if="envoiApp.message" class="aide">{{ envoiApp.message }}</p>
-        <p v-if="envoiApp.erreur" class="erreur">{{ envoiApp.erreur }}</p>
-        <label class="champ">Numéro de téléphone (SMS ou WhatsApp)
-          <input v-model="envoiApp.telephone" type="tel" placeholder="06 12 34 56 78" />
-        </label>
-        <div class="actions">
-          <a class="rond" :href="lienWhatsAppMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" target="_blank" rel="noopener" title="Envoyer par WhatsApp" aria-label="Envoyer par WhatsApp"><Icone nom="whatsapp" /></a>
-          <a class="rond" :href="lienSmsMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" title="Envoyer par SMS" aria-label="Envoyer par SMS"><Icone nom="sms" /></a>
-          <BoutonIcone v-if="typeof navigator.share === 'function'" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
-        </div>
       </div>
 
       <div v-if="codeAppareil" class="carte encart">
