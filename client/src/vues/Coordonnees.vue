@@ -13,7 +13,8 @@ defineProps({ personne: { type: Object, required: true }, membreId: { type: Stri
   <ul class="coordonnees">
     <li v-if="personne.telephone">
       <Icone nom="telephone" class="en-ligne" />
-      <a :href="lienTelephone(personne.telephone)">{{ personne.telephone }}</a>
+      <span class="numero">{{ personne.telephone }}</span>
+      <a :href="lienTelephone(personne.telephone)" class="appeler" :aria-label="`Appeler le ${personne.telephone}`"><Icone nom="telephone" class="en-ligne" /> Appeler</a>
       <span v-if="inscrite && !(membreId && cercleId)" />
       <span v-else-if="membreId && cercleId" class="contacts">
         <RouterLink :to="lienMessage(cercleId, membreId)" class="contact" title="Envoyer un message" aria-label="Envoyer un message dans l'application"><Icone nom="message" /></RouterLink>
@@ -36,4 +37,7 @@ defineProps({ personne: { type: Object, required: true }, membreId: { type: Stri
 .contacts { display: inline-flex; gap: 6px; align-self: center; }
 .contact { width: 32px; height: 32px; border-radius: 50%; background: var(--vert-clair); display: grid; place-items: center; }
 .coordonnees .contact .icone { top: 0; width: 18px; height: 18px; }
+.numero { color: #6b6b78; }
+.appeler { display: inline-flex; align-items: center; gap: 6px; align-self: center; margin: 0; padding: 6px 14px; border-radius: 8px; background: var(--vert); color: white; text-decoration: none; font-size: 0.92rem; white-space: nowrap; }
+.coordonnees .appeler .icone { color: inherit; top: 0; }
 </style>
