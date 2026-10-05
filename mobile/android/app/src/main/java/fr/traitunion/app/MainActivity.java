@@ -401,6 +401,57 @@ public class MainActivity extends BridgeActivity {
             }).start();
         }
 
+        // Télécharge plusieurs photos (tableau JSON de liens signés) puis ouvre le menu de partage d'Android
+        @JavascriptInterface
+        public void partagerPlusieurs(String adressesJson) {
+            new Thread(() -> {
+                try {
+                    JSONArray adresses = new JSONArray(adressesJson);
+                    File dossier = new File(getCacheDir(), "partage");
+                    dossier.mkdirs();
+                    File[] anciennes = dossier.listFiles();
+                    if (anciennes != null) for (File f : anciennes) f.delete();
+                    ArrayList<Uri> uris = new ArrayList<>();
+                    for (int i = 0; i < adresses.length(); i++) {
+                        String adresse = adresses.getString(i);
+                        if (!adresse.startsWith("https://")) continue;
+                        File fichier = new File(dossier, "trait-union-" + System.currentTimeMillis() + "-" + i + ".jpg");
+                        HttpURLConnection connexion = (HttpURLConnection) new URL(adresse).openConnection();
+                        connexion.setConnectTimeout(15000);
+                        connexion.setReadTimeout(30000);
+                        try {
+                            if (connexion.getResponseCode() != 200) throw new Exception("HTTP " + connexion.getResponseCode());
+                            try (InputStream entree = connexion.getInputStream(); OutputStream sortie = new FileOutputStream(fichier)) {
+                                copier(entree, sortie);
+                            }
+                        } finally {
+                            connexion.disconnect();
+                        }
+                        uris.add(FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fileprovider", fichier));
+                    }
+                    if (uris.isEmpty()) throw new Exception("aucune photo");
+                    Intent envoi = new Intent(Intent.ACTION_SEND_MULTIPLE)
+                        .setType("image/jpeg")
+                        .putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    ClipData clip = ClipData.newRawUri("", uris.get(0));
+                    for (int i = 1; i < uris.size(); i++) clip.addItem(new ClipData.Item(uris.get(i)));
+                    envoi.setClipData(clip);
+                    Intent choix = Intent.createChooser(envoi, "Partager les photos");
+                    choix.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    runOnUiThread(() -> startActivity(choix));
+                } catch (Exception e) {
+                    JSONObject detail = new JSONObject();
+                    try {
+                        detail.put("erreur", "partage");
+                    } catch (Exception ignoree) {
+                        return;
+                    }
+                    envoyer("tu-partage", detail);
+                }
+            }).start();
+        }
+
         // Télécharge la photo (lien signé de l'hébergeur) et l'enregistre dans la galerie (Pictures/Trait d'union)
         @JavascriptInterface
         public void telecharger(String adresse) {

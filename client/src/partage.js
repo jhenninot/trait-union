@@ -65,6 +65,33 @@ export async function partagerPhoto(photo) {
   }
 }
 
+// Partage plusieurs photos à la fois (sans légende)
+export async function partagerPhotos(photos) {
+  if (photos.length === 1) return partagerPhoto(photos[0])
+  if (natif()?.partagerPlusieurs) return natif().partagerPlusieurs(JSON.stringify(photos.map((p) => p.ecran)))
+  try {
+    const fichiers = []
+    for (const p of photos) fichiers.push(await fichierDe(p))
+    if (navigator.canShare?.({ files: fichiers })) {
+      try {
+        await navigator.share({ files: fichiers })
+      } catch (e) {
+        if (e.name === 'NotAllowedError') signaler('Touchez encore « Partager » : les photos sont prêtes.')
+      }
+      return
+    }
+    fichiers.forEach(enregistrerFichier)
+    signaler('Les photos sont enregistrées sur votre appareil.')
+  } catch {
+    signaler('Les photos n\'ont pas pu être récupérées. Vérifiez la connexion et réessayez.')
+  }
+}
+
+// Enregistre plusieurs photos sur l'appareil
+export async function telechargerPhotos(photos) {
+  for (const p of photos) await telechargerPhoto(p)
+}
+
 // Enregistre la photo (version écran) sur l'appareil : galerie Android dans l'application,
 // dossier Téléchargements dans un navigateur
 export async function telechargerPhoto(photo) {

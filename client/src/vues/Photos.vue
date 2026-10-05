@@ -6,7 +6,7 @@ import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
-import { partagerPhoto, partageDisponible, telechargerPhoto, telechargementDisponible, prendreRecues } from '../partage.js'
+import { partagerPhoto, partagerPhotos, partageDisponible, telechargerPhoto, telechargerPhotos, telechargementDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,7 +14,7 @@ import { avecParametres, revenir } from '../historique.js'
 import Avatar from './Avatar.vue'
 import Icone from '../navigation/Icone.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
-import { confirmer } from '../fenetre.js'
+import { confirmer, avertir } from '../fenetre.js'
 
 // Photos d'un cercle pour les aidants et les proches : albums, envoi de photos (réduites dans le
 // navigateur puis déposées chez l'hébergeur S3), grille des miniatures et visionneuse.
@@ -245,6 +245,97 @@ const supprimer = () => action(async () => {
   chargerAlbums()
 })
 
+// --- Sélection multiple (comme Google Photos) : appui long sur une photo, ou bouton « Sélectionner » ---
+const selection = ref(new Set()) // ids des photos cochées
+const selectionActive = ref(false)
+const rangerVers = ref('')
+const choisies = computed(() => liste.value.filter((p) => selection.value.has(p.id)))
+const modifiables = computed(() => choisies.value.filter((p) => p.peutSupprimer))
+function basculer(p) {
+  const s = new Set(selection.value)
+  if (!s.delete(p.id)) s.add(p.id)
+  selection.value = s
+}
+function quitterSelection() {
+  selectionActive.value = false
+  selection.value = new Set()
+  rangerVers.value = ''
+}
+const toutSelectionner = () => {
+  selection.value = new Set(liste.value.map((p) => p.id))
+}
+// Appui long : déclenche la sélection (le clic qui suit est ignoré)
+let minuteur = null
+let appuiLong = false
+function debutAppui(p) {
+  appuiLong = false
+  clearTimeout(minuteur)
+  minuteur = setTimeout(() => {
+    appuiLong = true
+    selectionActive.value = true
+    if (!selection.value.has(p.id)) basculer(p)
+  }, 450)
+}
+const finAppui = () => clearTimeout(minuteur)
+function toucher(p, i) {
+  if (appuiLong) { appuiLong = false; return }
+  if (selectionActive.value) basculer(p)
+  else ouvrir(i)
+}
+watch(url, quitterSelection)
+
+// Une action sur chaque photo cochée, 3 à la fois ; renvoie celles qui ont réussi
+async function surChacune(photos, faire) {
+  const file = [...photos]
+  const reussies = []
+  const travailleur = async () => {
+    for (let p = file.shift(); p; p = file.shift()) {
+      try { await faire(p); reussies.push(p) } catch { /* comptée parmi les échecs */ }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(3, file.length) }, travailleur))
+  return reussies
+}
+async function signalerRefus(visees, reussies, verbe) {
+  const echecs = visees.length - reussies.length
+  if (echecs) await avertir(`${echecs} photo(s) n'ont pas pu être ${verbe}. Seuls l'auteur d'une photo et les aidants peuvent la modifier ou la supprimer.`)
+}
+
+const supprimerSelection = () => action(async () => {
+  const visees = modifiables.value
+  if (!visees.length) return avertir('Seuls l\'auteur d\'une photo et les aidants peuvent la supprimer.')
+  const ignorees = choisies.value.length - visees.length
+  const message = `Supprimer ${visees.length} photo(s) pour tout le cercle ?${ignorees ? ` ${ignorees} photo(s) d'autres auteurs seront gardées.` : ''}`
+  if (!await confirmer(message, { oui: 'Supprimer', danger: true, icone: 'effacer' })) return
+  const reussies = await surChacune(visees, (p) => api('DELETE', `${url.value}/photos/${p.id}`))
+  const ids = new Set(reussies.map((p) => p.id))
+  liste.value = liste.value.filter((p) => !ids.has(p.id))
+  await signalerRefus(visees, reussies, 'supprimées')
+  quitterSelection()
+  chargerAlbums()
+})
+
+const rangerSelection = () => action(async () => {
+  const visees = modifiables.value
+  const albumId = rangerVers.value === 'aucun' ? null : rangerVers.value
+  if (rangerVers.value === '' || !visees.length) {
+    if (rangerVers.value !== '') await avertir('Seuls l\'auteur d\'une photo et les aidants peuvent la déplacer.')
+    return
+  }
+  const reussies = await surChacune(visees, async (p) => {
+    const r = await api('PATCH', `${url.value}/photos/${p.id}`, { albumId })
+    p.albumId = r.albumId
+  })
+  // Hors de l'album affiché : elles quittent la liste
+  if (filtre.value !== 'tous') {
+    const ids = new Set(reussies.filter((p) => filtre.value !== (p.albumId ?? 'aucun')).map((p) => p.id))
+    liste.value = liste.value.filter((p) => !ids.has(p.id))
+  }
+  await signalerRefus(visees, reussies, 'déplacées')
+  quitterSelection()
+  chargerAlbums()
+})
+
 const partage = partageDisponible()
 const telechargement = telechargementDisponible()
 const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'))
@@ -257,6 +348,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
       <p class="aide surtitre">{{ cercle.nom }}</p>
       <div class="titre">
         <h1>Photos</h1>
+        <button v-if="actif && liste.length && !selectionActive" class="secondaire" @click="selectionActive = true">Sélectionner</button>
         <label v-if="actif" class="bouton-fichier" :class="{ inactif: envoiEnCours }">
           Ajouter des photos
           <input type="file" accept="image/*" multiple :disabled="envoiEnCours" @change="choisir" />
@@ -347,9 +439,29 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
         <template v-if="albumCourant">Cet album est vide : ajoutez-y des photos avec le bouton « Ajouter des photos ».</template>
         <template v-else>Aucune photo pour l'instant. Les photos envoyées ici apparaissent sur la tablette de la personne accompagnée.</template>
       </p>
+      <div v-if="selectionActive" class="barre-selection" role="toolbar" aria-label="Photos sélectionnées">
+        <BoutonIcone icone="fermer" libelle="Quitter la sélection" @click="quitterSelection" />
+        <strong class="compte">{{ selection.size }} sélectionnée(s)</strong>
+        <button class="secondaire" @click="selection.size === liste.length ? selection = new Set() : toutSelectionner()">{{ selection.size === liste.length ? 'Tout désélectionner' : 'Tout sélectionner' }}</button>
+        <template v-if="selection.size">
+          <BoutonIcone v-if="partage" icone="partager" libelle="Partager" @click="partagerPhotos(choisies)" />
+          <BoutonIcone v-if="telechargement" icone="telecharger" libelle="Télécharger" @click="telechargerPhotos(choisies)" />
+          <label class="ranger">
+            <span class="aide">Ranger dans</span>
+            <select v-model="rangerVers" @change="rangerSelection">
+              <option value="" disabled>Choisir un album</option>
+              <option value="aucun">Non classé</option>
+              <option v-for="a in albumsRangement" :key="a.id" :value="a.id">{{ a.nom }}</option>
+            </select>
+          </label>
+          <BoutonIcone icone="effacer" libelle="Supprimer" danger @click="supprimerSelection" />
+        </template>
+      </div>
       <div class="grille">
-        <button v-for="(p, i) in liste" :key="p.id" class="vignette" @click="ouvrir(i)">
-          <img :src="p.miniature" :alt="p.legende || 'Photo'" loading="lazy" />
+        <button v-for="(p, i) in liste" :key="p.id" class="vignette" :class="{ cochee: selection.has(p.id) }" :aria-pressed="selectionActive ? selection.has(p.id) : undefined"
+          @click="toucher(p, i)" @pointerdown="debutAppui(p)" @pointerup="finAppui" @pointerleave="finAppui" @pointercancel="finAppui" @contextmenu.prevent>
+          <img :src="p.miniature" :alt="p.legende || 'Photo'" loading="lazy" draggable="false" />
+          <span v-if="selectionActive" class="case"><Icone v-if="selection.has(p.id)" nom="coche" /></span>
         </button>
       </div>
       <div v-if="suite" class="plus">
@@ -517,4 +629,14 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
   .fleche { top: auto; bottom: 16px; transform: none; }
 }
 .auteur { display: flex; align-items: center; gap: 8px; }
+.barre-selection { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 10px; background: var(--bleu-nuit, #1f2a44); color: white; border-radius: 12px; }
+.barre-selection .compte { margin-right: auto; }
+.barre-selection .ranger { display: flex; align-items: center; gap: 6px; }
+.barre-selection .ranger .aide { color: #c9cbd6; margin: 0; }
+.vignette { position: relative; -webkit-touch-callout: none; user-select: none; }
+.vignette.cochee img { transform: scale(0.86); border-radius: 10px; }
+.vignette img { transition: transform 0.12s; }
+.case { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; background: rgb(0 0 0 / 0.35); color: white; display: grid; place-items: center; }
+.vignette.cochee .case { background: var(--bleu, #3a63c8); }
+.case :deep(svg) { width: 16px; height: 16px; }
 </style>

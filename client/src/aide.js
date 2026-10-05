@@ -50,6 +50,7 @@ const FICHES = {
       { q: 'Classer dans un album', r: 'Créez un album avec « + Nouvel album… » puis choisissez-le à l\'envoi ou plus tard. Les photos sans album vont dans « Non classé ».' },
       { q: 'Envoyer une photo depuis une autre application', r: 'Dans la galerie de votre téléphone, touchez Partager puis Trait d\'union : la photo arrive ici, avec le choix de l\'album.' },
       { q: 'Enregistrer une photo sur mon appareil', r: 'Ouvrez la photo puis touchez « Télécharger ». Dans l\'application Android, elle arrive dans la galerie (dossier « Trait d\'union ») ; dans un navigateur, dans les téléchargements. Les photos reçues dans la messagerie se téléchargent aussi, en les ouvrant en grand.' },
+      { q: 'Sélectionner plusieurs photos', r: 'Restez appuyé sur une photo (ou touchez « Sélectionner »), puis touchez les autres. La barre du haut permet de tout sélectionner, partager, télécharger, ranger dans un album ou supprimer. Seuls l\'auteur d\'une photo et les aidants peuvent la déplacer ou la supprimer.' },
       { q: 'Retirer une photo', r: 'Ouvrez-la puis supprimez-la. Seuls son auteur et les aidants peuvent le faire.' }
     ],
     astuces: ['Une légende simple aide beaucoup la personne accompagnée à reconnaître la photo.', 'Les auxiliaires de vie n\'ont pas accès aux photos.']
