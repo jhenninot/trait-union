@@ -137,14 +137,25 @@ const FICHES = {
   },
   admin: {
     titre: 'Administration', icone: 'bouclier',
-    intro: 'Les réglages réservés à l\'administrateur : cercles, comptes, envoi d\'emails, stockage des photos, alertes et statistiques.',
+    intro: 'Les réglages réservés à l\'administrateur : cercles, comptes, envoi d\'emails, stockage des photos, alertes, statistiques et journal des erreurs.',
     comment: [
       { q: 'Où régler l\'envoi des invitations par email ?', r: 'Dans « Envoi d\'emails » : renseignez la clé du service d\'envoi puis envoyez un message d\'essai.' },
       { q: 'Où sont stockées les photos ?', r: '« Stockage des photos » : indiquez les accès de votre stockage en ligne et touchez « Vérifier ». Rien n\'est conservé sur le serveur.' },
       { q: 'Supprimer un compte', r: 'Dans « Utilisateurs » : une alerte indique les cercles concernés et si la personne est le seul aidant d\'une personne accompagnée.' },
+      { q: 'Voir pourquoi un envoi de photo a échoué ?', r: 'Dans « Journal » : filtrez par niveau « Erreur » ou par module « photos ». Les erreurs du serveur et celles vues par le navigateur de la personne y figurent, avec l\'heure et le compte concerné.' },
       { q: 'Montrer l\'application à d\'autres', r: '« Page de présentation » règle l\'adresse secrète de la page de découverte, qui n\'est jamais référencée par les moteurs de recherche.' }
     ],
-    astuces: ['« Statistiques » ne montre que des chiffres agrégés, jamais le contenu des échanges.']
+    astuces: ['« Statistiques » ne montre que des chiffres agrégés, jamais le contenu des échanges.', 'Le « Journal » ne garde ni mot de passe, ni contenu de message ; il s\'efface tout seul après 30 jours.']
+  },
+  adminJournal: {
+    titre: 'Journal', icone: 'journal',
+    intro: 'Les erreurs du serveur et du navigateur des utilisateurs, pour comprendre ce qui ne fonctionne pas (envoi de photos, emails, alertes...).',
+    comment: [
+      { q: 'Filtrer', r: 'Choisissez un niveau, un module ou une origine, ou cherchez un mot. Touchez une ligne pour voir le détail technique.' },
+      { q: 'Voir plus ancien', r: 'Touchez « Afficher plus » en bas de la liste.' },
+      { q: 'Vider le journal', r: '« Vider le journal » efface tout, après confirmation.' }
+    ],
+    astuces: ['Les lignes les plus anciennes sont effacées automatiquement après 30 jours.']
   },
   general: {
     titre: 'Trait d\'union', icone: 'question',
@@ -244,6 +255,7 @@ export function rubrique(chemin, accompagne) {
     return FICHES_ACCOMPAGNE[cle] ? cle : 'general'
   }
   if (chemin === '/') return 'accueil'
+  if (chemin === '/admin/journal') return 'adminJournal'
   if (chemin.startsWith('/admin/')) return 'admin'
   const suite = chemin.match(/^\/cercles\/[^/]+(?:\/(\w+))?$/)
   if (suite) return suite[1] ? (FICHES[suite[1]] ? suite[1] : 'general') : 'famille'

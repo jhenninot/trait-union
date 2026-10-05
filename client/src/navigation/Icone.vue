@@ -66,6 +66,7 @@ const traces = {
   bas: '<path d="m6 9 6 6 6-6"/>',
   maison: '<path d="M2 20h20M4 20V9l8-6 8 6v11"/><path d="M9 20v-5h6v5"/><path d="M8 11h.01M16 11h.01"/>',
   statistiques: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  journal: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M8 13h8M8 17h8M8 9h2"/>',
   hausse: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
   baisse: '<path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>',
   envoyer: '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',

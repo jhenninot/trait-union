@@ -190,6 +190,13 @@
       "when": 1791185136570,
       "tag": "0026_reactions",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791210862444,
+      "tag": "0027_journal",
+      "breakpoints": true
     }
   ]
 }

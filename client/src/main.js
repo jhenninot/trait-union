@@ -28,6 +28,8 @@ import AdminAlertes from './vues/AdminAlertes.vue'
 import AdminPresentation from './vues/AdminPresentation.vue'
 import AdminUtilisateurs from './vues/AdminUtilisateurs.vue'
 import AdminStatistiques from './vues/AdminStatistiques.vue'
+import AdminJournal from './vues/AdminJournal.vue'
+import { surveillerErreurs } from './journal.js'
 import Presentation from './vues/Presentation.vue'
 import Messages from './vues/Messages.vue'
 import Sondages from './vues/Sondages.vue'
@@ -62,6 +64,7 @@ const router = createRouter({
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
     { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
     { path: '/admin/utilisateurs', component: AdminUtilisateurs, meta: { connecte: true, admin: true } },
+    { path: '/admin/journal', component: AdminJournal, meta: { connecte: true, admin: true } },
     { path: '/admin/statistiques', component: AdminStatistiques, meta: { connecte: true, admin: true } },
     { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
     { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
@@ -100,4 +103,5 @@ suivreUtilisation(router)
 watch(() => session.utilisateur?.id, (id) => id && rafraichirAlertes())
 // Messages non lus et temps réel de la messagerie, tant qu'une personne est connectée
 watch(() => session.utilisateur?.id, (id) => (id ? demarrerMessagerie() : arreterMessagerie()), { immediate: true })
+surveillerErreurs()
 createApp(App).use(router).mount('#app')

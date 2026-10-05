@@ -445,3 +445,19 @@ export const sondageReponses = pgTable('sondage_reponses', {
 }, (t) => [
   unique('sondage_reponses_unique').on(t.sondageId, t.utilisateurId)
 ])
+
+// Journal d'événements pour l'administrateur (server/journal.js) : erreurs du serveur et du
+// navigateur, jamais de mot de passe, de jeton ni de contenu de message. Purgé automatiquement.
+// niveau : 'info' | 'avertissement' | 'erreur' ; source : 'serveur' | 'navigateur'.
+export const journal = pgTable('journal', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  creeLe: timestamp('cree_le', { withTimezone: true }).notNull().defaultNow(),
+  niveau: text('niveau').notNull(),
+  source: text('source').notNull(),
+  module: text('module').notNull(),
+  message: text('message').notNull(),
+  details: text('details'),
+  utilisateurId: uuid('utilisateur_id').references(() => utilisateurs.id, { onDelete: 'set null' })
+}, (t) => [
+  index('journal_cree_le_idx').on(t.creeLe)
+])

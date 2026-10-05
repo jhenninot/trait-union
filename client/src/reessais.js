@@ -1,5 +1,7 @@
 // Nouvelles tentatives automatiques avec délai croissant (1 s, 3 s, 6 s) pour les envois
 // de fichiers : une coupure brève du réseau ou de l'hébergeur ne doit pas faire échouer une photo.
+import { signaler } from './journal.js'
+
 const DELAIS = [1000, 3000, 6000]
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -9,7 +11,10 @@ export async function avecReessais(action, rejouable = () => true) {
     try {
       return await action()
     } catch (e) {
-      if (essai >= DELAIS.length || !rejouable(e)) throw e
+      if (essai >= DELAIS.length || !rejouable(e)) {
+        e.essais = essai + 1
+        throw e
+      }
       await attendre(DELAIS[essai])
     }
   }
@@ -29,8 +34,15 @@ export function deposerFichier(lien, blob, type, nom = 'photos') {
     }
     if (!reponse.ok) throw Object.assign(new Error(`L'hébergeur des ${nom} a refusé l'envoi (erreur ${reponse.status})`), { passagere: reponse.status >= 500 || reponse.status === 429 })
     return reponse
-  }, erreurPassagere)
+  }, erreurPassagere).catch((e) => {
+    // Après les réessais : l'administrateur voit l'échec dans le journal
+    signaler(nom, e.message, `dépôt chez ${new URL(lien).host} · ${blob.size} octets · ${e.essais ?? 1} essai(s)`)
+    throw e
+  })
 }
 
 // Appel de publication : réessayé si le serveur n'a pas pu joindre l'hébergeur ou ne voit pas encore le fichier
-export const publier = (appel) => avecReessais(appel, (e) => erreurPassagere(e) || e.status === 400)
+export const publier = (appel) => avecReessais(appel, (e) => erreurPassagere(e) || e.status === 400).catch((e) => {
+  signaler('photos', e.message, `publication · erreur ${e.status ?? '?'} · ${e.essais ?? 1} essai(s)`)
+  throw e
+})

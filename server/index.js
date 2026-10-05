@@ -19,11 +19,15 @@ import { demarrerAlertes } from './alertes/planificateur.js'
 import { derniereApk, versionApk, APK_URL } from './application.js'
 import { ErreurEmail } from './email/brevo.js'
 import { ErreurStockage } from './stockage/s3.js'
+import routesJournal from './routes/journal.js'
+import { installerJournal, demarrerJournal, journaliserRequete } from './journal.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(__dirname, '..', 'dist')
 const port = process.env.PORT || 3000
 const version = process.env.APP_VERSION || 'dev'
+
+installerJournal()
 
 const app = express()
 // Derrière Nginx Proxy Manager (réseau local) : req.secure et req.ip viennent des en-têtes X-Forwarded-*
@@ -61,14 +65,16 @@ app.use('/api/profil', routesProfil)
 app.use('/api/alertes', routesAlertes)
 app.use('/api/presentation', routesPresentation)
 app.use('/api/messagerie', routesMessagerie)
+app.use('/api/journal', routesJournal)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })
-  if (err instanceof ErreurEmail) return res.status(502).json({ erreur: err.message })
-  if (err instanceof ErreurStockage) return res.status(502).json({ erreur: err.message })
-  if (err instanceof ErreurAlertes) return res.status(502).json({ erreur: err.message })
+  if (err instanceof ErreurEmail || err instanceof ErreurStockage || err instanceof ErreurAlertes) {
+    journaliserRequete('erreur', req, err)
+    return res.status(502).json({ erreur: err.message })
+  }
   if ((err.cause?.code ?? err.code) === '22P02') return res.status(404).json({ erreur: 'Introuvable' }) // UUID mal formé
-  console.error(err)
+  journaliserRequete('erreur', req, err)
   res.status(500).json({ erreur: 'Erreur interne' })
 })
 
@@ -84,6 +90,8 @@ await migrer()
 console.log('Base de données à jour')
 // Rappels de rendez-vous et alertes « nouvelles photos »
 demarrerAlertes()
+// Journal de l'administrateur : purge automatique
+demarrerJournal()
 
 app.listen(port, () => {
   console.log(`Trait d'union (${version}) écoute sur le port ${port}`)

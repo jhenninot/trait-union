@@ -8,6 +8,9 @@ import * as alertes from '../alertes/envoi.js'
 import * as presentation from '../presentation/config.js'
 import { listerComptes, apercuSuppression, supprimerCompte } from '../comptes.js'
 import { statistiques } from '../statistiques.js'
+import { sql } from 'drizzle-orm'
+import { db } from '../db/index.js'
+import { NIVEAUX, SOURCES, JOURS_CONSERVATION } from '../journal.js'
 import { lireConservation, enregistrerConservation, DUREES_POSSIBLES } from '../messagerie/conservation.js'
 
 const router = Router()
@@ -237,6 +240,43 @@ router.delete('/utilisateurs/:id', async (req, res) => {
 
 router.get('/statistiques', async (req, res) => {
   res.json(await statistiques())
+})
+
+// --- Journal (erreurs du serveur et du navigateur, voir server/journal.js)
+
+router.get('/journal', async (req, res) => {
+  const { niveau, source, module, q, avant } = req.query
+  const limite = Math.min(Math.max(parseInt(req.query.limite) || 100, 1), 300)
+  const conditions = [sql`true`]
+  if (NIVEAUX.includes(niveau)) conditions.push(sql`j.niveau = ${niveau}`)
+  if (SOURCES.includes(source)) conditions.push(sql`j.source = ${source}`)
+  if (typeof module === 'string' && module) conditions.push(sql`j.module = ${module}`)
+  if (typeof q === 'string' && q.trim()) {
+    const motif = `%${q.trim().replace(/[\\%_]/g, '\\$&')}%`
+    conditions.push(sql`(j.message ilike ${motif} or j.details ilike ${motif})`)
+  }
+  if (typeof avant === 'string' && !Number.isNaN(Date.parse(avant))) conditions.push(sql`date_trunc('milliseconds', j.cree_le) < ${new Date(avant)}`)
+  const { rows } = await db.execute(sql`
+    select j.id, to_char(j.cree_le at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "creeLe", j.niveau, j.source, j.module, j.message, j.details,
+      nullif(trim(concat(u.prenom, ' ', coalesce(u.nom, ''))), '') as utilisateur
+    from journal j left join utilisateurs u on u.id = j.utilisateur_id
+    where ${sql.join(conditions, sql` and `)}
+    order by j.cree_le desc limit ${limite + 1}`)
+  const { rows: modules } = await db.execute(sql`select distinct module from journal order by module`)
+  const { rows: [total] } = await db.execute(sql`select count(*)::int as n, count(*) filter (where niveau = 'erreur' and cree_le > now() - interval '24 hours')::int as erreurs24 from journal`)
+  res.json({
+    lignes: rows.slice(0, limite),
+    suite: rows.length > limite,
+    modules: modules.map((m) => m.module),
+    total: total.n,
+    erreurs24h: total.erreurs24,
+    jours: JOURS_CONSERVATION
+  })
+})
+
+router.delete('/journal', async (req, res) => {
+  await db.execute(sql`delete from journal`)
+  res.status(204).end()
 })
 
 export default router
