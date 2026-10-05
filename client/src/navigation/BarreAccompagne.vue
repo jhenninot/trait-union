@@ -5,6 +5,7 @@ import { api } from '../api.js'
 import { assistant, ecouteDisponible, parler, lectureDisponible } from '../voix.js'
 import { etatMessagerie, ecouterMessagerie } from '../messagerie.js'
 import Icone from './Icone.vue'
+import { ouvrirAide } from '../aide.js'
 
 // Barre de la personne accompagnée : quelques gros boutons, toujours au même endroit,
 // avec les mêmes pictogrammes que le menu des aidants.
@@ -45,6 +46,8 @@ onUnmounted(() => arreter?.())
 
 <template>
   <nav class="barre" aria-label="Menu">
+    <!-- Bouton d'aide : juste au-dessus de la barre, à droite, sans gêner les boutons des pages -->
+    <button type="button" class="aide" aria-label="Aide sur cet écran" @click="ouvrirAide"><Icone nom="question" /></button>
     <RouterLink v-for="b in boutons" :key="b.chemin" :to="b.chemin" class="bouton" exact-active-class="actif" :class="{ actif: b.aussi?.includes(route.path) }">
       <span class="pictogramme"><Icone :nom="b.icone" /><span v-if="b.badge && etatMessagerie.nonLus" class="badge">{{ etatMessagerie.nonLus }}</span></span>
       {{ b.libelle }}
@@ -65,7 +68,23 @@ onUnmounted(() => arreter?.())
   padding: 16px 24px calc(20px + env(safe-area-inset-bottom));
   background: white;
   border-top: 2px solid #ebe8e3;
+  position: relative;
 }
+.aide {
+  position: absolute;
+  right: 16px;
+  bottom: calc(100% + 12px);
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--vert-clair);
+  color: var(--vert);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+.aide :deep(.icone) { width: 38px; height: 38px; stroke-width: 2.4; }
 .bouton {
   min-height: 130px;
   border-radius: 24px;
@@ -89,6 +108,8 @@ button.bouton { font: inherit; font-size: clamp(1.1rem, 1.95vw, 1.9rem); font-we
 .pictogramme { position: relative; display: inline-flex; }
 .badge { position: absolute; top: -8px; right: -18px; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 999px; background: var(--rouge); color: white; font-size: 1.1rem; font-weight: 700; display: grid; place-items: center; }
 @media (max-width: 600px) {
+  .aide { width: 52px; height: 52px; right: 10px; bottom: calc(100% + 10px); }
+  .aide :deep(.icone) { width: 30px; height: 30px; }
   .barre { padding: 8px 4px calc(8px + env(safe-area-inset-bottom)); gap: 4px; }
   .bouton, button.bouton { min-height: 80px; font-size: 0.66rem; line-height: 1.15; text-align: center; padding: 6px 2px; border-radius: 16px; gap: 4px; }
   .bouton :deep(.icone) { width: 32px; height: 32px; }
