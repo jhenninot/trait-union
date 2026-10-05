@@ -98,7 +98,7 @@ async function enregistrer() {
           <div class="champ">
             <span class="libelle">Moment</span>
             <div class="puces" role="radiogroup" aria-label="Moment">
-              <button v-for="m in MOMENTS" :key="m.valeur" type="button" role="radio" class="puce" :class="{ on: f.moment === m.valeur }" :aria-checked="f.moment === m.valeur" @click="f.moment = m.valeur">{{ m.libelle }}</button>
+              <button v-for="m in MOMENTS" :key="m.valeur" type="button" role="radio" class="puce moment" :class="{ on: f.moment === m.valeur }" :aria-checked="f.moment === m.valeur" @click="f.moment = m.valeur"><Icone v-if="f.moment === m.valeur" nom="coche" class="en-ligne" />{{ m.libelle }}</button>
             </div>
             <input v-if="f.moment === 'heure'" v-model="f.heure" type="time" required aria-label="Heure" class="heure" />
           </div>
@@ -143,6 +143,10 @@ h2 { margin: 0; color: var(--bleu-nuit); font-size: 1.3rem; display: flex; align
 .puces { display: flex; flex-wrap: wrap; gap: 6px; }
 .puce { background: #f1eee9; color: var(--gris); border-radius: 999px; padding: 6px 12px; font-size: 0.88rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
 .puce.on { background: var(--vert-clair); color: var(--vert); font-weight: 700; }
+/* Moment choisi : bien visible (Julien, 2026-10-01) */
+.puce.moment { border: 2px solid transparent; }
+.puce.moment:hover:not(.on) { border-color: #d9d4cc; }
+.puce.moment.on { background: var(--vert); color: white; border-color: var(--vert); }
 .heure { max-width: 140px; }
 .aide { margin: 0; }
 .actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
