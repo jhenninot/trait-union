@@ -6,7 +6,7 @@ import { photosAccompagne, albumsAccompagne, marquerVu, dateEnvoi } from '../pho
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
 import { parler, lectureDisponible } from '../voix.js'
-import { partagerPhoto, partageDisponible, recues } from '../partage.js'
+import { partagerPhoto, partageDisponible, telechargerPhoto, telechargementDisponible, recues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { revenir } from '../historique.js'
@@ -100,6 +100,7 @@ const photo = computed(() => liste.value[index.value])
 // Légende et auteur lus à voix haute
 const lecture = lectureDisponible()
 const partage = partageDisponible()
+const telechargement = telechargementDisponible()
 const lirePhoto = () => {
   const p = photo.value
   parler(`${p.legende ? `${p.legende}. ` : ''}Photo envoyée par ${p.creeParPrenom ?? 'la famille'}, le ${dateEnvoi(p.creeLe)}.`)
@@ -207,6 +208,7 @@ function glisser(sens) {
         <button class="diaporama" @click="basculerDiaporama"><Icone nom="lecture" class="en-ligne" /> Diaporama</button>
         <button v-if="lecture" class="diaporama" aria-label="Écouter la légende" @click="lirePhoto"><Icone nom="son" class="en-ligne" /></button>
         <button v-if="partage" class="diaporama" aria-label="Partager" title="Partager" @click="partagerPhoto(photo)"><Icone nom="partager" class="en-ligne" /></button>
+        <button v-if="telechargement" class="diaporama" aria-label="Télécharger la photo" title="Télécharger la photo" @click="telechargerPhoto(photo)"><Icone nom="telecharger" class="en-ligne" /></button>
         <button class="fleche" aria-label="Photo suivante" :disabled="liste.length < 2" @click="manuel(1)"><Icone nom="suivant" class="en-ligne" /></button>
       </div>
     </template>

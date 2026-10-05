@@ -49,6 +49,7 @@ const FICHES = {
       { q: 'Ajouter des photos', r: 'Touchez le bouton d\'ajout, choisissez une ou plusieurs photos, ajoutez une légende (qui, où, quand) et un album si vous le souhaitez.' },
       { q: 'Classer dans un album', r: 'Créez un album avec « + Nouvel album… » puis choisissez-le à l\'envoi ou plus tard. Les photos sans album vont dans « Non classé ».' },
       { q: 'Envoyer une photo depuis une autre application', r: 'Dans la galerie de votre téléphone, touchez Partager puis Trait d\'union : la photo arrive ici, avec le choix de l\'album.' },
+      { q: 'Enregistrer une photo sur mon appareil', r: 'Ouvrez la photo puis touchez « Télécharger ». Dans l\'application Android, elle arrive dans la galerie (dossier « Trait d\'union ») ; dans un navigateur, dans les téléchargements. Les photos reçues dans la messagerie se téléchargent aussi, en les ouvrant en grand.' },
       { q: 'Retirer une photo', r: 'Ouvrez-la puis supprimez-la. Seuls son auteur et les aidants peuvent le faire.' }
     ],
     astuces: ['Une légende simple aide beaucoup la personne accompagnée à reconnaître la photo.', 'Les auxiliaires de vie n\'ont pas accès aux photos.']
@@ -195,7 +196,8 @@ const FICHES_ACCOMPAGNE = {
       { q: 'Voir les photos', r: 'Touchez un album, puis faites glisser le doigt ou touchez les flèches pour passer à la suivante.' },
       { q: 'Lancer le diaporama', r: 'Touchez « Diaporama » : les photos défilent toutes seules. Touchez l\'écran pour arrêter.' },
       { q: 'Écouter la légende', r: 'Touchez le haut-parleur : la tablette lit ce qui est écrit sous la photo.' },
-      { q: 'Envoyer une photo à ma famille', r: 'Touchez le bouton « Partager » sous la photo.' }
+      { q: 'Envoyer une photo à ma famille', r: 'Touchez le bouton « Partager » sous la photo.' },
+      { q: 'Garder une photo sur la tablette', r: 'Touchez le bouton avec la flèche vers le bas sous la photo : elle est enregistrée dans la galerie de la tablette.' }
     ],
     voix: ['Montre-moi les photos']
   },

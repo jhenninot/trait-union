@@ -15,6 +15,7 @@ import ReactionsMessage from './ReactionsMessage.vue'
 import { jouerSon, nouveauMessageRecu } from '../son.js'
 import { EMOJIS_FREQUENTS, insererDans, seulementEmojis } from '../emojis.js'
 import { confirmer } from '../fenetre.js'
+import { telechargerPhoto, telechargementDisponible } from '../partage.js'
 import { motDecede } from '../coordonnees.js'
 import { RouterLink } from 'vue-router'
 import { REPONSES, jourLong, momentTexte, repondreSondage } from '../sondages.js'
@@ -37,6 +38,7 @@ const tousLesEmojis = ref(false)
 const ajouterEmoji = (e) => (texte.value = insererDans(champTexte.value, texte.value, e))
 const enregistrement = ref(null) // { session, secondes }
 const enGrand = ref(null)
+const telechargement = telechargementDisponible()
 const choixPhoto = ref(null)
 let chrono = null
 let retourFil = null
@@ -512,6 +514,7 @@ async function terminerVocal() {
 
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
       <img :src="enGrand.ecran" alt="Photo" />
+      <button v-if="telechargement" class="telecharger-plein" @click.stop="telechargerPhoto(enGrand)"><Icone nom="telecharger" class="en-ligne" /> Télécharger</button>
     </div>
   </main>
 </template>
@@ -603,6 +606,7 @@ h1 { font-size: 2.4rem; margin: 0; }
 .grand-bouton { font-size: 1.4rem; font-weight: 700; padding: 16px 28px; border-radius: 16px; }
 .erreur { font-size: 1.3rem; }
 .plein-ecran { position: fixed; inset: 0; z-index: 200; background: rgb(0 0 0 / 0.92); display: grid; place-items: center; }
+.telecharger-plein { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 16px 28px; font-size: 1.5rem; font-weight: 700; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; }
 .plein-ecran img { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* Sondage de dates */
 .sondage-aide { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }

@@ -2,12 +2,16 @@ package fr.traitunion.app;
 
 import android.Manifest;
 import android.content.ClipData;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -394,6 +398,58 @@ public class MainActivity extends BridgeActivity {
                     }
                     envoyer("tu-partage", detail);
                 }
+            }).start();
+        }
+
+        // Télécharge la photo (lien signé de l'hébergeur) et l'enregistre dans la galerie (Pictures/Trait d'union)
+        @JavascriptInterface
+        public void telecharger(String adresse) {
+            if (adresse == null || !adresse.startsWith("https://")) return;
+            new Thread(() -> {
+                JSONObject detail = new JSONObject();
+                try {
+                    String nom = "trait-union-" + System.currentTimeMillis() + ".jpg";
+                    HttpURLConnection connexion = (HttpURLConnection) new URL(adresse).openConnection();
+                    connexion.setConnectTimeout(15000);
+                    connexion.setReadTimeout(30000);
+                    try {
+                        if (connexion.getResponseCode() != 200) throw new Exception("HTTP " + connexion.getResponseCode());
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ContentResolver resolveur = getContentResolver();
+                            ContentValues valeurs = new ContentValues();
+                            valeurs.put(MediaStore.Images.Media.DISPLAY_NAME, nom);
+                            valeurs.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                            valeurs.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Trait d'union");
+                            valeurs.put(MediaStore.Images.Media.IS_PENDING, 1);
+                            Uri uri = resolveur.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, valeurs);
+                            if (uri == null) throw new Exception("MediaStore");
+                            try (InputStream entree = connexion.getInputStream(); OutputStream sortie = resolveur.openOutputStream(uri)) {
+                                copier(entree, sortie);
+                            }
+                            valeurs.clear();
+                            valeurs.put(MediaStore.Images.Media.IS_PENDING, 0);
+                            resolveur.update(uri, valeurs, null, null);
+                        } else {
+                            File dossier = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Trait d'union");
+                            dossier.mkdirs();
+                            File fichier = new File(dossier, nom);
+                            try (InputStream entree = connexion.getInputStream(); OutputStream sortie = new FileOutputStream(fichier)) {
+                                copier(entree, sortie);
+                            }
+                            android.media.MediaScannerConnection.scanFile(MainActivity.this, new String[] { fichier.getAbsolutePath() }, new String[] { "image/jpeg" }, null);
+                        }
+                    } finally {
+                        connexion.disconnect();
+                    }
+                    detail.put("enregistree", true);
+                } catch (Exception e) {
+                    try {
+                        detail.put("erreur", "telechargement");
+                    } catch (Exception ignoree) {
+                        return;
+                    }
+                }
+                envoyer("tu-partage", detail);
             }).start();
         }
     }

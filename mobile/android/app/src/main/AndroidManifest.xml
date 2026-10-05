@@ -50,6 +50,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Enregistrer une photo dans la galerie avant Android 10 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- Alertes (Android 13 et plus : demandée depuis la page « Mes alertes ») -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Messages vocaux de la messagerie (demandé au premier enregistrement) -->

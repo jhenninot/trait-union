@@ -6,7 +6,7 @@ import { utiliserCercle } from '../cercle.js'
 import { envoyerPhoto, dateEnvoi } from '../photos.js'
 import { auRetour } from '../miseAJour.js'
 import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
-import { partagerPhoto, partageDisponible, prendreRecues } from '../partage.js'
+import { partagerPhoto, partageDisponible, telechargerPhoto, telechargementDisponible, prendreRecues } from '../partage.js'
 import { utiliserPleinEcran } from '../pleinEcran.js'
 import { zoom as vZoom } from '../zoom.js'
 import { useRoute, useRouter } from 'vue-router'
@@ -246,6 +246,7 @@ const supprimer = () => action(async () => {
 })
 
 const partage = partageDisponible()
+const telechargement = telechargementDisponible()
 const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'))
 </script>
 
@@ -388,6 +389,7 @@ const auteur = (p) => (p.deMoi ? 'vous' : (p.creeParPrenom ?? 'un ancien membre'
           Envoyée par {{ auteur(photo) }}, {{ dateEnvoi(photo.creeLe) }}
         </p>
         <BoutonIcone v-if="partage && legendeEnEdition == null" icone="partager" libelle="Partager" class="partager" @click="partagerPhoto(photo)" />
+        <BoutonIcone v-if="telechargement && legendeEnEdition == null" icone="telecharger" libelle="Télécharger" class="partager" @click="telechargerPhoto(photo)" />
         <label v-if="photo.peutSupprimer && albumsRangement.length && legendeEnEdition == null" class="album-photo">Album
           <select :value="photo.albumId ?? ''" @change="changerAlbum($event.target.value)">
             <option value="">Non classé</option>

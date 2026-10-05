@@ -13,6 +13,7 @@ import Avatar from './Avatar.vue'
 import TexteMessage from './TexteMessage.vue'
 import ApercuLien from './ApercuLien.vue'
 import { confirmer } from '../fenetre.js'
+import { telechargerPhoto, telechargementDisponible } from '../partage.js'
 import { motDecede } from '../coordonnees.js'
 import { useRoute } from 'vue-router'
 import CarteSondage from './CarteSondage.vue'
@@ -357,6 +358,7 @@ const sondageLance = (r) => {
 watch(() => route.query.sondage, (id) => id && (detail.value = { id, mode: 'repondre' }), { immediate: true })
 
 const enGrand = ref(null) // photo affichée en grand
+const telechargement = telechargementDisponible()
 const vocalPossible = enregistrementPossible()
 </script>
 
@@ -548,6 +550,7 @@ const vocalPossible = enregistrementPossible()
     <div v-if="enGrand" class="plein-ecran" @click="enGrand = null">
       <img :src="enGrand.ecran" alt="Photo" />
       <button class="fermer" aria-label="Fermer"><Icone nom="fermer" /></button>
+      <button v-if="telechargement" class="telecharger-plein" aria-label="Télécharger la photo" title="Télécharger la photo" @click.stop="telechargerPhoto(enGrand)"><Icone nom="telecharger" /></button>
       <button v-if="enGrand.message && peutAlbum && !ajoutees.has(enGrand.message.id)" class="ajouter-plein" @click.stop="preparerAjout(enGrand.message); enGrand = null"><Icone nom="photo" class="en-ligne" /> Ajouter aux photos</button>
     </div>
   </section>
@@ -674,6 +677,7 @@ const vocalPossible = enregistrementPossible()
 .ajouter-photos { align-self: flex-start; margin-top: 4px; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px; background: var(--vert-clair); color: var(--vert); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
 .moi .ajouter-photos { align-self: flex-end; }
 .ajouter-plein { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.plein-ecran .telecharger-plein { position: absolute; top: 12px; right: 68px; background: rgb(255 255 255 / 0.15); border-radius: 50%; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }
 .plein-ecran .fermer { position: absolute; top: 12px; right: 12px; background: rgb(255 255 255 / 0.15); border-radius: 50%; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }
 @media (max-width: 760px) {
   .messages { padding: 10px 10px; }

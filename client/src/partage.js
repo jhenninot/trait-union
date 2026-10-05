@@ -14,6 +14,8 @@ export const CACHE_PARTAGE = 'trait-union-partage'
 
 // Une ancienne version de l'application Android ne sait pas partager : pas de bouton
 export const partageDisponible = () => Boolean(natif()?.partager) || !dansAppliAndroid()
+// Idem pour l'enregistrement sur l'appareil
+export const telechargementDisponible = () => Boolean(natif()?.telecharger) || !dansAppliAndroid()
 
 export const etatPartage = reactive({ message: '' })
 let fichierPret = null // { url, fichier } : photo déjà téléchargée, pour un second essai
@@ -23,19 +25,31 @@ function signaler(message) {
   setTimeout(() => { if (etatPartage.message === message) etatPartage.message = '' }, 6000)
 }
 
+// Récupère la photo (version écran) sous forme de fichier, déjà téléchargée si possible
+async function fichierDe(photo) {
+  if (fichierPret?.url === photo.ecran) return fichierPret.fichier
+  // « reload » : une réponse déjà en cache pour l'image affichée n'a pas les en-têtes CORS
+  const reponse = await fetch(photo.ecran, { cache: 'reload' })
+  if (!reponse.ok) throw new Error()
+  const fichier = new File([await reponse.blob()], `photo-${photo.id.slice(0, 8)}.jpg`, { type: 'image/jpeg' })
+  fichierPret = { url: photo.ecran, fichier }
+  return fichier
+}
+
+function enregistrerFichier(fichier) {
+  const lien = document.createElement('a')
+  lien.href = URL.createObjectURL(fichier)
+  lien.download = fichier.name
+  lien.click()
+  setTimeout(() => URL.revokeObjectURL(lien.href), 10_000)
+}
+
 // Partage la photo (version écran) avec sa légende
 export async function partagerPhoto(photo) {
   const texte = photo.legende ?? ''
   if (natif()?.partager) return natif().partager(photo.ecran, texte)
   try {
-    let fichier = fichierPret?.url === photo.ecran ? fichierPret.fichier : null
-    if (!fichier) {
-      // « reload » : une réponse déjà en cache pour l'image affichée n'a pas les en-têtes CORS
-      const reponse = await fetch(photo.ecran, { cache: 'reload' })
-      if (!reponse.ok) throw new Error()
-      fichier = new File([await reponse.blob()], `photo-${photo.id.slice(0, 8)}.jpg`, { type: 'image/jpeg' })
-      fichierPret = { url: photo.ecran, fichier }
-    }
+    const fichier = await fichierDe(photo)
     if (navigator.canShare?.({ files: [fichier] })) {
       try {
         await navigator.share({ files: [fichier], text: texte || undefined })
@@ -45,11 +59,19 @@ export async function partagerPhoto(photo) {
       }
       return
     }
-    const lien = document.createElement('a')
-    lien.href = URL.createObjectURL(fichier)
-    lien.download = fichier.name
-    lien.click()
-    setTimeout(() => URL.revokeObjectURL(lien.href), 10_000)
+    enregistrerFichier(fichier)
+  } catch {
+    signaler('La photo n\'a pas pu être récupérée. Vérifiez la connexion et réessayez.')
+  }
+}
+
+// Enregistre la photo (version écran) sur l'appareil : galerie Android dans l'application,
+// dossier Téléchargements dans un navigateur
+export async function telechargerPhoto(photo) {
+  if (natif()?.telecharger) return natif().telecharger(photo.ecran)
+  try {
+    enregistrerFichier(await fichierDe(photo))
+    signaler('La photo est enregistrée sur votre appareil.')
   } catch {
     signaler('La photo n\'a pas pu être récupérée. Vérifiez la connexion et réessayez.')
   }
@@ -119,7 +141,9 @@ export function surveillerPartages(router) {
   }
   router.afterEach(() => { verifier() })
   window.addEventListener('tu-partage', (e) => {
-    if (e.detail?.erreur) signaler('La photo n\'a pas pu être partagée. Vérifiez la connexion et réessayez.')
+    if (e.detail?.erreur === 'telechargement') signaler('La photo n\'a pas pu être enregistrée. Vérifiez la connexion et réessayez.')
+    else if (e.detail?.enregistree) signaler('La photo est enregistrée dans la galerie de votre appareil.')
+    else if (e.detail?.erreur) signaler('La photo n\'a pas pu être partagée. Vérifiez la connexion et réessayez.')
     else verifier()
   })
 }
