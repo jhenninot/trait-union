@@ -1,4 +1,5 @@
 import { api } from './api.js'
+import { deposerFichier, publier } from './reessais.js'
 
 // Préparation et envoi des photos. Le navigateur réduit chaque photo en deux versions JPEG
 // (miniature pour les grilles, plein écran pour l'affichage), puis les envoie directement
@@ -43,16 +44,6 @@ export async function preparerPhoto(fichier) {
   }
 }
 
-async function deposer(lien, blob) {
-  let reponse
-  try {
-    reponse = await fetch(lien, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } })
-  } catch {
-    throw new Error('L\'hébergeur des photos ne répond pas (connexion, ou autorisation CORS à refaire dans l\'administration)')
-  }
-  if (!reponse.ok) throw new Error(`L'hébergeur des photos a refusé l'envoi (erreur ${reponse.status})`)
-}
-
 // Prépare, envoie et publie une photo dans un cercle ; renvoie la photo publiée
 export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
   const p = await preparerPhoto(fichier)
@@ -63,8 +54,8 @@ export async function envoyerPhoto(cercleId, fichier, legende, albumId = null) {
     hauteur: p.hauteur,
     tailles: { miniature: p.miniature.size, ecran: p.ecran.size }
   })
-  await Promise.all([deposer(envois.miniature, p.miniature), deposer(envois.ecran, p.ecran)])
-  return api('POST', `/cercles/${cercleId}/photos/${id}/publier`)
+  await Promise.all([deposerFichier(envois.miniature, p.miniature, 'image/jpeg'), deposerFichier(envois.ecran, p.ecran, 'image/jpeg')])
+  return publier(() => api('POST', `/cercles/${cercleId}/photos/${id}/publier`))
 }
 
 // Pseudo-album des photos rangées dans aucun album (tous cercles confondus)

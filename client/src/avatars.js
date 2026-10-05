@@ -1,4 +1,5 @@
 import { api } from './api.js'
+import { deposerFichier } from './reessais.js'
 
 // Avatars : un modèle 3D fourni avec l'application (client/public/avatars/, repris de FamilyGest)
 // ou une photo recadrée en carré dans le navigateur (RecadrageAvatar.vue) puis envoyée directement chez l'hébergeur S3.
@@ -71,12 +72,6 @@ export const choisirAvatar = (base, choix) => api('PUT', `${base}/avatar`, { ava
 // `blob` : la photo déjà recadrée (voir recadrer)
 export async function envoyerPhotoAvatar(base, blob) {
   const { photo, envoi } = await api('POST', `${base}/avatar/envoi`, { taille: blob.size })
-  let reponse
-  try {
-    reponse = await fetch(envoi, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } })
-  } catch {
-    throw new Error('L\'hébergeur des photos ne répond pas (connexion, ou autorisation CORS à refaire dans l\'administration)')
-  }
-  if (!reponse.ok) throw new Error(`L'hébergeur des photos a refusé l'envoi (erreur ${reponse.status})`)
+  await deposerFichier(envoi, blob, 'image/jpeg')
   return choisirAvatar(base, photo)
 }

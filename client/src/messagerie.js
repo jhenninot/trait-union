@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { api } from './api.js'
 import { preparerPhoto } from './photos.js'
+import { deposerFichier, publier } from './reessais.js'
 
 // Messagerie : nombre de messages non lus (menus, accueil), temps réel et envoi des messages.
 // Temps réel : une connexion Server-Sent Events (/api/messagerie/flux) par page ouverte ; le
@@ -122,15 +123,7 @@ export const envoyerTexte = (conversationId, texte, extra = {}) =>
 export const envoyerRapide = (conversationId, texte) =>
   api('POST', `/messagerie/conversations/${conversationId}/messages`, { type: 'rapide', texte })
 
-async function deposer(lien, blob, type) {
-  let reponse
-  try {
-    reponse = await fetch(lien, { method: 'PUT', body: blob, headers: { 'Content-Type': type } })
-  } catch {
-    throw new Error('L\'hébergeur des fichiers ne répond pas (connexion, ou autorisation CORS à refaire dans l\'administration)')
-  }
-  if (!reponse.ok) throw new Error(`L'hébergeur des fichiers a refusé l'envoi (erreur ${reponse.status})`)
-}
+const deposer = (lien, blob, type) => deposerFichier(lien, blob, type, 'fichiers')
 
 // Photo : réduite par le navigateur (comme les photos du cercle), puis envoyée chez l'hébergeur
 export async function envoyerPhotoMessage(conversationId, fichier, texte = '', extra = {}) {
@@ -140,7 +133,7 @@ export async function envoyerPhotoMessage(conversationId, fichier, texte = '', e
   })
   try {
     await Promise.all([deposer(envois.miniature, p.miniature, 'image/jpeg'), deposer(envois.ecran, p.ecran, 'image/jpeg')])
-    return await api('POST', `/messagerie/messages/${id}/publier`)
+    return await publier(() => api('POST', `/messagerie/messages/${id}/publier`))
   } catch (e) {
     api('DELETE', `/messagerie/messages/${id}`).catch(() => {})
     throw e
@@ -152,7 +145,7 @@ export async function envoyerVocal(conversationId, { blob, duree, format }, extr
   const { id, envoi } = await api('POST', `/messagerie/conversations/${conversationId}/messages`, { type: 'vocal', duree, taille: blob.size, format, ...extra })
   try {
     await deposer(envoi, blob, format)
-    return await api('POST', `/messagerie/messages/${id}/publier`)
+    return await publier(() => api('POST', `/messagerie/messages/${id}/publier`))
   } catch (e) {
     api('DELETE', `/messagerie/messages/${id}`).catch(() => {})
     throw e

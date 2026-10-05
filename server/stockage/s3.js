@@ -100,21 +100,33 @@ async function requete(c, methode, cle, { query = {}, corps = '', entetes = {} }
   const tous = { host: hote, 'x-amz-date': amzDate, 'x-amz-content-sha256': empreinteCorps, ...entetes }
   const s = signature(c, { methode, chemin, query, entetes: tous, empreinteCorps, amzDate, jour })
   const { host, ...aEnvoyer } = tous
-  let reponse
-  try {
-    reponse = await fetch(`${origine}${chemin}${s.qs ? '?' + s.qs : ''}`, {
-      method: methode,
-      headers: {
-        ...aEnvoyer,
-        authorization: `AWS4-HMAC-SHA256 Credential=${c.cleAcces}/${s.portee}, SignedHeaders=${s.signes}, Signature=${s.signature}`
-      },
-      body: corps || undefined,
-      signal: AbortSignal.timeout(15000)
-    })
-  } catch {
-    throw new ErreurStockage(`Le stockage (${hote}) est injoignable depuis le serveur`)
+  // Réessais avec délai croissant : une connexion réutilisée coupée par l'hébergeur ou une
+  // coupure brève ne doivent pas faire échouer l'envoi d'une photo.
+  const DELAIS = [400, 1200, 3000]
+  let derniereErreur
+  for (let essai = 0; essai <= DELAIS.length; essai++) {
+    if (essai > 0) await new Promise((r) => setTimeout(r, DELAIS[essai - 1]))
+    try {
+      const reponse = await fetch(`${origine}${chemin}${s.qs ? '?' + s.qs : ''}`, {
+        method: methode,
+        headers: {
+          ...aEnvoyer,
+          authorization: `AWS4-HMAC-SHA256 Credential=${c.cleAcces}/${s.portee}, SignedHeaders=${s.signes}, Signature=${s.signature}`
+        },
+        body: corps || undefined,
+        signal: AbortSignal.timeout(15000)
+      })
+      if ((reponse.status >= 500 || reponse.status === 429) && essai < DELAIS.length) {
+        await reponse.arrayBuffer().catch(() => {})
+        continue
+      }
+      return reponse
+    } catch (e) {
+      derniereErreur = e
+      console.error(`Stockage ${methode} ${hote} (essai ${essai + 1}) :`, e.cause?.code || e.name, e.message)
+    }
   }
-  return reponse
+  throw new ErreurStockage(`Le stockage (${hote}) est injoignable depuis le serveur`)
 }
 
 async function detailErreur(reponse) {
@@ -134,7 +146,13 @@ async function verifierReponse(reponse, action) {
 
 // Vrai si l'objet existe ; renvoie sa taille
 export async function infoObjet(c, cle) {
-  const reponse = await requete(c, 'HEAD', cle)
+  let reponse = await requete(c, 'HEAD', cle)
+  // L'objet vient d'être déposé : on laisse un instant à l'hébergeur pour le rendre visible
+  for (const delai of [500, 1500]) {
+    if (reponse.status !== 404) break
+    await new Promise((r) => setTimeout(r, delai))
+    reponse = await requete(c, 'HEAD', cle)
+  }
   if (reponse.status === 404) return null
   await verifierReponse(reponse, 'la lecture d\'une photo')
   return { taille: Number(reponse.headers.get('content-length')) }
