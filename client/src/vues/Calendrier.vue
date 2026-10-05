@@ -12,7 +12,7 @@ const props = defineProps({
   jourChoisi: { type: String, default: null }, // AAAA-MM-JJ
   grand: { type: Boolean, default: false } // tablette de la personne accompagnée
 })
-const emit = defineEmits(['naviguer', 'choisirJour'])
+const emit = defineEmits(['naviguer', 'choisirJour', 'ajouterJour'])
 
 const sens = ref('suivant') // pour l'animation de glissement
 function naviguer(s) {
@@ -20,13 +20,41 @@ function naviguer(s) {
   emit('naviguer', s)
 }
 
+// Ajout d'un rendez-vous : clic droit (ordinateur) ou appui long (tactile) sur un jour
+const DUREE_APPUI = 500
+let minuteur = null
+let dernierAjout = 0
+function ajouterSur(cle) {
+  dernierAjout = Date.now()
+  emit('ajouterJour', cle)
+}
+function menuContextuel(e, cle) {
+  e.preventDefault()
+  // Sur Android l'appui long déclenche aussi ce menu : on n'ajoute qu'une fois
+  if (Date.now() - dernierAjout > 800) ajouterSur(cle)
+}
+// Le clic qui suit un appui long ne doit pas seulement choisir le jour
+function clic(e, cle) {
+  if (Date.now() - dernierAjout < 800) return e.preventDefault()
+  emit('choisirJour', cle)
+}
+
 // Balayage horizontal au doigt
 let depart = null
-function toucher(e) {
+function toucher(e, cle) {
   const t = e.changedTouches[0]
   depart = { x: t.clientX, y: t.clientY }
+  clearTimeout(minuteur)
+  if (cle) minuteur = setTimeout(() => { minuteur = null; depart = null; ajouterSur(cle) }, DUREE_APPUI)
+}
+function bouger(e) {
+  if (!minuteur || !depart) return
+  const t = e.changedTouches[0]
+  if (Math.hypot(t.clientX - depart.x, t.clientY - depart.y) > 10) { clearTimeout(minuteur); minuteur = null }
 }
 function lacher(e) {
+  clearTimeout(minuteur)
+  minuteur = null
   if (!depart) return
   const t = e.changedTouches[0]
   const dx = t.clientX - depart.x
@@ -68,14 +96,14 @@ const heure = (rdv, cle) => (rdv.journeeEntiere || valeurJour(new Date(rdv.debut
       <button class="fleche" aria-label="Période suivante" @click="naviguer(1)"><Icone nom="suivant" class="en-ligne" /></button>
     </div>
 
-    <div class="zone" @touchstart.passive="toucher" @touchend="lacher">
+    <div class="zone" @touchstart.passive="toucher($event)" @touchmove.passive="bouger" @touchend="lacher" @touchcancel="lacher">
       <Transition :name="`glisse-${sens}`" mode="out-in">
         <div v-if="vue === 'mois'" :key="`mois-${titre}`" class="mois">
           <span v-for="e in entetes" :key="e" class="entete">{{ e }}</span>
           <button
             v-for="j in listeJours" :key="j.cle" type="button" class="case"
             :class="{ 'hors-mois': j.horsMois, aujourdhui: j.aujourdhui, choisi: j.cle === jourChoisi }"
-            @click="emit('choisirJour', j.cle)"
+            @click="clic($event, j.cle)" @contextmenu="menuContextuel($event, j.cle)" @touchstart.passive="toucher($event, j.cle)"
           >
             <span class="numero">{{ j.numero }}</span>
             <span v-for="rdv in j.rendezVous.slice(0, MAX_MOIS)" :key="rdv.cle" class="puce" :class="{ masque: rdv.masque }">
@@ -89,7 +117,7 @@ const heure = (rdv, cle) => (rdv.journeeEntiere || valeurJour(new Date(rdv.debut
           <button
             v-for="j in listeJours" :key="j.cle" type="button" class="jour"
             :class="{ aujourdhui: j.aujourdhui, choisi: j.cle === jourChoisi }"
-            @click="emit('choisirJour', j.cle)"
+            @click="clic($event, j.cle)" @contextmenu="menuContextuel($event, j.cle)" @touchstart.passive="toucher($event, j.cle)"
           >
             <span class="nom-jour">{{ j.nom }} <strong>{{ j.numero }}</strong></span>
             <span v-if="!j.rendezVous.length" class="rien">—</span>
@@ -109,6 +137,7 @@ const heure = (rdv, cle) => (rdv.journeeEntiere || valeurJour(new Date(rdv.debut
 .periode strong { color: var(--bleu-nuit); text-align: center; }
 .fleche { background: var(--vert-clair); color: var(--vert); font-size: 1.6rem; line-height: 1; padding: 6px 16px; }
 .zone { overflow: hidden; touch-action: pan-y; }
+.case, .jour { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .court { display: none; }
 
 .mois { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }

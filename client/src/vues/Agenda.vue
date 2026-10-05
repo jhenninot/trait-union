@@ -83,8 +83,10 @@ function uneHeureApres(heure) {
   return h >= 23 ? '23:59' : `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-function nouveau() {
-  const jour = vue.value === 'liste' ? valeurJour(new Date()) : jourChoisi.value
+function nouveau(jourVise) {
+  // Clic droit ou appui long sur un jour du calendrier : on part de ce jour
+  if (typeof jourVise === 'string') jourChoisi.value = jourVise
+  const jour = typeof jourVise === 'string' ? jourVise : vue.value === 'liste' ? valeurJour(new Date()) : jourChoisi.value
   formulaire.value = {
     id: null, titre: '', journeeEntiere: false,
     jour, heure: '09:00', jourFin: jour, heureFin: '10:00',
@@ -216,7 +218,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
       <p class="aide surtitre">{{ cercle.nom }}</p>
       <div class="titre">
         <h1>Agenda</h1>
-        <button v-if="!formulaire" @click="nouveau"><Icone nom="ajouter" class="en-ligne" /> Ajouter un rendez-vous</button>
+        <button v-if="!formulaire" @click="nouveau()"><Icone nom="ajouter" class="en-ligne" /> Ajouter un rendez-vous</button>
       </div>
 
       <form v-if="formulaire" class="carte" @submit.prevent="enregistrer">
@@ -293,7 +295,7 @@ const confirmerSuppression = (rdv, portee) => action(async () => {
         </div>
         <p v-if="!groupes.length" class="aide">{{ passes ? 'Aucun rendez-vous ces trois derniers mois.' : 'Aucun rendez-vous dans les trois prochains mois.' }}</p>
       </template>
-      <Calendrier v-else :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" />
+      <Calendrier v-else :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" @ajouter-jour="nouveau" />
 
       <section v-for="g in groupes" :key="g.cle">
         <h2 class="jour">{{ g.titre }}</h2>

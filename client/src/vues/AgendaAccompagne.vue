@@ -104,10 +104,11 @@ const QUI = [
   { valeur: 'accompagne', icone: 'compte', libelle: 'Moi seulement' }
 ]
 
-function ajouter() {
+function ajouter(jourVise) {
   erreur.value = ''
-  // Dans le calendrier, le jour sélectionné est proposé
-  const jour = vue.value === 'liste' ? null : jourChoisi.value
+  // Appui long ou clic droit sur un jour : ce jour. Sinon, dans le calendrier, le jour sélectionné
+  if (typeof jourVise === 'string') jourChoisi.value = jourVise
+  const jour = typeof jourVise === 'string' ? jourVise : vue.value === 'liste' ? null : jourChoisi.value
   const ecart = jour ? Math.round((combiner(jour) - debutDuJour()) / 86_400_000) : 0
   const quand = ecart === 0 || ecart === 1 ? ecart : 'autre'
   saisie.value = {
@@ -307,7 +308,7 @@ async function effacer(rdv, portee) {
       <div class="entete">
         <h1>Mon agenda</h1>
         <button v-if="lecture" class="principal ecouter" title="Écouter mes prochains rendez-vous" @click="ecouterAgenda"><Icone nom="son" class="en-ligne" /><span class="texte-ecouter"> Écouter</span></button>
-        <button class="principal" @click="ajouter"><Icone nom="ajouter" class="en-ligne" /> Ajouter</button>
+        <button class="principal" @click="ajouter()"><Icone nom="ajouter" class="en-ligne" /> Ajouter</button>
       </div>
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
 
@@ -317,7 +318,7 @@ async function effacer(rdv, portee) {
         </button>
       </div>
 
-      <Calendrier v-if="vue !== 'liste'" grand :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" />
+      <Calendrier v-if="vue !== 'liste'" grand :vue="vue" :reference="reference" :rendez-vous="liste" :jour-choisi="jourChoisi" @naviguer="naviguer" @choisir-jour="jourChoisi = $event" @ajouter-jour="ajouter" />
 
       <template v-for="(g, i) in sections" :key="g.cle">
         <h2 v-if="vue === 'liste' && i === 1">Les prochains jours</h2>
