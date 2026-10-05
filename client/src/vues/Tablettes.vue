@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch } from 'vue'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { mentionDeces, lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
@@ -27,10 +27,7 @@ const codeAppareil = ref(null) // { prenom, code, lien, expireLe }
 const envoiApp = ref(null) // { id, prenom, email, telephone, message, erreur }
 const texteApplication = (prenom) => `Bonjour ${prenom}, voici l'application Trait d'union pour votre tablette ou votre téléphone.\nAndroid : touchez ${location.origin}/apk, ouvrez le fichier téléchargé et autorisez l'installation si Android le demande. Si l'application demande l'adresse du serveur, saisissez ${location.origin}. Touchez « Le configurer avec un code » et le code à 6 chiffres que je vous donnerai.\niPhone, iPad ou ordinateur : ouvrez ${location.origin}/appareil dans le navigateur et ajoutez la page à l'écran d'accueil.`
 const ouvrirEnvoiApp = async (m) => {
-  envoiApp.value = envoiApp.value?.id === m.id ? null : { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' }
-  if (!envoiApp.value) return
-  await nextTick()
-  document.getElementById(`envoi-app-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  envoiApp.value = { id: m.id, prenom: m.prenom, email: '', telephone: m.telephone ?? '', message: '', erreur: '' }
 }
 // Le modèle n'a pas accès à « navigator » : on le teste ici
 const partageNatif = typeof navigator.share === 'function'
@@ -162,8 +159,8 @@ const adresseApk = `${location.host}/apk`
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
-        <div v-if="envoiApp?.id === m.id" :id="`envoi-app-${m.id}`" class="encart">
-          <strong>Envoyer l'application à {{ envoiApp.prenom }}</strong>
+        <Modale v-if="envoiApp?.id === m.id" :titre="`Envoyer l'application à ${envoiApp.prenom}`" @fermer="envoiApp = null">
+          <div class="envoi-app">
           <p class="aide">Le message contient le lien de l'application, le lien d'installation de l'APK Android et la marche à suivre.
             Le code de connexion se crée avec « Configurer un appareil » et se donne à part.</p>
           <label v-if="session.email" class="champ">Adresse email de {{ envoiApp.prenom }}
@@ -182,17 +179,21 @@ const adresseApk = `${location.host}/apk`
             <a class="rond" :href="lienSmsMessage(envoiApp.telephone, texteApplication(envoiApp.prenom))" title="Envoyer par SMS" aria-label="Envoyer par SMS"><Icone nom="sms" /></a>
             <BoutonIcone v-if="partageNatif" icone="partager" libelle="Partager avec une autre application" @click="partagerApp" />
           </div>
-        </div>
+          </div>
+        </Modale>
         </template>
       </div>
 
-      <div v-if="codeAppareil" class="carte encart">
+      <Modale v-if="codeAppareil" :titre="`Configurer l'appareil de ${codeAppareil.prenom}`" @fermer="codeAppareil = null">
         <p>Sur l'appareil de {{ codeAppareil.prenom }}, ouvrez <strong>{{ codeAppareil.lien }}</strong>
           ou allez sur la page de connexion, choisissez « Le configurer avec un code » et saisissez :</p>
         <p class="code">{{ codeAppareil.code }}</p>
         <p class="aide">Valable une seule fois, jusqu'au {{ heure(codeAppareil.expireLe) }}.</p>
-        <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(codeAppareil.lien)" />
-      </div>
+        <div class="actions">
+          <BoutonIcone icone="copier" libelle="Copier le lien" @click="copier(codeAppareil.lien)" />
+          <button class="secondaire" @click="codeAppareil = null">Fermer</button>
+        </div>
+      </Modale>
 
       <button v-if="cercle.peutGerer" class="secondaire" @click="ajoutOuvert = true"><Icone nom="ajouter" class="en-ligne" /> Ajouter une personne accompagnée</button>
       <Modale v-if="ajoutOuvert" titre="Ajouter une personne accompagnée" @fermer="ajoutOuvert = false">
@@ -236,6 +237,8 @@ const adresseApk = `${location.host}/apk`
 .petit { padding: 6px 12px; font-size: 0.9rem; }
 .alertes .aide { flex-basis: 100%; margin: 0; }
 .case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; }
+.envoi-app { display: flex; flex-direction: column; gap: 12px; }
+.envoi-app input { width: 100%; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .encart .actions { align-items: center; margin-top: 8px; }

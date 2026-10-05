@@ -211,7 +211,8 @@ const rejoindre = () => action(async () => {
           <button class="secondaire" @click="inviter('proche')">Inviter un proche</button>
           <button class="secondaire" @click="inviter('auxiliaire')">Inviter une auxiliaire de vie</button>
         </div>
-        <div v-if="invitation" class="encart">
+        <Modale v-if="invitation" :titre="`Inviter ${libellesRoles[invitation.role].toLowerCase()}`" @fermer="invitation = null">
+          <div class="encart-invitation">
           <p v-if="invitation.emailEnvoye">Invitation envoyée par email à <strong>{{ invitation.emailEnvoye }}</strong>. Vous pouvez aussi lui transmettre ce lien :</p>
           <template v-else>
             <p v-if="invitation.erreurEmail" class="erreur">L'email n'a pas pu partir : {{ invitation.erreurEmail }}</p>
@@ -228,7 +229,8 @@ const rejoindre = () => action(async () => {
             <a class="rond" :href="lienSmsMessage(telInvite, texteInvitation(invitation))" title="Envoyer par SMS" aria-label="Envoyer l'invitation par SMS"><Icone nom="sms" /></a>
             <BoutonIcone v-if="partageNatif()" icone="partager" libelle="Partager avec une autre application" @click="partagerInvitation" />
           </div>
-        </div>
+          </div>
+        </Modale>
       </div>
       <FenetreDeces v-if="deces" :url="url" :membre="deces" :seul-aidant="seulAidant(deces)" @fermer="deces = null" @fait="decesFait" />
     </template>
@@ -248,6 +250,8 @@ const rejoindre = () => action(async () => {
 .details { margin: 10px 0 0 52px; }
 .choix { margin-top: 16px; border-top: 1px solid #ebe8e3; padding-top: 12px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.encart-invitation { display: flex; flex-direction: column; gap: 12px; }
+.encart-invitation input { width: 100%; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .encart input { width: 100%; }
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
