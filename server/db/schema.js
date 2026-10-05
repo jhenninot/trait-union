@@ -317,6 +317,10 @@ export const chansons = pgTable('chansons', {
   artiste: text('artiste').notNull(),
   cle: text('cle').notNull(), // titre et artiste normalisés (sans accents ni majuscules), pour éviter les doublons
   source: text('source').notNull().default('catalogue'),
+  // 'chanson' (titre + artiste), 'artiste' (tous ses titres, titre vide) ou 'style' (style choisi dans
+  // server/musique/styles.js, titre et artiste vides)
+  type: text('type').notNull().default('chanson'),
+  style: text('style'),
   reaction: text('reaction'),
   creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
 }, (t) => [

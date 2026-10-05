@@ -76,8 +76,9 @@ const changerJeux = (m, modifs) => action(async () => {
   m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
 })
 // Chansons du quiz musical : celles choisies par les aidants et les réactions de la personne
-const chansons = ref({}) // par membre
-const nouvelleChanson = ref(null) // { membre, titre, artiste }
+const chansons = ref({}) // par membre : { chansons: [...], styles: [...] }
+const nouvelleChanson = ref(null) // { membre, type: 'chanson' | 'artiste' | 'style', titre, artiste, style }
+const libelleChanson = (c) => c.type === 'style' ? `Style : ${c.style}` : c.type === 'artiste' ? `${c.artiste} (tous ses titres)` : `${c.titre}, ${c.artiste}`
 const chargerChansons = async (m) => {
   try { chansons.value = { ...chansons.value, [m.id]: await api('GET', `${url.value}/membres/${m.id}/chansons`) } } catch { /* liste laissée vide */ }
 }
@@ -85,8 +86,8 @@ watch(() => cercle.value?.membres, (liste) => {
   if (cercle.value?.peutGerer) (liste ?? []).filter((m) => m.jeux).forEach(chargerChansons)
 }, { immediate: true })
 const ajouterChanson = () => action(async () => {
-  const { membre, titre, artiste } = nouvelleChanson.value
-  chansons.value = { ...chansons.value, [membre.id]: await api('POST', `${url.value}/membres/${membre.id}/chansons`, { titre, artiste }) }
+  const { membre, ...choix } = nouvelleChanson.value
+  chansons.value = { ...chansons.value, [membre.id]: await api('POST', `${url.value}/membres/${membre.id}/chansons`, choix) }
   nouvelleChanson.value = null
 })
 const retirerChanson = (m, c) => action(async () => {
@@ -169,16 +170,16 @@ const adresseApk = `${location.host}/apk`
             </div>
           </template>
           <div v-if="m.jeux.actif && m.jeux.musique" class="reglage">
-            <span class="libelle-reglage">Chansons de {{ m.prenom }}</span>
-            <p class="aide">Ces chansons passent en premier dans le quiz. Sinon, l'application choisit des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
+            <span class="libelle-reglage">Préférences musicales de {{ m.prenom }}</span>
+            <p class="aide">Une chanson, un artiste (tous ses titres) ou un style : le quiz commence par là. Ensuite, l'application choisit des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
             <div class="etiquettes">
-              <span v-for="c in chansons[m.id] ?? []" :key="c.id" class="etiquette">
-                {{ c.titre }}, {{ c.artiste }}
+              <span v-for="c in chansons[m.id]?.chansons ?? []" :key="c.id" class="etiquette">
+                {{ libelleChanson(c) }}
                 <small v-if="c.reaction === 'aime'"> · aime</small><small v-else-if="c.reaction === 'moins'"> · aime moins</small>
                 <button type="button" class="x" :aria-label="`Retirer « ${c.titre} »`" @click="retirerChanson(m, c)"><Icone nom="fermer" /></button>
               </span>
             </div>
-            <button type="button" class="secondaire petit" @click="nouvelleChanson = { membre: m, titre: '', artiste: '' }"><Icone nom="ajouter" class="en-ligne" /> Ajouter une chanson</button>
+            <button type="button" class="secondaire petit" @click="nouvelleChanson = { membre: m, type: 'chanson', titre: '', artiste: '', style: '' }"><Icone nom="ajouter" class="en-ligne" /> Ajouter une préférence</button>
           </div>
           <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Par défaut, les personnes décédées ne sont pas proposées.</span>
         </div>
@@ -212,10 +213,21 @@ const adresseApk = `${location.host}/apk`
           <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
           <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
         </div>
-        <Modale v-if="nouvelleChanson?.membre.id === m.id" :titre="`Ajouter une chanson pour ${m.prenom}`" @fermer="nouvelleChanson = null">
+        <Modale v-if="nouvelleChanson?.membre.id === m.id" :titre="`Préférence musicale de ${m.prenom}`" @fermer="nouvelleChanson = null">
           <form class="envoi-app" @submit.prevent="ajouterChanson">
-            <label class="champ">Titre <input v-model="nouvelleChanson.titre" required maxlength="120" placeholder="La Bohème" /></label>
-            <label class="champ">Artiste <input v-model="nouvelleChanson.artiste" required maxlength="120" placeholder="Charles Aznavour" /></label>
+            <div class="reglage">
+              <label class="case"><input v-model="nouvelleChanson.type" type="radio" value="chanson" /> Une chanson</label>
+              <label class="case"><input v-model="nouvelleChanson.type" type="radio" value="artiste" /> Un artiste (tous ses titres)</label>
+              <label class="case"><input v-model="nouvelleChanson.type" type="radio" value="style" /> Un style musical</label>
+            </div>
+            <label v-if="nouvelleChanson.type === 'chanson'" class="champ">Titre <input v-model="nouvelleChanson.titre" required maxlength="120" placeholder="La Bohème" /></label>
+            <label v-if="nouvelleChanson.type !== 'style'" class="champ">Artiste <input v-model="nouvelleChanson.artiste" required maxlength="120" placeholder="Charles Aznavour" /></label>
+            <label v-else class="champ">Style
+              <select v-model="nouvelleChanson.style" required>
+                <option value="" disabled>Choisir un style</option>
+                <option v-for="s in chansons[m.id]?.styles ?? []" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </label>
             <div class="actions"><button>Ajouter</button><button type="button" class="secondaire" @click="nouvelleChanson = null">Annuler</button></div>
           </form>
         </Modale>

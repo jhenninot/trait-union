@@ -225,6 +225,13 @@
       "when": 1791239973044,
       "tag": "0031_chansons",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791240550335,
+      "tag": "0032_chansons_type",
+      "breakpoints": true
     }
   ]
 }

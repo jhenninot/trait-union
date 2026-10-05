@@ -3,6 +3,7 @@ import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons } from '../db/schema.js'
 import { cleChanson } from '../musique/itunes.js'
+import { NOMS_STYLES } from '../musique/styles.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
 import { nouveauJeton, nouveauCode, empreinte } from '../auth/securite.js'
 import { mesCercles } from './auth.js'
@@ -374,24 +375,42 @@ router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, ch
   res.json(reglagesJeux(jeux))
 })
 
-// Chansons du quiz musical d'une personne accompagnée : celles que ses aidants ont choisies, et
-// celles qu'elle a aimées ou moins aimées en jouant
-const lignesChansons = (utilisateurId) => db.select({ id: chansons.id, titre: chansons.titre, artiste: chansons.artiste, source: chansons.source, reaction: chansons.reaction })
-  .from(chansons).where(eq(chansons.utilisateurId, utilisateurId)).orderBy(chansons.creeLe)
-router.get('/:cercleId/membres/:membreId/chansons', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
-  res.json(await lignesChansons(req.membre.utilisateurId))
+// Préférences musicales d'une personne accompagnée (quiz musical) : chansons, artistes ou styles
+// choisis par ses aidants, et chansons qu'elle a aimées ou moins aimées en jouant.
+const preferencesMusique = async (utilisateurId) => ({
+  chansons: await db.select({ id: chansons.id, type: chansons.type, titre: chansons.titre, artiste: chansons.artiste, style: chansons.style, source: chansons.source, reaction: chansons.reaction })
+    .from(chansons).where(eq(chansons.utilisateurId, utilisateurId)).orderBy(chansons.creeLe),
+  styles: NOMS_STYLES
 })
-// Corps : { titre, artiste }
+router.get('/:cercleId/membres/:membreId/chansons', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  res.json(await preferencesMusique(req.membre.utilisateurId))
+})
+// Corps : { type: 'chanson', titre, artiste } ou { type: 'artiste', artiste } ou { type: 'style', style }
 router.post('/:cercleId/membres/:membreId/chansons', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
-  const titre = valider.texte(req.body.titre, 'titre', { max: 120 })
-  const artiste = valider.texte(req.body.artiste, 'artiste', { max: 120 })
-  await db.insert(chansons).values({ utilisateurId: req.membre.utilisateurId, titre, artiste, cle: cleChanson(titre, artiste), source: 'aidant', creeParId: req.utilisateur.id })
+  const type = ['chanson', 'artiste', 'style'].includes(req.body.type) ? req.body.type : 'chanson'
+  let titre = ''
+  let artiste = ''
+  let style = null
+  let cle
+  if (type === 'style') {
+    style = NOMS_STYLES.includes(req.body.style) ? req.body.style : null
+    if (!style) throw new valider.ErreurSaisie('Style inconnu')
+    cle = `style|${cleChanson(style, '')}`
+  } else if (type === 'artiste') {
+    artiste = valider.texte(req.body.artiste, 'artiste', { max: 120 })
+    cle = `artiste|${cleChanson(artiste, '')}`
+  } else {
+    titre = valider.texte(req.body.titre, 'titre', { max: 120 })
+    artiste = valider.texte(req.body.artiste, 'artiste', { max: 120 })
+    cle = cleChanson(titre, artiste)
+  }
+  await db.insert(chansons).values({ utilisateurId: req.membre.utilisateurId, type, titre, artiste, style, cle, source: 'aidant', creeParId: req.utilisateur.id })
     .onConflictDoUpdate({ target: [chansons.utilisateurId, chansons.cle], set: { source: 'aidant', creeParId: req.utilisateur.id, modifieLe: new Date() } })
-  res.status(201).json(await lignesChansons(req.membre.utilisateurId))
+  res.status(201).json(await preferencesMusique(req.membre.utilisateurId))
 })
 router.delete('/:cercleId/membres/:membreId/chansons/:chansonId', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
   await db.delete(chansons).where(and(eq(chansons.id, req.params.chansonId), eq(chansons.utilisateurId, req.membre.utilisateurId)))
-  res.json(await lignesChansons(req.membre.utilisateurId))
+  res.json(await preferencesMusique(req.membre.utilisateurId))
 })
 
 // Décès d'un membre (n'importe quel rôle), indiqué par un aidant : { dateDeces } (facultative).
