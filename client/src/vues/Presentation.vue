@@ -124,6 +124,16 @@ const SONDAGE_POINTS = [
 
 // Jeu d'exemple, vu par la personne accompagnée : une photo, trois prénoms, une réponse toujours bienveillante
 const JEUX_CHOIX = ['Claire', 'Sylvie', 'Marie']
+// Défi en famille : les jeux avec score, un classement affiché à la fin de la partie
+const DEFI_CLASSEMENT = [['Léa', 880], ['Mamie', 700], ['Paul', 640]]
+const DEFI_POINTS = [
+  '« Qui est-ce ? », « Quel âge ? » et le quiz musical existent aussi en version avec score',
+  '100 points par bonne réponse, plus jusqu\'à 100 points de bonus quand on répond vite : une erreur ne retire rien',
+  'Tous les membres de la famille peuvent jouer, petits-enfants compris, et chacun garde son meilleur score',
+  'À la fin de la partie : son score, son record personnel et le podium des trois meilleurs',
+  'Les aidants choisissent, personne par personne, si ces jeux sont proposés, et peuvent remettre les scores à zéro',
+  'Ces jeux sont désactivés par défaut : ils ne conviennent pas à tout le monde'
+]
 const JEUX_POINTS = [
   '« Qui est-ce ? » : retrouver le prénom d\'un proche, parmi trois',
   '« Quel âge ? » : deviner une tranche d\'âge, sans avoir à être précis',
@@ -131,7 +141,7 @@ const JEUX_POINTS = [
   'Les aidants ajoutent les chansons préférées de la personne, qui passent en premier',
   'Les aidants et les proches peuvent essayer les jeux de chaque personne depuis leur menu, avec ses réglages, sans rien enregistrer',
   'Chaque jeu se règle par personne, ou se coupe tout à fait',
-  'Ni score ni chrono : une erreur ou « Je ne sais pas » donne la réponse avec le sourire',
+  'Dans les jeux classiques, ni score ni chrono : une erreur ou « Je ne sais pas » donne la réponse avec le sourire',
   'La question et la réponse sont lues à voix haute, avec le lien de parenté',
   'Les photos viennent de l\'arbre de la famille, les proches d\'abord'
 ]
@@ -414,6 +424,30 @@ function contacter() {
             <strong class="jeux-question">Quel est son prénom ?</strong>
             <div class="jeux-reponses"><span v-for="c in JEUX_CHOIX" :key="c">{{ c }}</span></div>
             <span class="jeux-pas-sur"><Icone nom="question" class="en-ligne" /> Je ne sais pas</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Le défi en famille : jeux avec score -->
+      <section class="section">
+        <div class="encadre inverse">
+          <div>
+            <span class="pastille">Le défi en famille</span>
+            <h2>Un petit défi entre grands-parents, parents et petits-enfants</h2>
+            <p>Pour ceux qui aiment la compétition, les jeux en quiz se jouent aussi avec un score. Les petits-enfants ou les enfants
+              peuvent relever le défi depuis leur propre téléphone, à la maison ou à distance, et essayer de battre le record de Mamie.
+              Une façon ludique de partager un moment, même quand on ne peut pas se voir.</p>
+            <ul class="points">
+              <li v-for="pt in DEFI_POINTS" :key="pt"><Icone nom="coche" class="en-ligne" /> {{ pt }}</li>
+            </ul>
+          </div>
+          <div class="demo-jeux" aria-hidden="true">
+            <span class="demo-titre">Quel âge ? avec score</span>
+            <span class="defi-score">880 points sur 1000</span>
+            <span class="defi-record">Nouveau record personnel, bravo !</span>
+            <ol class="defi-podium">
+              <li v-for="(c, i) in DEFI_CLASSEMENT" :key="c[0]" :class="{ moi: i === 0 }"><span class="defi-rang">{{ i + 1 }}</span><span class="defi-nom">{{ c[0] }}</span><strong>{{ c[1] }} points</strong></li>
+            </ol>
           </div>
         </div>
       </section>
@@ -1150,6 +1184,13 @@ h1, h2, h3 { color: var(--bleu-nuit); }
 .sondage-choix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .sondage-choix span { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 4px; border-radius: 10px; background: #f1eee9; color: var(--gris); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
 .demo-jeux { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border-radius: 18px; background: var(--fond); border: 1px solid #ece9e3; }
+.defi-score { padding: 10px 18px; border-radius: 16px; background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.15rem; }
+.defi-record { color: var(--bleu-nuit); font-size: 0.9rem; text-align: center; }
+.defi-podium { list-style: none; margin: 4px 0 0; padding: 10px; width: 100%; display: flex; flex-direction: column; gap: 6px; background: white; border-radius: 14px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+.defi-podium li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; color: var(--bleu-nuit); font-size: 0.95rem; }
+.defi-podium li.moi { background: var(--vert-clair); color: var(--vert); }
+.defi-rang { width: 28px; height: 28px; border-radius: 50%; background: #f1eee9; display: grid; place-items: center; font-weight: 700; flex: none; }
+.defi-nom { flex: 1; }
 .jeux-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: var(--vert-clair); }
 .jeux-question { color: var(--bleu-nuit); font-size: 1.05rem; }
 .jeux-reponses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
