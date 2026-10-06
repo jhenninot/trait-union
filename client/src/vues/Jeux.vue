@@ -121,12 +121,10 @@ function repondre(c) {
   choisi.value = c
   reponse.value = c.bonne ? 'bonne' : 'presque'
   if (score.value && c.bonne) gagner()
-  if (parle) parler(texteLu.value)
 }
 function passer() {
   if (reponse.value) return
   reponse.value = 'inconnu'
-  if (parle) parler(texteLu.value)
 }
 function suivante() {
   arreterParole()
