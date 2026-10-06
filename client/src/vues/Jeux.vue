@@ -143,7 +143,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
     <template v-else-if="fini">
       <h1>Bravo !</h1>
       <div class="bulle"><p class="grand">Vous avez revu {{ questions.length }} personne{{ questions.length > 1 ? 's' : '' }} de votre famille.</p><p class="moyen">C'était un beau moment.</p></div>
-      <div class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.personne.avatar" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>
+      <div class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.photo" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>
       <div class="actions">
         <button type="button" class="gros" @click="jouer(jeu)"><Icone nom="jeux" /> Rejouer</button>
         <button type="button" class="gros second" @click="retour">Retour aux jeux</button>
@@ -160,7 +160,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
       <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}
         <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
         <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
-      <Avatar :src="p.avatar" :prenom="p.prenom" :taille="petit ? 170 : 210" />
+      <Avatar :src="q.photo" :prenom="p.prenom" :taille="petit ? 170 : 210" />
       <template v-if="!reponse">
         <p class="question">{{ enonce }}</p>
         <div class="reponses">

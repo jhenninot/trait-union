@@ -2,6 +2,7 @@
 import { reactive, ref, computed, watch } from 'vue'
 import { api } from '../api.js'
 import ChoixAvatar from './ChoixAvatar.vue'
+import PhotosJeu from './PhotosJeu.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 
 // Ajout, placement ou modification d'une personne de l'arbre généalogique (fenêtre des aidants).
@@ -62,6 +63,7 @@ const titre = computed(() => {
 })
 const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join(' et ') || 'la personne accompagnée')
 const avatar = ref(p ? { avatar: p.avatar, avatarChoix: p.avatarChoix } : null)
+const photosJeu = ref(p?.photosJeu ?? [])
 const aujourdhui = new Date().toISOString().slice(0, 10)
 const erreur = ref('')
 const enCours = ref(false)
@@ -160,10 +162,14 @@ async function enregistrer() {
       <label class="case"><input v-model="f.visibleAide" type="checkbox" /> Montrer dans « Ma famille » de {{ aides }}</label>
 
       <div v-if="p && !compte" class="champ">
-        <span class="libelle">Avatar</span>
+        <span class="libelle">Photo de contact</span>
         <ChoixAvatar :base="`${base}/personnes/${p.id}`" :avatar="avatar.avatar" :choix="avatar.avatarChoix" :prenom="f.prenom" @change="avatar = $event" />
       </div>
-      <p v-else-if="!p && !membre" class="aide">Vous pourrez choisir son avatar ensuite, depuis sa fiche.</p>
+      <div v-if="p" class="champ">
+        <span class="libelle">Photos pour les jeux</span>
+        <PhotosJeu :base="`${base}/personnes/${p.id}`" :photos="photosJeu" @change="photosJeu = $event; p.photosJeu = $event" />
+      </div>
+      <p v-else-if="!membre" class="aide">Vous pourrez ajouter sa photo de contact et d'autres photos pour les jeux ensuite, depuis sa fiche.</p>
 
       <p v-if="erreur" class="erreur">{{ erreur }}</p>
       <div class="actions">

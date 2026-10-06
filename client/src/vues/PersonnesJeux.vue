@@ -5,6 +5,7 @@ import { ageTexte } from '../coordonnees.js'
 import { confirmer } from '../fenetre.js'
 import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
+import PhotosJeu from './PhotosJeu.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import Modale from '../navigation/Modale.vue'
@@ -54,6 +55,10 @@ async function photoChangee(a) {
   fiche.value = { ...fiche.value, ...a }
   await charger()
 }
+async function photosChangees(l) {
+  fiche.value = { ...fiche.value, photosJeu: l }
+  await charger()
+}
 async function retirer(p) {
   if (!await confirmer(`Retirer ${p.prenom} des jeux ?`, { oui: 'Retirer', danger: true })) return
   try { await api('DELETE', `${base()}/personnes/${p.id}`); await charger() } catch (e) { erreur.value = e.message }
@@ -79,8 +84,9 @@ async function retirer(p) {
 
     <Modale v-if="fiche" :titre="fiche.id ? (fiche.etapePhoto ? `Photo de ${fiche.prenom}` : `Fiche de ${fiche.prenom}`) : 'Ajouter une personne extérieure'" @fermer="fiche = null">
       <div v-if="fiche.etapePhoto" class="formulaire">
-        <p class="aide">{{ fiche.prenom }} est ajouté{{ fiche.genre === 'femme' ? 'e' : '' }}. Ajoutez maintenant une photo : sans photo, la personne n'apparaît pas dans les jeux.</p>
+        <p class="aide">{{ fiche.prenom }} est ajouté{{ fiche.genre === 'femme' ? 'e' : '' }}. Ajoutez maintenant sa photo (et d'autres si vous le souhaitez) : sans photo, la personne n'apparaît pas dans les jeux.</p>
         <ChoixAvatar :base="`${base()}/personnes/${fiche.id}`" :avatar="fiche.avatar" :choix="fiche.avatarChoix" :prenom="fiche.prenom" @change="photoChangee" />
+        <PhotosJeu :base="`${base()}/personnes/${fiche.id}`" :photos="fiche.photosJeu ?? []" @change="photosChangees" />
         <div class="actions"><button type="button" @click="fiche = null">Terminer</button></div>
       </div>
       <form v-else class="formulaire" @submit.prevent="enregistrer">
@@ -99,6 +105,7 @@ async function retirer(p) {
         <div v-if="fiche.id" class="champ">
           <span class="libelle">Photo</span>
           <ChoixAvatar :base="`${base()}/personnes/${fiche.id}`" :avatar="fiche.avatar" :choix="fiche.avatarChoix" :prenom="fiche.prenom" @change="photoChangee" />
+          <PhotosJeu :base="`${base()}/personnes/${fiche.id}`" :photos="fiche.photosJeu ?? []" @change="photosChangees" />
         </div>
         <p v-if="erreur" class="erreur">{{ erreur }}</p>
         <div class="actions">

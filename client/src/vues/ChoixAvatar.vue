@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { MODELES, choisirAvatar, envoyerPhotoAvatar } from '../avatars.js'
+import { choisirAvatar, envoyerPhotoAvatar } from '../avatars.js'
 import Avatar from './Avatar.vue'
 import RecadrageAvatar from './RecadrageAvatar.vue'
 
@@ -54,7 +54,7 @@ const choisir = (valeur) => executer(() => choisirAvatar(props.base, valeur))
         <button type="button" :disabled="enCours" @click="fichier.click()">
           {{ choix?.startsWith('photo:') ? 'Changer la photo' : 'Importer une photo' }}
         </button>
-        <button v-if="choix" type="button" class="lien" :disabled="enCours" @click="choisir(null)">Revenir à l'initiale</button>
+        <button v-if="choix" type="button" class="lien" :disabled="enCours" @click="choisir(null)">Retirer la photo</button>
         <p v-if="enCours" class="aide">Enregistrement…</p>
         <p v-else-if="erreur" class="erreur">{{ erreur }}</p>
         <p v-else class="aide">Vous pourrez recadrer la photo avant de l'enregistrer.</p>
@@ -63,26 +63,6 @@ const choisir = (valeur) => executer(() => choisirAvatar(props.base, valeur))
 
     <RecadrageAvatar v-if="aRecadrer" :fichier="aRecadrer" @valider="recadree" @annuler="aRecadrer = null" />
 
-    <p class="aide">Ou choisissez un modèle :</p>
-    <template v-for="g in MODELES" :key="g.groupe">
-      <p class="groupe">{{ g.groupe }}</p>
-      <div class="grille">
-        <button
-          v-for="m in g.modeles"
-          :key="m.id"
-          type="button"
-          class="modele"
-          :class="{ choisi: choix === m.choix }"
-          :title="m.nom"
-          :aria-label="m.nom"
-          :aria-pressed="choix === m.choix"
-          :disabled="enCours"
-          @click="choisir(m.choix)"
-        >
-          <img :src="m.image" alt="" loading="lazy" />
-        </button>
-      </div>
-    </template>
   </div>
 </template>
 
@@ -90,17 +70,4 @@ const choisir = (valeur) => executer(() => choisirAvatar(props.base, valeur))
 .actuel { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
 .boutons { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .boutons p { margin: 0; }
-.groupe { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris); margin: 12px 0 6px; }
-.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
-.modele {
-  padding: 0;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  overflow: hidden;
-  background: #f5f3ef;
-  border: 3px solid transparent;
-}
-.modele:hover { border-color: var(--vert-clair); }
-.modele.choisi { border-color: var(--vert); }
-.modele img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>

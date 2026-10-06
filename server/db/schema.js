@@ -132,6 +132,17 @@ export const personnes = pgTable('personnes', {
   uniqueIndex('personnes_cercle_utilisateur_idx').on(t.cercleId, t.utilisateurId)
 ])
 
+// Photos supplémentaires d'une personne de l'arbre, pour varier les jeux (la photo de contact reste
+// personnes.avatar ou utilisateurs.avatar). Objet chez l'hébergeur : avatars/<personne>/<jeton>.jpg
+export const photosJeu = pgTable('photos_jeu', {
+  ...commun,
+  personneId: uuid('personne_id').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
+  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  jeton: text('jeton').notNull()
+}, (t) => [
+  index('photos_jeu_cercle_idx').on(t.cercleId, t.personneId)
+])
+
 // Liens de l'arbre : « parent » (personne_a est un parent de personne_b) ou « conjoint »
 // (en couple, `fin` renseignée pour un couple séparé). Tous les autres liens (grands-parents,
 // frères et sœurs, gendres, neveux…) se déduisent de ces deux-là (server/arbre.js).

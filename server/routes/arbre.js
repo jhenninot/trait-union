@@ -1,11 +1,12 @@
 import { Router } from 'express'
-import { and, eq, or, inArray } from 'drizzle-orm'
+import { and, eq, or, inArray, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { personnes, relations, membres, utilisateurs } from '../db/schema.js'
+import { personnes, relations, membres, utilisateurs, photosJeu } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { chargerArbre, chargerExterieurs, parente, phrase, lienPossessif, filiation, ancetres } from '../arbre.js'
-import { preparerEnvoi, changerAvatar } from '../avatars.js'
+import { preparerEnvoi, changerAvatar, verifierPhotoJeu, supprimerPhotosJeu, lienPhotoJeu } from '../avatars.js'
+import { stockageActif } from '../stockage/s3.js'
 import { marquerDeces, annulerDeces } from '../deces.js'
 
 // Arbre généalogique d'un cercle (monté sous /api/cercles/:cercleId/arbre, après chargerCercle).
@@ -110,6 +111,7 @@ function presenter(p, gestion, utilisateurId) {
     adresse: p.adresse,
     avatar: p.avatar,
     avatarChoix: gestion ? p.avatarChoix : undefined,
+    photosJeu: gestion ? p.photosJeu : p.photosJeu.map((x) => x.url),
     aSavoir: p.aSavoir,
     visibleAide: p.visibleAide
   }
@@ -255,7 +257,9 @@ router.put('/personnes/:personneId', exigerGestion, chargerPersonne, async (req,
 // Retire une personne de l'arbre (et ses liens). Un membre du cercle garde son compte :
 // il repasse dans « Pas encore dans l'arbre ».
 router.delete('/personnes/:personneId', exigerGestion, chargerPersonne, async (req, res) => {
+  const photos = await db.select({ jeton: photosJeu.jeton }).from(photosJeu).where(eq(photosJeu.personneId, req.personne.id))
   const [p] = await db.delete(personnes).where(eq(personnes.id, req.personne.id)).returning()
+  await supprimerPhotosJeu(p.id, photos.map((x) => x.jeton))
   if (p.avatar?.startsWith('photo:') && !p.utilisateurId) await changerAvatar(p, null, personnes).catch(() => {})
   res.status(204).end()
 })
@@ -272,6 +276,36 @@ router.post('/personnes/:personneId/avatar/envoi', exigerGestion, chargerPersonn
 
 router.put('/personnes/:personneId/avatar', exigerGestion, chargerPersonne, exigerSansCompte, async (req, res) => {
   res.json(await changerAvatar(req.personne, req.body.avatar, personnes))
+})
+
+// Photos supplémentaires d'une personne (jeux) : 10 au plus, envoyées comme les avatars
+const MAX_PHOTOS_JEU = 10
+async function listePhotosJeu(personneId) {
+  const [lignes, stockage] = await Promise.all([
+    db.select().from(photosJeu).where(eq(photosJeu.personneId, personneId)).orderBy(photosJeu.creeLe),
+    stockageActif()
+  ])
+  return lignes.map((l) => ({ id: l.id, url: lienPhotoJeu(stockage, personneId, l.jeton) })).filter((x) => x.url)
+}
+
+router.post('/personnes/:personneId/photos/envoi', exigerGestion, chargerPersonne, async (req, res) => {
+  const [{ n }] = await db.select({ n: count() }).from(photosJeu).where(eq(photosJeu.personneId, req.personne.id))
+  if (n >= MAX_PHOTOS_JEU) throw new ErreurSaisie(`${MAX_PHOTOS_JEU} photos au plus par personne`)
+  res.json(await preparerEnvoi(req.personne.id, req.body.taille))
+})
+
+router.post('/personnes/:personneId/photos', exigerGestion, chargerPersonne, async (req, res) => {
+  const [{ n }] = await db.select({ n: count() }).from(photosJeu).where(eq(photosJeu.personneId, req.personne.id))
+  if (n >= MAX_PHOTOS_JEU) throw new ErreurSaisie(`${MAX_PHOTOS_JEU} photos au plus par personne`)
+  const jeton = await verifierPhotoJeu(req.personne.id, req.body.photo)
+  await db.insert(photosJeu).values({ personneId: req.personne.id, cercleId: req.cercle.id, jeton })
+  res.status(201).json(await listePhotosJeu(req.personne.id))
+})
+
+router.delete('/personnes/:personneId/photos/:photoId', exigerGestion, chargerPersonne, async (req, res) => {
+  const [l] = await db.delete(photosJeu).where(and(eq(photosJeu.id, req.params.photoId), eq(photosJeu.personneId, req.personne.id))).returning()
+  if (l) await supprimerPhotosJeu(req.personne.id, [l.jeton])
+  res.json(await listePhotosJeu(req.personne.id))
 })
 
 // Relie deux personnes déjà dans l'arbre : { type: 'parent' (a parent de b) | 'conjoint', a, b, separes }

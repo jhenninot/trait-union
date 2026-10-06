@@ -50,7 +50,7 @@ router.get('/exterieurs', chargerCible, async (req, res) => {
   if (!reglages(req.cible.jeux).exterieurs) return res.json([])
   const cercles = (await db.select({ id: membres.cercleId }).from(membres)
     .where(and(eq(membres.utilisateurId, req.cible.id), eq(membres.role, 'accompagne')))).map((m) => m.id)
-  res.json((await chargerExterieurs(cercles)).map(({ avatarChoix, ...p }) => ({ ...p, groupe: 'exterieur' })))
+  res.json((await chargerExterieurs(cercles)).map(({ avatarChoix, photosJeu, ...p }) => ({ ...p, photosJeu: photosJeu.map((x) => x.url), groupe: 'exterieur' })))
 })
 
 router.get('/reglages', chargerCible, (req, res) => res.json(reglages(req.cible.jeux)))

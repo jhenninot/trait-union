@@ -78,6 +78,26 @@ export async function preparerEnvoi(utilisateurId, taille) {
   return { photo: `photo:${jeton}`, envoi }
 }
 
+// Photos supplémentaires d'une personne de l'arbre (table photos_jeu), même stockage que les avatars
+export const lienPhotoJeu = (stockage, personneId, jeton) => lienAvatar(stockage, personneId, `photo:${jeton}`)
+
+export async function verifierPhotoJeu(personneId, photo) {
+  const [, jeton] = String(photo).match(/^photo:([a-z0-9]{1,60})$/) ?? []
+  if (!jeton) throw new ErreurSaisie('Photo invalide')
+  const stockage = await stockageActif()
+  if (!stockage) throw new ErreurSaisie('Le stockage des photos n\'est pas encore configuré par l\'administrateur')
+  if (!await infoObjet(stockage, cleObjet(personneId, jeton))) throw new ErreurSaisie('La photo n\'est pas arrivée chez l\'hébergeur, réessayez')
+  return jeton
+}
+
+export async function supprimerPhotosJeu(personneId, jetons) {
+  const stockage = await stockageActif()
+  if (!stockage) return
+  for (const jeton of jetons) {
+    await supprimerObjet(stockage, cleObjet(personneId, jeton)).catch((e) => console.error('Suppression d\'une photo de jeu :', e.message))
+  }
+}
+
 // Enregistre le nouvel avatar (null pour revenir à l'initiale) et supprime l'ancienne photo.
 // `table` : utilisateurs, ou personnes pour une fiche de l'arbre généalogique sans compte.
 export async function changerAvatar(utilisateur, choix, table = utilisateurs) {
@@ -86,6 +106,8 @@ export async function changerAvatar(utilisateur, choix, table = utilisateurs) {
   if (choix != null && choix !== '') {
     const [, type, valeur] = String(choix).match(/^(modele|photo):([a-z0-9-]{1,60})$/) ?? []
     if (!type) throw new ErreurSaisie('Avatar invalide')
+    // Les modèles 3D ne sont plus proposés : seulement une photo (ou l'initiale)
+    if (type === 'modele' && choix !== utilisateur.avatar) throw new ErreurSaisie('Les avatars ne sont plus proposés : ajoutez une photo')
     if (type === 'photo' && choix !== utilisateur.avatar) {
       if (!stockage) throw new ErreurSaisie('Le stockage des photos n\'est pas encore configuré par l\'administrateur')
       if (!await infoObjet(stockage, cleObjet(utilisateur.id, valeur))) {

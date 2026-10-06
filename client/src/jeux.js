@@ -27,8 +27,12 @@ const rang = (p) => (PROCHES.includes(p.groupe) ? 0 : 1)
 // Personnes qu'on peut proposer : avec une photo, sans les auxiliaires ; les personnes décédées
 // seulement si les aidants l'ont choisi, et jamais pour deviner un âge
 export function candidats(personnes, { age: avecAge = false, decedes = false } = {}) {
-  return personnes.filter((p) => p.avatar && (!p.decede || (decedes && !avecAge)) && p.groupe !== 'aide' && p.prenom && (!avecAge || p.dateNaissance))
+  return personnes.filter((p) => (p.avatar || p.photosJeu?.length) && (!p.decede || (decedes && !avecAge)) && p.groupe !== 'aide' && p.prenom && (!avecAge || p.dateNaissance))
 }
+
+// Photo montrée dans le jeu : au hasard parmi la photo de contact et les photos supplémentaires
+const photos = (p) => [p.avatar, ...(p.photosJeu ?? [])].filter(Boolean)
+const photoDe = (p) => { const l = photos(p); return l[Math.floor(Math.random() * l.length)] }
 
 function tirer(liste, n) {
   const m = melanger(liste)
@@ -46,7 +50,7 @@ export function questionsQui(personnes, { niveau = 3, questions = 5, decedes = f
       if (faux.length < niveau - 1 && !faux.some((f) => f.prenom === x.prenom) && x.prenom !== p.prenom) faux.push(x)
     }
     const choix = melanger([p, ...faux]).map((x) => ({ texte: x.prenom, bonne: x.id === p.id }))
-    return { personne: p, choix }
+    return { personne: p, photo: photoDe(p), choix }
   })
 }
 
@@ -68,6 +72,6 @@ export function questionsAge(personnes, { niveau = 3, questions = 5 } = {}) {
     const i = TRANCHES.indexOf(bonne)
     // Propositions éloignées les unes des autres pour que le choix reste net
     const faux = melanger(TRANCHES.filter((t, k) => t !== bonne && Math.abs(k - i) >= 1)).slice(0, niveau - 1)
-    return { personne: p, choix: melanger([bonne, ...faux]).map((t) => ({ texte: t.texte, bonne: t === bonne })) }
+    return { personne: p, photo: photoDe(p), choix: melanger([bonne, ...faux]).map((t) => ({ texte: t.texte, bonne: t === bonne })) }
   })
 }

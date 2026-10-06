@@ -1,40 +1,8 @@
 import { api } from './api.js'
 import { deposerFichier } from './reessais.js'
 
-// Avatars : un modèle 3D fourni avec l'application (client/public/avatars/, repris de FamilyGest)
-// ou une photo recadrée en carré dans le navigateur (RecadrageAvatar.vue) puis envoyée directement chez l'hébergeur S3.
-export const MODELES = [
-  { groupe: 'Seniors', modeles: [
-    ['senior-woman-fair-glasses', 'Femme, lunettes rondes'], ['senior-man-fair-beard', 'Homme, barbe blanche'],
-    ['senior-woman-black-curls', 'Femme, boucles argentées'], ['senior-man-black-goatee', 'Homme, bouc argenté'],
-    ['senior-woman-asian-glasses', 'Femme, lunettes'], ['senior-man-fair-glasses', 'Homme, lunettes'],
-    ['senior-man-asian', 'Homme aux cheveux blancs']
-  ] },
-  { groupe: 'Adultes', modeles: [
-    ['mature-woman-fair-auburn', 'Femme, cheveux auburn'], ['mature-man-fair-grey', 'Homme, poivre et sel'],
-    ['mature-woman-black-bun', 'Femme, chignon tressé'], ['mature-man-asian-glasses', 'Homme, lunettes'],
-    ['mature-woman-asian-bob', 'Femme, carré'], ['mature-man-black-grey', 'Homme, barbe argentée'],
-    ['mature-woman-black-short', 'Femme, cheveux courts argentés'], ['mature-man-fair-silver', 'Homme, cheveux argentés'],
-    ['mature-man-asian', 'Homme'],
-    ['adult-woman-fair-chestnut', 'Femme, cheveux châtains'], ['adult-man-fair-glasses', 'Homme, lunettes et barbe'],
-    ['adult-woman-black-twists', 'Femme, tresses'], ['adult-man-black-beard', 'Homme, barbe'],
-    ['adult-woman-asian-ponytail', 'Femme, queue-de-cheval'], ['adult-man-fair-bald', 'Homme chauve, barbe'],
-    ['adult-woman-fair-blonde', 'Femme blonde'], ['adult-man-fair-curly', 'Homme, cheveux bouclés'],
-    ['adult-man-asian', 'Homme']
-  ] },
-  { groupe: 'Jeunes', modeles: [
-    ['young-woman-fair-ginger', 'Jeune femme rousse'], ['young-man-black-afro', 'Jeune homme, afro'],
-    ['young-woman-fair-brunette', 'Jeune femme brune'], ['young-man-fair-brown', 'Jeune homme châtain'],
-    ['young-woman-black-puff', 'Jeune femme, chignon'], ['young-man-asian', 'Jeune homme'],
-    ['young-woman-fair-blonde', 'Jeune femme blonde'], ['young-man-fair-blond', 'Jeune homme blond'],
-    ['young-woman-asian-long', 'Jeune femme, cheveux longs'],
-    ['teen-girl-fair-blonde', 'Adolescente blonde'], ['teen-boy-fair-brown', 'Adolescent châtain'],
-    ['teen-girl-black-braids', 'Adolescente, tresses'], ['teen-boy-black', 'Adolescent'],
-    ['teen-girl-fair-brunette', 'Adolescente, cheveux bouclés'], ['teen-boy-fair-blond', 'Adolescent blond'],
-    ['teen-girl-asian-bob', 'Adolescente, carré'], ['teen-boy-asian', 'Adolescent']
-  ] },
-  { groupe: 'Et aussi', modeles: [['baby', 'Bébé'], ['cat', 'Chat'], ['dog', 'Chien']] }
-].map(({ groupe, modeles }) => ({ groupe, modeles: modeles.map(([id, nom]) => ({ id, nom, image: `/avatars/${id}.webp`, choix: `modele:${id}` })) }))
+// Avatars : une photo recadrée en carré dans le navigateur (RecadrageAvatar.vue) puis envoyée directement chez
+// l'hébergeur S3. Les anciens modèles 3D (client/public/avatars/) restent affichés mais ne sont plus proposés.
 
 const COTE = 320 // px
 const TAILLE_MAX = 200 * 1024
@@ -68,6 +36,15 @@ export async function recadrer(source, { sx, sy, cote }) {
 // `base` : '/profil' pour soi-même, ou '/cercles/<id>/membres/<id>' pour une personne accompagnée.
 // Renvoient { avatar (adresse de l'image), avatarChoix }.
 export const choisirAvatar = (base, choix) => api('PUT', `${base}/avatar`, { avatar: choix })
+
+// Photos supplémentaires d'une personne de l'arbre (jeux) : `base` = '/cercles/<id>/arbre/personnes/<id>'.
+// Renvoie la liste [{ id, url }] mise à jour.
+export async function ajouterPhotoJeu(base, blob) {
+  const { photo, envoi } = await api('POST', `${base}/photos/envoi`, { taille: blob.size })
+  await deposerFichier(envoi, blob, 'image/jpeg')
+  return api('POST', `${base}/photos`, { photo })
+}
+export const retirerPhotoJeu = (base, photoId) => api('DELETE', `${base}/photos/${photoId}`)
 
 // `blob` : la photo déjà recadrée (voir recadrer)
 export async function envoyerPhotoAvatar(base, blob) {
