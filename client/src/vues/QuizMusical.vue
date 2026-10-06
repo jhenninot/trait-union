@@ -6,6 +6,7 @@ import Icone from '../navigation/Icone.vue'
 // « Quelle est cette chanson ? » : un extrait de 30 secondes, 2 ou 3 titres à choisir. Comme les
 // autres jeux, pas de score ni de chrono : une erreur ou « Je ne sais pas » donne la réponse, et
 // l'extrait continue. « J'aime » / « J'aime moins » aident les aidants à choisir les prochaines chansons.
+const props = defineProps({ pour: { type: String, default: null } }) // essai par un aidant : pas de réactions enregistrées
 const emit = defineEmits(['quitter', 'rejouer'])
 const questions = ref([])
 const etat = ref('chargement') // 'chargement', 'jeu', 'vide' ou 'fini'
@@ -18,7 +19,7 @@ let audio = null
 
 onMounted(async () => {
   try {
-    questions.value = (await api('GET', '/musique/quiz')).questions
+    questions.value = (await api('GET', `/musique/quiz${props.pour ? `?pour=${props.pour}` : ''}`)).questions
   } catch { /* hors ligne : message plus bas */ }
   etat.value = questions.value.length ? 'jeu' : 'vide'
   if (etat.value === 'jeu') jouerExtrait()
@@ -56,6 +57,7 @@ const passer = () => { if (!reponse.value) reponse.value = 'inconnu' }
 function noter(r) {
   if (reaction.value) return
   reaction.value = r
+  if (props.pour) return
   api('POST', '/musique/reaction', { titre: q.value.titre, artiste: q.value.artiste, reaction: r }).catch(() => {})
 }
 function suivante() {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { chargerFamille } from '../famille.js'
 import { ageTexte, dateLongue } from '../coordonnees.js'
@@ -13,6 +13,11 @@ import Icone from '../navigation/Icone.vue'
 // Jeux de la personne accompagnée : « Qui est-ce ? » (retrouver un prénom) et « Quel âge ? »
 // (retrouver une tranche d'âge), à partir des photos de sa famille. Pas de score ni de chrono :
 // une mauvaise réponse ou « Je ne sais pas » donne la réponse avec bienveillance.
+// Mode essai : un aidant ou un proche joue avec les réglages et la famille d'une personne
+// accompagnée (props pour = son identifiant, cercleId) ; rien n'est compté ni enregistré.
+const props = defineProps({ pour: { type: String, default: null }, cercleId: { type: String, default: null } })
+const essai = Boolean(props.pour)
+const r = essai ? reactive({ ...reglagesJeux, actif: true, charge: false }) : reglagesJeux
 const personnes = ref([])
 const charge = ref(false)
 const jeu = ref(null) // null (accueil des jeux), 'qui', 'age' ou 'musique'
@@ -27,6 +32,11 @@ const parle = lectureDisponible()
 
 const routeur = useRouter()
 onMounted(async () => {
+  if (essai) {
+    Object.assign(r, await api('GET', `/jeux/reglages?pour=${props.pour}`).catch(() => ({})), { actif: true, charge: true })
+    personnes.value = (await chargerFamille({ pour: props.pour, cercles: [{ id: props.cercleId }] })).personnes
+    return (charge.value = true)
+  }
   await chargerReglagesJeux()
   // Les aidants ont coupé l'accès aux jeux : retour à l'accueil
   if (!jeuxDisponibles()) return routeur.replace('/')
@@ -35,17 +45,17 @@ onMounted(async () => {
 })
 onUnmounted(arreterParole)
 
-const nbQui = computed(() => candidats(personnes.value, { decedes: reglagesJeux.decedes }).length)
+const nbQui = computed(() => candidats(personnes.value, { decedes: r.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
-const propose = (k) => reglagesJeux[k]
+const propose = (k) => r[k]
 const dispo = (k) => k === 'musique' || (k === 'qui' ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
-  api('POST', '/jeux/partie').catch(() => {})
+  if (!essai) api('POST', '/jeux/partie').catch(() => {})
   if (k === 'musique') { partie.value++; return }
-  questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, reglagesJeux)
+  questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, r)
   n.value = 0
   reponse.value = null
   choisi.value = null
@@ -120,7 +130,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
     </template>
 
     <!-- Quiz musical -->
-    <QuizMusical v-else-if="jeu === 'musique'" :key="partie" @quitter="retour" @rejouer="jouer('musique')" />
+    <QuizMusical v-else-if="jeu === 'musique'" :key="partie" :pour="pour" @quitter="retour" @rejouer="jouer('musique')" />
 
     <!-- Fin de partie -->
     <template v-else-if="fini">

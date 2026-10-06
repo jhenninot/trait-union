@@ -49,6 +49,16 @@ const voitPhotos = computed(() => peutGerer.value || !estAuxiliaire(cercle.value
 const voitMessages = computed(() => Boolean(cercle.value?.role))
 // Sondages de dates : comme le fil « Toute la famille », sans les auxiliaires
 const voitSondages = computed(() => voitMessages.value && !estAuxiliaire(cercle.value?.role))
+// Jeux : un sous-menu par personne accompagnée, pour essayer ses jeux
+const aides = ref([])
+const voitJeux = computed(() => Boolean(cercle.value) && voitPhotos.value)
+const dansJeux = computed(() => cercle.value && route.path.startsWith(`/cercles/${cercle.value.id}/jeux`))
+watch(() => [cercleId.value, voitJeux.value], async ([id, voit]) => {
+  aides.value = []
+  if (!id || !voit) return
+  const c = await api('GET', `/cercles/${id}`).catch(() => null)
+  if (c && id === cercleId.value) aides.value = c.membres.filter((m) => m.role === 'accompagne' && !m.decede)
+}, { immediate: true })
 const nonLus = computed(() => etatMessagerie.parCercle[cercleId.value] ?? 0)
 
 watch(() => route.params.id, (id) => id && memoriserCercle(id), { immediate: true })
@@ -58,8 +68,9 @@ watch(() => route.fullPath, () => (ouvert.value = false))
 function changerCercle(id) {
   if (route.path === '/') return memoriserCercle(id)
   let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre|messages|sondages)$/)?.[0] ?? ''
+  if (route.path.includes('/jeux')) rubrique = '/jeux'
   const cible = choix.value.find((c) => c.id === id)
-  if ((rubrique === '/photos' || rubrique === '/arbre' || rubrique === '/sondages') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
+  if ((rubrique === '/photos' || rubrique === '/arbre' || rubrique === '/sondages' || rubrique === '/jeux') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
   router.push(`/cercles/${id}${rubrique}`)
 }
 
@@ -112,6 +123,14 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/photos`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }">
         <Icone nom="photo" /> Photos
       </RouterLink>
+      <RouterLink v-if="voitJeux" :to="`/cercles/${cercle.id}/jeux`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/jeux`) }">
+        <Icone nom="jeux" /> Jeux
+      </RouterLink>
+      <template v-if="voitJeux && dansJeux">
+        <RouterLink v-for="a in aides" :key="a.id" :to="`/cercles/${cercle.id}/jeux/${a.utilisateurId}`" class="lien sous-lien" :class="{ actif: estActif(`/cercles/${cercle.id}/jeux/${a.utilisateurId}`) }">
+          {{ a.prenom }}
+        </RouterLink>
+      </template>
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
         <Icone nom="compte" /> Personnes accompagnées
       </RouterLink>
@@ -197,6 +216,7 @@ const estActif = (chemin) => route.path === chemin
 }
 .lien:hover { background: #f5f3ef; }
 .lien.actif { background: var(--vert-clair); color: var(--vert); }
+.sous-lien { padding-left: 46px; padding-top: 6px; padding-bottom: 6px; font-size: 0.95rem; }
 .qui { padding-top: 6px; padding-bottom: 6px; }
 .qui .avatar { margin: 0 -4px; }
 .titre-section {

@@ -25,7 +25,17 @@ function exigerGestion(req, res, next) {
 
 router.get('/', async (req, res) => {
   const g = await chargerArbre(req.cercle.id)
-  const estAccompagne = req.role === 'accompagne' && !req.peutGerer
+  // Une personne accompagnée voit sa famille à sa façon ; aidants et proches peuvent la voir de la même
+  // façon pour essayer ses jeux (« ?pour=<compte de la personne accompagnée> », qui doit être du cercle)
+  let vuDe = req.utilisateur.id
+  let estAccompagne = req.role === 'accompagne' && !req.peutGerer
+  if (req.query.pour && !estAccompagne) {
+    const [cible] = await db.select({ id: membres.id }).from(membres)
+      .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.utilisateurId, String(req.query.pour)), eq(membres.role, 'accompagne')))
+    if (!cible) return res.status(404).json({ erreur: 'Personne accompagnée introuvable' })
+    vuDe = String(req.query.pour)
+    estAccompagne = true
+  }
   // Membres du cercle qui n'ont pas encore de place dans l'arbre (hors auxiliaires de vie)
   const listeMembres = await db
     .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, decede: utilisateurs.decede })
@@ -35,7 +45,7 @@ router.get('/', async (req, res) => {
 
   if (estAccompagne) {
     // Vue de la personne accompagnée : les personnes visibles, liens vus depuis elle
-    const moi = g.personnes.find((p) => p.utilisateurId === req.utilisateur.id)
+    const moi = g.personnes.find((p) => p.utilisateurId === vuDe)
     const visibles = g.personnes.filter((p) => p.visibleAide || p.id === moi?.id)
     const ids = new Set(visibles.map((p) => p.id))
     return res.json({
@@ -43,7 +53,7 @@ router.get('/', async (req, res) => {
       personnes: visibles.map((p) => {
         const r = moi ? parente(g, moi.id, p.id) : null
         return {
-          ...presenter(p, false, req.utilisateur.id),
+          ...presenter(p, false, vuDe),
           lien: r?.lien ?? null,
           lienAide: r && r.groupe !== 'moi' ? lienPossessif(r.lien, p.genre) : null,
           groupe: r?.groupe ?? 'famille',

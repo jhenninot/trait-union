@@ -14,6 +14,7 @@ import AdminCercles from './vues/AdminCercles.vue'
 import Tablettes from './vues/Tablettes.vue'
 import FamilleAccompagne from './vues/FamilleAccompagne.vue'
 import Jeux from './vues/Jeux.vue'
+import EssaiJeux from './vues/EssaiJeux.vue'
 import ApplicationMobile from './vues/ApplicationMobile.vue'
 import Agenda from './vues/Agenda.vue'
 import AgendaAccompagne from './vues/AgendaAccompagne.vue'
@@ -55,6 +56,7 @@ const router = createRouter({
     { path: '/cercles/:id/agenda', component: Agenda, meta: { connecte: true } },
     { path: '/cercles/:id/photos', component: Photos, meta: { connecte: true } },
     { path: '/cercles/:id/messages', component: Messages, meta: { connecte: true } },
+    { path: '/cercles/:id/jeux/:pour?', component: EssaiJeux, meta: { connecte: true } },
     { path: '/cercles/:id/sondages', component: Sondages, meta: { connecte: true } },
     { path: '/messages', component: MessagesAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/arbre', component: Arbre, meta: { connecte: true } },

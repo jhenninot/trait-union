@@ -4,6 +4,7 @@ import { exigerConnexion } from '../auth/sessions.js'
 import { db } from '../db/index.js'
 import { chansons } from '../db/schema.js'
 import { reglages } from '../jeux.js'
+import { chargerCible } from './jeux.js'
 import { construireQuiz } from '../musique/quiz.js'
 import { cleChanson } from '../musique/sources.js'
 import * as valider from '../auth/validation.js'
@@ -13,10 +14,11 @@ const router = Router()
 router.use(exigerConnexion)
 
 // Les questions d'une partie : un extrait de 30 secondes et des titres à choisir
-router.get('/quiz', async (req, res) => {
-  const r = reglages(req.utilisateur.jeux)
-  if (!r.actif || !r.musique) return res.status(403).json({ erreur: 'Le quiz musical n\'est pas activé' })
-  res.json({ questions: await construireQuiz(req.utilisateur, r) })
+router.get('/quiz', chargerCible, async (req, res) => {
+  const r = reglages(req.cible.jeux)
+  // Un essai par un aidant ou un proche se fait même si l'accès est coupé pour la personne
+  if (!req.essai && (!r.actif || !r.musique)) return res.status(403).json({ erreur: 'Le quiz musical n\'est pas activé' })
+  res.json({ questions: await construireQuiz(req.cible, r) })
 })
 
 // « J'aime » ou « J'aime moins » après une chanson. Corps : { titre, artiste, reaction: 'aime' | 'moins' | null }

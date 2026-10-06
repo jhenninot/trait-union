@@ -3,14 +3,16 @@
 import { api } from './api.js'
 import { session } from './session.js'
 
-export async function chargerFamille() {
+// `pour` : identifiant du compte d'une personne accompagnée, pour voir sa famille à sa place (essai des
+// jeux par un aidant ou un proche) ; `cercles` : les cercles à lire (par défaut tous ceux de la session)
+export async function chargerFamille({ pour = null, cercles = session.cercles } = {}) {
   const personnes = []
   const arbres = []
   const vus = new Set()
-  for (const c of session.cercles) {
+  for (const c of cercles) {
     const [cercle, arbre] = await Promise.all([
       api('GET', `/cercles/${c.id}`).catch(() => null),
-      api('GET', `/cercles/${c.id}/arbre`).catch(() => null)
+      api('GET', `/cercles/${c.id}/arbre${pour ? `?pour=${pour}` : ''}`).catch(() => null)
     ])
     const dansArbre = new Set()
     if (arbre?.moi) {
@@ -28,7 +30,7 @@ export async function chargerFamille() {
     for (const m of cercle?.membres ?? []) {
       const cle = `${m.prenom} ${m.nom ?? ''}`
       // Les autres personnes accompagnées du cercle (un conjoint, par exemple) y figurent aussi
-      if (m.moi || vus.has(cle) || (m.personneId && dansArbre.has(m.personneId))) continue
+      if (m.moi || (pour && m.utilisateurId === pour) || vus.has(cle) || (m.personneId && dansArbre.has(m.personneId))) continue
       // Placé dans l'arbre mais caché à la personne accompagnée
       if (m.personneId && arbre?.moi) continue
       vus.add(cle)
