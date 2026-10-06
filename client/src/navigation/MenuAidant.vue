@@ -144,18 +144,9 @@ const estActif = (chemin) => route.path === chemin
       </template>
     </template>
 
-    <template v-if="session.utilisateur.estAdmin">
-      <p class="titre-section">Administration</p>
-      <RouterLink to="/admin/cercles" class="lien" :class="{ actif: estActif('/admin/cercles') }"><Icone nom="cercle" /> Tous les cercles</RouterLink>
-      <RouterLink to="/admin/utilisateurs" class="lien" :class="{ actif: estActif('/admin/utilisateurs') }"><Icone nom="famille" /> Utilisateurs</RouterLink>
-      <RouterLink to="/admin/statistiques" class="lien" :class="{ actif: estActif('/admin/statistiques') }"><Icone nom="statistiques" /> Statistiques</RouterLink>
-      <RouterLink to="/admin/journal" class="lien" :class="{ actif: estActif('/admin/journal') }"><Icone nom="journal" /> Journal</RouterLink>
-      <RouterLink to="/admin/email" class="lien" :class="{ actif: estActif('/admin/email') }"><Icone nom="email" /> Envoi d'emails</RouterLink>
-      <RouterLink to="/admin/photos" class="lien" :class="{ actif: estActif('/admin/photos') }"><Icone nom="nuage" /> Stockage des photos</RouterLink>
-      <RouterLink to="/admin/alertes" class="lien" :class="{ actif: estActif('/admin/alertes') }"><Icone nom="cloche" /> Alertes</RouterLink>
-      <RouterLink to="/admin/messagerie" class="lien" :class="{ actif: estActif('/admin/messagerie') }"><Icone nom="message" /> Messagerie</RouterLink>
-      <RouterLink to="/admin/presentation" class="lien" :class="{ actif: estActif('/admin/presentation') }"><Icone nom="oeil" /> Page de présentation</RouterLink>
-    </template>
+    <RouterLink v-if="session.utilisateur.estAdmin" to="/admin" class="lien" :class="{ actif: route.path.startsWith('/admin') }">
+      <Icone nom="bouclier" /> Console d'administration
+    </RouterLink>
 
     <div class="bas-menu">
       <button class="lien" @click="ouvrirAide"><Icone nom="question" /> Aide sur cet écran</button>
@@ -228,13 +219,6 @@ const estActif = (chemin) => route.path === chemin
 .sous-lien { padding-left: 46px; padding-top: 6px; padding-bottom: 6px; font-size: 0.95rem; }
 .qui { padding-top: 6px; padding-bottom: 6px; }
 .qui .avatar { margin: 0 -4px; }
-.titre-section {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--gris);
-  margin: 18px 12px 4px;
-}
 .bas-menu { margin-top: auto; border-top: 1px solid #ebe8e3; padding-top: 10px; }
 .badge { margin-left: auto; background: var(--rouge); color: white; border-radius: 999px; font-size: 0.75rem; font-weight: 700; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; }
 .entete-mobile, .onglets, .voile, .aide-mobile { display: none; }

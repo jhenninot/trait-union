@@ -30,6 +30,7 @@ import AdminAlertes from './vues/AdminAlertes.vue'
 import AdminPresentation from './vues/AdminPresentation.vue'
 import AdminUtilisateurs from './vues/AdminUtilisateurs.vue'
 import AdminStatistiques from './vues/AdminStatistiques.vue'
+import AdminConsole from './vues/AdminConsole.vue'
 import AdminJournal from './vues/AdminJournal.vue'
 import { surveillerErreurs } from './journal.js'
 import Presentation from './vues/Presentation.vue'
@@ -66,15 +67,20 @@ const router = createRouter({
     { path: '/profil', component: Profil, meta: { connecte: true } },
     { path: '/alertes', component: Alertes, meta: { connecte: true } },
     { path: '/application', component: ApplicationMobile, meta: { connecte: true } },
-    { path: '/admin/cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
-    { path: '/admin/utilisateurs', component: AdminUtilisateurs, meta: { connecte: true, admin: true } },
-    { path: '/admin/journal', component: AdminJournal, meta: { connecte: true, admin: true } },
-    { path: '/admin/statistiques', component: AdminStatistiques, meta: { connecte: true, admin: true } },
-    { path: '/admin/email', component: AdminEmail, meta: { connecte: true, admin: true } },
-    { path: '/admin/photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
-    { path: '/admin/alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },
-    { path: '/admin/messagerie', component: AdminMessagerie, meta: { connecte: true, admin: true } },
-    { path: '/admin/presentation', component: AdminPresentation, meta: { connecte: true, admin: true } },
+    {
+      path: '/admin', component: AdminConsole, redirect: '/admin/statistiques', meta: { connecte: true, admin: true },
+      children: [
+        { path: 'cercles', component: AdminCercles, meta: { connecte: true, admin: true } },
+        { path: 'utilisateurs', component: AdminUtilisateurs, meta: { connecte: true, admin: true } },
+        { path: 'journal', component: AdminJournal, meta: { connecte: true, admin: true } },
+        { path: 'statistiques', component: AdminStatistiques, meta: { connecte: true, admin: true } },
+        { path: 'email', component: AdminEmail, meta: { connecte: true, admin: true } },
+        { path: 'photos', component: AdminPhotos, meta: { connecte: true, admin: true } },
+        { path: 'alertes', component: AdminAlertes, meta: { connecte: true, admin: true } },
+        { path: 'messagerie', component: AdminMessagerie, meta: { connecte: true, admin: true } },
+        { path: 'presentation', component: AdminPresentation, meta: { connecte: true, admin: true } }
+      ]
+    },
     { path: '/connexion', component: Connexion },
     { path: '/bienvenue', component: Initialisation },
     { path: '/appareil', component: Appareil },
