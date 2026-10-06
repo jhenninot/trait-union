@@ -129,6 +129,7 @@ const JEUX_POINTS = [
   '« Quel âge ? » : deviner une tranche d\'âge, sans avoir à être précis',
   '« Quelle est cette chanson ? » : un extrait de musique de sa jeunesse, avec « J\'aime » ou « J\'aime moins »',
   'Les aidants ajoutent les chansons préférées de la personne, qui passent en premier',
+  'Les aidants et les proches peuvent essayer les jeux de chaque personne depuis leur menu, avec ses réglages, sans rien enregistrer',
   'Chaque jeu se règle par personne, ou se coupe tout à fait',
   'Ni score ni chrono : une erreur ou « Je ne sais pas » donne la réponse avec le sourire',
   'La question et la réponse sont lues à voix haute, avec le lien de parenté',
