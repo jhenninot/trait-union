@@ -50,9 +50,10 @@ export const cercles = pgTable('cercles', {
   nom: text('nom').notNull()
 })
 
+// superviseur : superviseur technique, mêmes droits qu'un aidant sauf la conversation « Les aidants » ;
 // auxiliaire : auxiliaire de vie (professionnel) ; ne voit ni les photos ni l'agenda familial,
 // seulement les rendez-vous ouverts aux auxiliaires (server/routes/agenda.js).
-export const roleMembre = pgEnum('role_membre', ['accompagne', 'aidant', 'proche', 'auxiliaire'])
+export const roleMembre = pgEnum('role_membre', ['accompagne', 'aidant', 'proche', 'auxiliaire', 'superviseur'])
 
 export const membres = pgTable('membres', {
   ...commun,

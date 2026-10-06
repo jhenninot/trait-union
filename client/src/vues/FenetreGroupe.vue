@@ -31,7 +31,7 @@ onMounted(async () => {
   }
 })
 
-const ROLES = { accompagne: 'Personne accompagnée', aidant: 'Aidant', proche: 'Proche', auxiliaire: 'Auxiliaire de vie' }
+const ROLES = { accompagne: 'Personne accompagnée', aidant: 'Aidant', superviseur: 'Superviseur technique', proche: 'Proche', auxiliaire: 'Auxiliaire de vie' }
 const roleDe = (p) => (p.role === 'proche' && p.lien ? p.lien : ROLES[p.role])
 const roles = computed(() => personnes.value.filter((p) => choisis.value.has(p.utilisateurId)).map((p) => p.role))
 // Une personne qu'on ne peut pas ajouter à cause de celles déjà choisies

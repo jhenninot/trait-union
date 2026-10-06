@@ -122,6 +122,7 @@ function tendance(l) {
 const ROLES = [
   { cle: 'accompagne', nom: 'Personnes accompagnées', icone: 'coeur' },
   { cle: 'aidant', nom: 'Aidants', icone: 'bouclier' },
+  { cle: 'superviseur', nom: 'Superviseurs techniques', icone: 'bouclier' },
   { cle: 'proche', nom: 'Proches', icone: 'famille' },
   { cle: 'auxiliaire', nom: 'Auxiliaires de vie', icone: 'compte' }
 ]
@@ -473,6 +474,7 @@ const cerclesEnSommeil = computed(() => (stats.value?.cercles ?? []).filter(enSo
                 <span class="membres">
                   <span title="Personnes accompagnées"><Icone nom="coeur" class="en-ligne" /> {{ c.membres.accompagne }}</span>
                   <span title="Aidants"><Icone nom="bouclier" class="en-ligne" /> {{ c.membres.aidant }}</span>
+                  <span v-if="c.membres.superviseur" title="Superviseurs techniques"><Icone nom="bouclier" class="en-ligne" /> {{ c.membres.superviseur }}</span>
                   <span title="Proches"><Icone nom="famille" class="en-ligne" /> {{ c.membres.proche }}</span>
                   <span v-if="c.membres.auxiliaire" title="Auxiliaires de vie"><Icone nom="compte" class="en-ligne" /> {{ c.membres.auxiliaire }}</span>
                 </span>

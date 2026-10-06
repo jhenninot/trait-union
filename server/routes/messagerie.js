@@ -10,6 +10,7 @@ import { liensAvatars } from '../avatars.js'
 import { liensDesMembres } from '../arbre.js'
 import { mesCercles } from './auth.js'
 import { GROUPES, TITRES, reglages, membresCercle, participants, peutEcrire, peutEcrirePrive, peutRetirer, peutGererGroupe, compositionInvalide } from '../messagerie/droits.js'
+import { aLesDroits } from '../auth/roles.js'
 import { ouvrirFlux, signaler } from '../messagerie/flux.js'
 import { programmerAlertes, apercu } from '../messagerie/alertes.js'
 import { premierLien, apercuDe, imageDe } from '../messagerie/liens.js'
@@ -279,8 +280,8 @@ router.get('/cercles/:cercleId', async (req, res) => {
     // Pour le cahier de liaison : les personnes accompagnées du cercle
     accompagnes: vue.liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)),
     // Les aidants créent des groupes : les membres qu'ils peuvent y mettre
-    peutCreerGroupe: vue.moi.role === 'aidant',
-    membresCercle: vue.moi.role === 'aidant'
+    peutCreerGroupe: vue.aLesDroits(moi.role, 'aidant'),
+    membresCercle: vue.aLesDroits(moi.role, 'aidant')
       ? vue.liste.filter((m) => !m.decede).map((m) => personne(lienAvatar, m)).sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'))
       : []
   })
@@ -299,7 +300,7 @@ function lireGroupe(corps, moi, liste) {
 
 router.post('/cercles/:cercleId/groupes', async (req, res) => {
   const { liste, moi } = await vueCercle(req, req.params.cercleId)
-  if (moi?.role !== 'aidant') return res.status(403).json({ erreur: 'Seuls les aidants créent des groupes' })
+  if (!moi || !aLesDroits(moi.role, 'aidant')) return res.status(403).json({ erreur: 'Seuls les aidants créent des groupes' })
   const [c] = await db.insert(conversations)
     .values({ cercleId: req.params.cercleId, type: 'groupe', creeParId: moi.utilisateurId, ...lireGroupe(req.body, moi, liste) })
     .returning()
@@ -367,9 +368,9 @@ router.get('/conversations/:id', chargerConversation, async (req, res) => {
     suite: lignes.length === PAR_PAGE,
     accompagnes: conversation.type === 'liaison' ? liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)) : [],
     fichiers: Boolean(stockage),
-    peutModerer: conversation.type !== 'privee' && moi.role === 'aidant',
+    peutModerer: conversation.type !== 'privee' && aLesDroits(moi.role, 'aidant'),
     // Sondage de dates : dans « Toute la famille », lancé par un aidant ou un proche
-    peutSonder: conversation.type === 'famille' && ['aidant', 'proche'].includes(moi.role),
+    peutSonder: conversation.type === 'famille' && aLesDroits(moi.role, 'proche'),
     monRole: moi.role,
     // Réglages de la personne accompagnée connectée (réponses toutes faites, vocal)
     reglages: moi.role === 'accompagne' ? reglages(moi.messagerie) : undefined
@@ -538,7 +539,7 @@ async function chargerLeSondage(req, res, next) {
   chargerConversation(req, res, next)
 }
 
-const peutGererSondage = (req) => req.sondage.sondage.creeParId === req.moi.utilisateurId || req.moi.role === 'aidant'
+const peutGererSondage = (req) => req.sondage.sondage.creeParId === req.moi.utilisateurId || req.aLesDroits(moi.role, 'aidant')
 
 async function detailSondage(req) {
   const s = await chargerSondage(req.sondage.sondage.id)
@@ -548,7 +549,7 @@ async function detailSondage(req) {
 // Lance un sondage dans « Toute la famille ». Corps : { titre, lieu, moment, heure, dates, dateLimite }
 router.post('/conversations/:id/sondages', chargerConversation, async (req, res) => {
   const { conversation, moi, liste } = req
-  if (conversation.type !== 'famille' || !['aidant', 'proche'].includes(moi.role) || !peutEcrire(conversation, moi, liste)) {
+  if (conversation.type !== 'famille' || !aLesDroits(moi.role, 'proche') || !peutEcrire(conversation, moi, liste)) {
     return res.status(403).json({ erreur: 'Seuls les aidants et les proches lancent un sondage, dans « Toute la famille »' })
   }
   const saisie = lireSondage(req.body)
@@ -584,7 +585,7 @@ router.get('/cercles/:cercleId/sondages', async (req, res) => {
   }))
   res.json({
     conversationId: famille.id,
-    peutSonder: ['aidant', 'proche'].includes(moi.role) && peutEcrire(famille, moi, liste),
+    peutSonder: aLesDroits(moi.role, 'proche') && peutEcrire(famille, moi, liste),
     enCours: resultat.filter((x) => x.ouvert).sort((a, b) => b.creeLe - a.creeLe),
     termines: resultat.filter((x) => !x.ouvert).sort((a, b) => (a.dateRetenue < b.dateRetenue ? 1 : -1))
   })
@@ -634,7 +635,7 @@ router.put('/sondages/:sondageId/reponses', chargerLeSondage, async (req, res) =
   const repondants = participants(conversation, liste)
   const pour = req.body.pour && req.body.pour !== moi.utilisateurId ? repondants.find((m) => m.utilisateurId === req.body.pour) : moi
   if (!pour || !repondants.some((m) => m.utilisateurId === pour.utilisateurId)) return res.status(403).json({ erreur: 'Vous ne pouvez pas répondre à ce sondage' })
-  if (pour !== moi && !(moi.role === 'aidant' && pour.role === 'accompagne')) {
+  if (pour !== moi && !(aLesDroits(moi.role, 'aidant') && pour.role === 'accompagne')) {
     return res.status(403).json({ erreur: 'Seuls les aidants peuvent répondre à la place de quelqu\'un, et seulement d\'une personne accompagnée' })
   }
   const valeurs = {

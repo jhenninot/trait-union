@@ -141,6 +141,7 @@ export async function statistiques(maintenant = new Date()) {
       (select count(*) from membres m where m.cercle_id = c.id and m.role = 'accompagne') as accompagnes,
       (select count(*) from membres m where m.cercle_id = c.id and m.role = 'aidant') as aidants,
       (select count(*) from membres m where m.cercle_id = c.id and m.role = 'proche') as proches,
+      (select count(*) from membres m where m.cercle_id = c.id and m.role = 'superviseur') as superviseurs,
       (select count(*) from membres m where m.cercle_id = c.id and m.role = 'auxiliaire') as auxiliaires,
       (select count(*) from membres m join ${activite} a on a.utilisateur_id = m.utilisateur_id
         where m.cercle_id = c.id and a.le >= ${j30}) as actifs30,
@@ -254,7 +255,7 @@ export async function statistiques(maintenant = new Date()) {
     id: c.id,
     nom: c.nom,
     creeLe: date(c.cree_le),
-    membres: { accompagne: nb(c.accompagnes), aidant: nb(c.aidants), proche: nb(c.proches), auxiliaire: nb(c.auxiliaires) },
+    membres: { accompagne: nb(c.accompagnes), aidant: nb(c.aidants), superviseur: nb(c.superviseurs), proche: nb(c.proches), auxiliaire: nb(c.auxiliaires) },
     actifs30: nb(c.actifs30),
     derniereActivite: date(c.derniere_activite),
     photos: nb(c.photos),
@@ -286,7 +287,7 @@ export async function statistiques(maintenant = new Date()) {
       telephones: nb(comptes.telephones),
       sansCercle: nb(comptes.sans_cercle)
     },
-    roles: Object.fromEntries(['accompagne', 'aidant', 'proche', 'auxiliaire'].map((role) => {
+    roles: Object.fromEntries(['accompagne', 'aidant', 'superviseur', 'proche', 'auxiliaire'].map((role) => {
       const r = roles.find((x) => x.role === role)
       return [role, { comptes: nb(r?.comptes), actifs30: nb(r?.actifs30) }]
     })),

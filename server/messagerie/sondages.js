@@ -5,6 +5,7 @@ import { ErreurSaisie } from '../auth/validation.js'
 import * as valider from '../auth/validation.js'
 import { envoyerAlerte } from '../alertes/envoi.js'
 import { participants } from './droits.js'
+import { aLesDroits } from '../auth/roles.js'
 
 // Sondage de dates façon Doodle (repris du « Repas à organiser » de FamilyGest), publié dans
 // « Toute la famille ». Choix de Julien (2026-10-01) :
@@ -124,7 +125,7 @@ export function presenterSondage({ sondage, reponses }, { moi, repondants, lienA
     ontRepondu: ontRepondu.map((m) => ({ utilisateurId: m.utilisateurId, prenom: m.prenom, avatar: lienAvatar(m.utilisateurId, m.avatar) })),
     attendus: repondants.filter((m) => !aRepondu(parPersonne.get(m.utilisateurId))).map((m) => m.prenom),
     // Lancer, modifier, relancer, retenir une date : son auteur et les aidants
-    peutGerer: sondage.creeParId === moi.utilisateurId || moi.role === 'aidant',
+    peutGerer: sondage.creeParId === moi.utilisateurId || aLesDroits(moi.role, 'aidant'),
     peutRepondre: ouvert && repondants.some((m) => m.utilisateurId === moi.utilisateurId)
   }
   if (detail) {
@@ -141,7 +142,7 @@ export function presenterSondage({ sondage, reponses }, { moi, repondants, lienA
         commentaire: r?.commentaire ?? '',
         reponduPar: par,
         // Un aidant peut répondre pour une personne accompagnée
-        modifiable: ouvert && (m.utilisateurId === moi.utilisateurId || (moi.role === 'aidant' && m.role === 'accompagne'))
+        modifiable: ouvert && (m.utilisateurId === moi.utilisateurId || (aLesDroits(moi.role, 'aidant') && m.role === 'accompagne'))
       }
     })
   }

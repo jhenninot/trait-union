@@ -231,13 +231,14 @@ const rejoindre = () => action(async () => {
 
       <div v-if="cercle.peutGerer" class="carte">
         <strong>Inviter quelqu'un</strong>
-        <p class="aide">Un aidant gère le cercle (tâches, rendez-vous, médicaments). Un proche peut échanger et envoyer des photos.
+        <p class="aide">Un aidant gère le cercle (tâches, rendez-vous, médicaments). Un superviseur technique a les mêmes droits, sauf dans la messagerie où il n'a pas accès aux discussions réservées aux aidants. Un proche peut échanger et envoyer des photos.
           Une auxiliaire de vie voit seulement les rendez-vous qui lui sont ouverts, pas les photos.</p>
         <label v-if="session.email" class="champ-email">Son adresse email (facultatif)
           <input v-model="emailInvite" type="email" placeholder="Pour lui envoyer le lien par email" />
         </label>
         <div class="actions">
           <button class="secondaire" @click="inviter('aidant')">Inviter un aidant</button>
+          <button class="secondaire" @click="inviter('superviseur')">Inviter un superviseur technique</button>
           <button class="secondaire" @click="inviter('proche')">Inviter un proche</button>
           <button class="secondaire" @click="inviter('auxiliaire')">Inviter une auxiliaire de vie</button>
         </div>

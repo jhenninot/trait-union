@@ -1,10 +1,12 @@
 import { and, eq, isNull, or } from 'drizzle-orm'
+import { aLesDroits } from '../auth/roles.js'
 import { db } from '../db/index.js'
 import { membres, utilisateurs, personnes } from '../db/schema.js'
 
 // Qui voit quelle conversation, et qui peut écrire à qui en privé (choix de Julien, 2026-10-01) :
 // - « Toute la famille » : tout le cercle, personnes accompagnées comprises, sauf les auxiliaires ;
-// - « Les aidants » : les aidants seulement ;
+// - « Les aidants » : les aidants seulement (le superviseur technique, qui a les droits d'un
+//   aidant ailleurs, n'y a pas accès : Julien, 2026-10-06) ;
 // - « Cahier de liaison » : aidants et auxiliaires de vie ;
 // - conversations privées à deux, entre membres du cercle, sauf auxiliaire ↔ proche. Une
 //   personne accompagnée ne reçoit de message privé que de ceux que ses aidants autorisent
@@ -16,9 +18,9 @@ import { membres, utilisateurs, personnes } from '../db/schema.js'
 
 export const GROUPES = ['famille', 'aidants', 'liaison']
 const ROLES_GROUPE = {
-  famille: ['accompagne', 'aidant', 'proche'],
+  famille: ['accompagne', 'aidant', 'superviseur', 'proche'],
   aidants: ['aidant'],
-  liaison: ['aidant', 'auxiliaire']
+  liaison: ['aidant', 'superviseur', 'auxiliaire']
 }
 export const TITRES = { famille: 'Toute la famille', aidants: 'Les aidants', liaison: 'Cahier de liaison' }
 
@@ -66,7 +68,7 @@ export async function membresCercle(cercleId) {
 function accepte(accompagne, autre) {
   const { prive } = reglages(accompagne.messagerie)
   if (prive === 'personne') return false
-  if (prive === 'aidants') return ['aidant', 'auxiliaire'].includes(autre.role)
+  if (prive === 'aidants') return ['aidant', 'superviseur', 'auxiliaire'].includes(autre.role)
   return true
 }
 
@@ -95,7 +97,7 @@ export function participants(conversation, liste) {
 
 // Renommer un groupe créé, changer ses membres ou le supprimer : les aidants qui en font partie
 export const peutGererGroupe = (conversation, moi, liste) =>
-  conversation.type === 'groupe' && moi.role === 'aidant' && participants(conversation, liste).some((m) => m.utilisateurId === moi.utilisateurId)
+  conversation.type === 'groupe' && aLesDroits(moi.role, 'aidant') && participants(conversation, liste).some((m) => m.utilisateurId === moi.utilisateurId)
 
 // Peut-on encore écrire dans cette conversation (privée : le réglage de l'aidé a pu changer) ?
 export function peutEcrire(conversation, moi, liste) {
@@ -107,4 +109,4 @@ export function peutEcrire(conversation, moi, liste) {
 
 // Un aidant peut retirer n'importe quel message des conversations de groupe ; chacun peut retirer les siens
 export const peutRetirer = (conversation, moi, message) =>
-  message.auteurId === moi.utilisateurId || (conversation.type !== 'privee' && moi.role === 'aidant')
+  message.auteurId === moi.utilisateurId || (conversation.type !== 'privee' && aLesDroits(moi.role, 'aidant'))

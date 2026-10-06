@@ -207,7 +207,7 @@ async function envoyerInvitationEmail(req, { destinataire, role, jeton, expireLe
       paragraphes: [
         'Bonjour,',
         `${[u.prenom, u.nom].filter(Boolean).join(' ')} vous invite à rejoindre le cercle « ${req.cercle.nom} » sur Trait d'union, ` +
-          `en tant ${{ aidant: 'qu\'aidant', proche: 'que proche', auxiliaire: 'qu\'auxiliaire de vie' }[role]}.`,
+          `en tant ${{ aidant: 'qu\'aidant', proche: 'que proche', auxiliaire: 'qu\'auxiliaire de vie', superviseur: 'que superviseur technique' }[role]}.`,
         `Ce lien est personnel et ne sert qu'une fois. Il est valable jusqu'au ${expireLe.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'long' })}.`
       ],
       bouton: { texte: 'Rejoindre le cercle', lien: `${urlApplication(req)}/invitation/${jeton}` }
@@ -223,10 +223,10 @@ async function envoyerInvitationEmail(req, { destinataire, role, jeton, expireLe
   return { emailEnvoye, erreurEmail }
 }
 
-// Lien d'invitation (7 jours, usage unique) pour un aidant, un proche ou une auxiliaire de vie
+// Lien d'invitation (7 jours, usage unique) pour un aidant, un superviseur technique, un proche ou une auxiliaire de vie
 router.post('/:cercleId/invitations', chargerCercle, exigerGestion, async (req, res) => {
   const role = req.body.role
-  if (!['aidant', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  if (!['aidant', 'superviseur', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
   // Adresse facultative : si l'envoi d'emails est configuré, le lien part aussi par email
   const destinataire = req.body.email ? valider.email(req.body.email) : null
   // Invitation envoyée depuis une fiche de l'arbre généalogique : le compte y sera rattaché
