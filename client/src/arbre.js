@@ -132,11 +132,12 @@ export function disposer(personnes, relations, { L = 150, H = 172, ecartCouple =
   })
   const ordreRacines = []
   const placees = new Set()
-  const suivre = (i) => {
+  const suivre = (i, depuis) => {
     if (placees.has(i)) return
     placees.add(i)
+    racines[i].depuis = depuis
     ordreRacines.push(racines[i])
-    voisines[i].forEach(suivre)
+    voisines[i].forEach((j) => suivre(j, racines[i]))
   }
   racines.forEach((_, i) => suivre(i))
   racines.splice(0, racines.length, ...ordreRacines)
@@ -160,9 +161,22 @@ export function disposer(personnes, relations, { L = 150, H = 172, ecartCouple =
     }
   }
   let x = 0
+  // Annexe : une famille sans descendance propre à placer, sur la même ligne que le haut de la branche
+  // voisine, se range juste à droite de celle-ci (sinon elle irait au bout de toute la descendance)
+  const ligneHaute = (u) => Math.min(...u.membres.map((m) => gen.get(m)))
+  const bordHaut = new Map() // racine -> x du bord droit de son rang du haut
   for (const r of racines) {
     mesurer(r)
+    const hote = r.depuis
+    const annexe = hote && bordHaut.has(hote) && !r.enfants.length && r.membres.every((m) => gen.get(m) === ligneHaute(hote))
+    if (annexe) {
+      placer(r, bordHaut.get(hote) + ecart)
+      bordHaut.set(hote, bordHaut.get(hote) + ecart + r.largeur)
+      x = Math.max(x, bordHaut.get(hote) + ecart * 2)
+      continue
+    }
     placer(r, x)
+    bordHaut.set(r, Math.max(...r.membres.map((m) => pos.get(m).x)) + L)
     x += r.largeur + ecart * 2
   }
 
