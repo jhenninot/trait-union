@@ -232,6 +232,13 @@
       "when": 1791240550335,
       "tag": "0032_chansons_type",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791286964964,
+      "tag": "0033_scores_quiz",
+      "breakpoints": true
     }
   ]
 }

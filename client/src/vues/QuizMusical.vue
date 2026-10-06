@@ -24,22 +24,22 @@ const total = ref(0)
 const gain = ref(null) // { base, bonus } de la question en cours
 let depart = 0
 const maximum = computed(() => questions.value.length * (BASE + BONUS))
-const cleRecord = `quiz-score-${props.pour ?? 'moi'}`
-const record = ref(0)
-const nouveauRecord = ref(false)
-try { record.value = Number(localStorage.getItem(cleRecord)) || 0 } catch { /* stockage indisponible */ }
+const meilleur = ref(0) // meilleur score du joueur avant cette partie
+const classement = ref([]) // les trois meilleurs scores de ce quiz, tous joueurs confondus
+const nouveauRecord = computed(() => total.value > meilleur.value && meilleur.value > 0)
 function gagner() {
   const t = (Date.now() - depart) / 1000
   gain.value = { base: BASE, bonus: Math.round(BONUS * Math.max(0, 1 - t / DELAI)) }
   total.value += gain.value.base + gain.value.bonus
 }
-function terminer() {
+async function terminer() {
   etat.value = 'fini'
-  if (props.score && total.value > record.value) {
-    nouveauRecord.value = record.value > 0
-    record.value = total.value
-    try { localStorage.setItem(cleRecord, String(total.value)) } catch { /* stockage indisponible */ }
-  }
+  if (!props.score) return
+  try {
+    const r = await api('POST', `/musique/scores${props.pour ? `?pour=${props.pour}` : ''}`, { points: total.value, questions: questions.value.length })
+    meilleur.value = r.meilleur
+    classement.value = r.classement
+  } catch { /* hors ligne : le score de la partie reste affiché */ }
 }
 
 onMounted(async () => {
@@ -117,9 +117,17 @@ function suivante() {
       <h1>Bravo !</h1>
       <div v-if="score" class="bulle">
         <p class="grand">{{ total }} points sur {{ maximum }}</p>
-        <p class="moyen">{{ nouveauRecord ? 'Nouveau record, bravo !' : record > total ? `Votre meilleur score : ${record} points.` : 'C\'était un beau moment.' }}</p>
+        <p class="moyen">{{ nouveauRecord ? `Nouveau record personnel, bravo ! (avant : ${meilleur} points)` : meilleur > total ? `Votre meilleur score : ${meilleur} points.` : 'C\'était un beau moment.' }}</p>
       </div>
-      <div v-else class="bulle"><p class="grand">Vous avez écouté {{ questions.length }} chanson{{ questions.length > 1 ? 's' : '' }}.</p><p class="moyen">C'était un beau moment.</p></div>
+      <div v-if="score && classement.length" class="podium">
+        <p class="titre-podium">Les meilleurs scores ({{ questions.length }} questions)</p>
+        <ol>
+          <li v-for="(c, i) in classement" :key="i" :class="{ moi: c.moi }">
+            <span class="rang">{{ i + 1 }}</span><span class="nom">{{ c.prenom }}{{ c.moi ? ' (vous)' : '' }}</span><strong>{{ c.points }} points</strong>
+          </li>
+        </ol>
+      </div>
+      <div v-else-if="!score" class="bulle"><p class="grand">Vous avez écouté {{ questions.length }} chanson{{ questions.length > 1 ? 's' : '' }}.</p><p class="moyen">C'était un beau moment.</p></div>
       <div class="actions">
         <button type="button" class="gros" @click="emit('rejouer')"><Icone nom="lecture" /> Rejouer</button>
         <button type="button" class="gros second" @click="emit('quitter')">Retour aux jeux</button>
@@ -170,6 +178,14 @@ function suivante() {
 .score { background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.5rem; border-radius: 16px; padding: 8px 18px; }
 .points-gagnes { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); margin: 8px 0 !important; }
 .points-gagnes small { font-size: 1.1rem; font-weight: 500; color: var(--gris); }
+.podium { background: white; border-radius: 22px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.1); padding: 16px 24px; margin: 8px 0 14px; width: min(560px, 100%); }
+.titre-podium { font-size: 1.3rem; font-weight: 700; color: var(--bleu-nuit); margin: 0 0 8px; text-align: center; }
+.podium ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.podium li { display: flex; align-items: center; gap: 14px; font-size: 1.4rem; padding: 8px 12px; border-radius: 14px; color: var(--bleu-nuit); }
+.podium li.moi { background: var(--vert-clair); color: var(--vert); }
+.rang { width: 36px; height: 36px; border-radius: 50%; background: #f3f0ea; display: grid; place-items: center; font-weight: 700; flex: none; }
+.nom { flex: 1; }
+.podium strong { white-space: nowrap; }
 .quiz { display: flex; flex-direction: column; align-items: center; width: 100%; }
 h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .sous { font-size: 1.5rem; color: var(--gris); margin: 10px 0 18px; text-align: center; max-width: 700px; }
@@ -211,6 +227,7 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .sous { font-size: 1.15rem; }
   .tete { flex-direction: column; align-items: flex-start; gap: 8px; }
   .retour { position: static; font-size: 0.95rem; padding: 9px 12px; }
+  .podium li { font-size: 1.15rem; }
   .score { font-size: 1.1rem; padding: 4px 12px; }
   .points-gagnes { font-size: 1.3rem; }
   .etape { font-size: 1rem; }

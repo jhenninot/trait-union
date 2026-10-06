@@ -327,6 +327,19 @@ export const chansons = pgTable('chansons', {
   unique('chansons_unique').on(t.utilisateurId, t.cle)
 ])
 
+// Scores du « Quiz musical avec score » : une ligne par partie terminée. aideId est la personne
+// accompagnée dont c'est le quiz, joueurId celui qui a joué (elle-même ou un membre de la famille).
+// Le classement compare les parties ayant le même nombre de questions.
+export const scoresQuiz = pgTable('scores_quiz', {
+  ...commun,
+  aideId: uuid('aide_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  joueurId: uuid('joueur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  points: integer('points').notNull(),
+  questions: integer('questions').notNull()
+}, (t) => [
+  index('scores_quiz_aide').on(t.aideId, t.questions)
+])
+
 // Compteurs d'utilisation par jour, pour les statistiques de l'administration
 // (server/statistiques.js) : un nombre par canal, par jour et par cercle, jamais de contenu.
 // Canaux : « voix » (commandes vocales), « alertes » (alertes reçues par un appareil),
