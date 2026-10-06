@@ -78,8 +78,8 @@ export function graphe(liste, rels) {
       ajouter(parents, r.personneB, r.personneA)
       ajouter(enfants, r.personneA, r.personneB)
     } else {
-      ajouter(conjoints, r.personneA, { id: r.personneB, separes: r.separes })
-      ajouter(conjoints, r.personneB, { id: r.personneA, separes: r.separes })
+      ajouter(conjoints, r.personneA, { id: r.personneB, separes: r.separes, maries: r.maries })
+      ajouter(conjoints, r.personneB, { id: r.personneA, separes: r.separes, maries: r.maries })
     }
   }
   return {
@@ -152,6 +152,11 @@ function groupeSang({ a, b }) {
 
 // Parenté de `x` vue depuis `ego` (deux identifiants de personnes de l'arbre) :
 // { lien: « Arrière-petit-fils », groupe, generation (> 0 : plus jeune) } ou null (sans lien connu).
+// « Mari » / « Femme » seulement pour un couple marié, sinon « Conjoint » quel que soit le genre
+const motCouple = (genre, c) => c.maries
+  ? (c.separes ? g3(genre, 'Ex-mari', 'Ex-femme', 'Ex-conjoint') : g3(genre, 'Mari', 'Femme', 'Conjoint'))
+  : (c.separes ? 'Ex-conjoint' : 'Conjoint')
+
 export function parente(g, ego, x) {
   if (ego === x) return { lien: 'Moi', groupe: 'moi', generation: 0 }
   const px = g.parId.get(x)
@@ -161,7 +166,7 @@ export function parente(g, ego, x) {
   const couple = g.conjoints(ego).find((c) => c.id === x)
   if (couple) {
     return {
-      lien: couple.separes ? g3(genre, 'Ex-mari', 'Ex-femme', 'Ex-conjoint') : g3(genre, 'Mari', 'Femme', 'Conjoint'),
+      lien: motCouple(genre, couple),
       groupe: 'conjoint',
       generation: 0
     }
@@ -176,6 +181,7 @@ export function parente(g, ego, x) {
     .sort((m, n) => (m.s.a + m.s.b) - (n.s.a + n.s.b))
   if (proches.length) {
     const { id, separes, s: r } = proches[0]
+    const couplePre = proches[0]
     const generation = r.b - r.a
     if (!separes) {
       if (r.a === 0 && r.b === 1) return { lien: g3(genre, 'Gendre', 'Belle-fille', 'Gendre ou belle-fille'), groupe: 'allies', generation }
@@ -185,7 +191,7 @@ export function parente(g, ego, x) {
       if (r.b === 1 && r.a >= 2) return { lien: libelleSang(r, genre), groupe: 'famille', generation }
     }
     const qui = g.parId.get(id).prenom
-    const mot = separes ? g3(genre, 'Ex-mari', 'Ex-femme', 'Ex-conjoint') : g3(genre, 'Mari', 'Femme', 'Conjoint')
+    const mot = motCouple(genre, couplePre)
     return { lien: `${mot} de ${qui}`, groupe: 'allies', generation }
   }
   // Famille du conjoint (beaux-parents, beaux-frères, enfants du conjoint)

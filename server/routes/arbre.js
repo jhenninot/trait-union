@@ -117,7 +117,7 @@ function presenter(p, gestion, utilisateurId) {
   }
 }
 
-const presenterRelation = (r) => ({ id: r.id, type: r.type, a: r.personneA, b: r.personneB, separes: r.separes })
+const presenterRelation = (r) => ({ id: r.id, type: r.type, a: r.personneA, b: r.personneB, separes: r.separes, maries: r.maries })
 
 // --- Gestion (aidants)
 
@@ -163,7 +163,7 @@ async function verifierParent(tx, cercleId, a, b) {
   return true
 }
 
-async function ajouterRelation(tx, cercleId, type, a, b, separes = false) {
+async function ajouterRelation(tx, cercleId, type, a, b, separes = false, maries = false) {
   if (type === 'parent') {
     if (!await verifierParent(tx, cercleId, a, b)) return
   } else {
@@ -174,7 +174,7 @@ async function ajouterRelation(tx, cercleId, type, a, b, separes = false) {
     ))
     if (deja) return
   }
-  await tx.insert(relations).values({ cercleId, type, personneA: a, personneB: b, separes }).onConflictDoNothing()
+  await tx.insert(relations).values({ cercleId, type, personneA: a, personneB: b, separes, maries }).onConflictDoNothing()
 }
 
 async function verifierDansCercle(tx, cercleId, ids) {
@@ -216,7 +216,7 @@ router.post('/personnes', exigerGestion, async (req, res) => {
       } else if (rel.type === 'parent') {
         await ajouterRelation(tx, req.cercle.id, 'parent', p.id, rel.de)
       } else if (rel.type === 'conjoint') {
-        await ajouterRelation(tx, req.cercle.id, 'conjoint', rel.de, p.id)
+        await ajouterRelation(tx, req.cercle.id, 'conjoint', rel.de, p.id, false, Boolean(rel.maries))
       } else {
         // Frère ou sœur : mêmes parents
         const ps = await tx.select({ a: relations.personneA }).from(relations)
@@ -281,21 +281,24 @@ router.put('/personnes/:personneId/avatar', exigerGestion, chargerPersonne, exig
 routesPhotosJeu(router, '/personnes/:personneId', [exigerGestion, chargerPersonne],
   (req) => (req.personne.utilisateurId ? { utilisateurId: req.personne.utilisateurId } : { personneId: req.personne.id }))
 
-// Relie deux personnes déjà dans l'arbre : { type: 'parent' (a parent de b) | 'conjoint', a, b, separes }
+// Relie deux personnes déjà dans l'arbre : { type: 'parent' (a parent de b) | 'conjoint', a, b, separes, maries }
 router.post('/relations', exigerGestion, async (req, res) => {
   const { type, a, b } = req.body
   if (!['parent', 'conjoint'].includes(type)) throw new ErreurSaisie('Lien invalide')
   await db.transaction(async (tx) => {
     await verifierDansCercle(tx, req.cercle.id, [a, b])
     if (!a || !b) throw new ErreurSaisie('Choisissez les deux personnes')
-    await ajouterRelation(tx, req.cercle.id, type, a, b, Boolean(req.body.separes))
+    await ajouterRelation(tx, req.cercle.id, type, a, b, Boolean(req.body.separes), Boolean(req.body.maries))
   })
   res.status(201).end()
 })
 
 // Couple séparé ou non
 router.put('/relations/:relationId', exigerGestion, async (req, res) => {
-  const [r] = await db.update(relations).set({ separes: Boolean(req.body.separes) })
+  const [r] = await db.update(relations).set({
+    ...(req.body.separes !== undefined && { separes: Boolean(req.body.separes) }),
+    ...(req.body.maries !== undefined && { maries: Boolean(req.body.maries) })
+  })
     .where(and(eq(relations.id, req.params.relationId), eq(relations.cercleId, req.cercle.id), eq(relations.type, 'conjoint')))
     .returning()
   if (!r) return res.status(404).json({ erreur: 'Lien introuvable' })

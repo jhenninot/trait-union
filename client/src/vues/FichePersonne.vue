@@ -60,7 +60,7 @@ const enregistrerLien = () => action(async () => {
   const { type, autre } = relier.value
   const corps = type === 'parentDe' ? { type: 'parent', a: p.value.id, b: autre }
     : type === 'enfantDe' ? { type: 'parent', a: autre, b: p.value.id }
-    : { type: 'conjoint', a: p.value.id, b: autre }
+    : { type: 'conjoint', a: p.value.id, b: autre, maries: Boolean(relier.value.maries) }
   await api('POST', `${props.base}/arbre/relations`, corps)
   relier.value = null
 })
@@ -76,6 +76,7 @@ const retirerLien = (r) => action(async () => {
   await api('DELETE', `${props.base}/arbre/relations/${r.id}`)
 })
 const changerSepares = (r) => action(() => api('PUT', `${props.base}/arbre/relations/${r.id}`, { separes: !r.separes }))
+const changerMaries = (r) => action(() => api('PUT', `${props.base}/arbre/relations/${r.id}`, { maries: !r.maries }))
 const retirer = () => action(async () => {
   const membre = p.value.compte ? ` ${p.value.prenom} reste membre du cercle.` : ''
   if (!await confirmer(`Retirer ${p.value.prenom} de l'arbre, avec ses liens ?${membre}`, { oui: 'Retirer', danger: true })) return
@@ -181,7 +182,8 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
         <summary>Liens de {{ p.prenom }}</summary>
         <ul>
           <li v-for="r in relationsListe" :key="r.id">
-            <span>{{ r.texte }}<template v-if="r.separes"> (séparés)</template></span>
+            <span>{{ r.texte }}<template v-if="r.maries"> (mariés)</template><template v-if="r.separes"> (séparés)</template></span>
+            <button v-if="r.type === 'conjoint'" type="button" class="lien" @click="changerMaries(r)">{{ r.maries ? 'Non mariés' : 'Mariés' }}</button>
             <button v-if="r.type === 'conjoint'" type="button" class="lien" @click="changerSepares(r)">{{ r.separes ? 'Ensemble' : 'Séparés' }}</button>
             <BoutonIcone icone="effacer" :libelle="`Retirer le lien ${r.texte}`" danger @click="retirerLien(r)" />
           </li>
@@ -197,6 +199,7 @@ const aides = computed(() => props.arbre.accompagnes.map((a) => a.prenom).join('
             <option value="" disabled>Choisir…</option>
             <option v-for="x in arbre.personnes.filter((x) => x.id !== p.id)" :key="x.id" :value="x.id">{{ x.prenom }} {{ x.nom ?? '' }}</option>
           </select>
+          <label v-if="relier.type === 'conjoint'" class="case"><input v-model="relier.maries" type="checkbox" /> Mariés</label>
           <div class="actions"><button type="submit">Relier</button> <button type="button" class="secondaire" @click="relier = null">Annuler</button></div>
         </form>
         </Modale>

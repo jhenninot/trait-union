@@ -39,7 +39,7 @@ const f = reactive({
 })
 
 // Lien avec une personne déjà dans l'arbre (choisi dans le formulaire si on ne part pas d'une fiche)
-const lien = reactive({ type: props.relation?.type ?? 'enfant', de: props.relation?.de ?? '', autreParent: '' })
+const lien = reactive({ type: props.relation?.type ?? 'enfant', de: props.relation?.de ?? '', autreParent: '', maries: false })
 const choisirLien = !props.personne && !props.relation && props.arbre.personnes.length > 0
 const autresPersonnes = computed(() => [...props.arbre.personnes].sort((a, b) => a.prenom.localeCompare(b.prenom)))
 // Autre parent proposé pour un enfant : le conjoint actuel de la personne (le premier non séparé)
@@ -81,7 +81,7 @@ async function enregistrer() {
       return
     }
     if (props.membre) corps.membreId = props.membre.id
-    if (lien.de) corps.relation = { type: lien.type, de: lien.de, autreParent: lien.autreParent || undefined }
+    if (lien.de) corps.relation = { type: lien.type, de: lien.de, autreParent: lien.autreParent || undefined, maries: lien.type === 'conjoint' ? lien.maries : undefined }
     const { id } = await api('POST', `${props.base}/personnes`, corps)
     emit('fini', id)
   } catch (e) {
@@ -122,6 +122,8 @@ async function enregistrer() {
           </select>
         </div>
       </fieldset>
+
+      <label v-if="lien.type === 'conjoint' && lien.de && !p" class="case"><input v-model="lien.maries" type="checkbox" /> Mariés</label>
 
       <div class="deux">
         <div class="champ">

@@ -157,7 +157,8 @@ export const relations = pgTable('relations', {
   type: typeRelation('type').notNull(),
   personneA: uuid('personne_a').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
   personneB: uuid('personne_b').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
-  separes: boolean('separes').notNull().default(false)
+  separes: boolean('separes').notNull().default(false),
+  maries: boolean('maries').notNull().default(false)
 }, (t) => [
   index('relations_cercle_idx').on(t.cercleId),
   unique('relations_unique').on(t.type, t.personneA, t.personneB)

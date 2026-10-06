@@ -42,8 +42,8 @@ export function index(relations) {
       ajouter(parents, r.b, r.a)
       ajouter(enfants, r.a, r.b)
     } else {
-      ajouter(conjoints, r.a, { id: r.b, separes: r.separes, relation: r.id })
-      ajouter(conjoints, r.b, { id: r.a, separes: r.separes, relation: r.id })
+      ajouter(conjoints, r.a, { id: r.b, separes: r.separes, maries: r.maries, relation: r.id })
+      ajouter(conjoints, r.b, { id: r.a, separes: r.separes, maries: r.maries, relation: r.id })
     }
   }
   return {
