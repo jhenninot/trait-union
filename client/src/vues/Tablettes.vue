@@ -79,19 +79,22 @@ const changerJeux = (m, modifs) => action(async () => {
 const chansons = ref({}) // par membre : { chansons: [...], styles: [...] }
 const nouvelleChanson = ref(null) // { membre, type: 'chanson' | 'artiste' | 'style', titre, artiste, style }
 const libelleChanson = (c) => c.type === 'style' ? `Style : ${c.style}` : c.type === 'artiste' ? `${c.artiste} (tous ses titres)` : `${c.titre}, ${c.artiste}`
+// La réponse est attendue AVANT de recopier la liste : plusieurs chargements en parallèle (un par
+// personne accompagnée) ne doivent pas s'écraser les uns les autres.
+const garderChansons = (m, liste) => { chansons.value = { ...chansons.value, [m.id]: liste } }
 const chargerChansons = async (m) => {
-  try { chansons.value = { ...chansons.value, [m.id]: await api('GET', `${url.value}/membres/${m.id}/chansons`) } } catch { /* liste laissée vide */ }
+  try { garderChansons(m, await api('GET', `${url.value}/membres/${m.id}/chansons`)) } catch { /* liste laissée vide */ }
 }
 watch(() => cercle.value?.membres, (liste) => {
   if (cercle.value?.peutGerer) (liste ?? []).filter((m) => m.jeux).forEach(chargerChansons)
 }, { immediate: true })
 const ajouterChanson = () => action(async () => {
   const { membre, ...choix } = nouvelleChanson.value
-  chansons.value = { ...chansons.value, [membre.id]: await api('POST', `${url.value}/membres/${membre.id}/chansons`, choix) }
+  garderChansons(membre, await api('POST', `${url.value}/membres/${membre.id}/chansons`, choix))
   nouvelleChanson.value = null
 })
 const retirerChanson = (m, c) => action(async () => {
-  chansons.value = { ...chansons.value, [m.id]: await api('DELETE', `${url.value}/membres/${m.id}/chansons/${c.id}`) }
+  garderChansons(m, await api('DELETE', `${url.value}/membres/${m.id}/chansons/${c.id}`))
 })
 const nouvelleReponse = ref({})
 const changerMessagerie = (m, modifs) => action(async () => {
