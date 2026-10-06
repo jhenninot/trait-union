@@ -57,6 +57,15 @@ const enregistrerLien = (m) => action(async () => {
   lienOuvert.value = null
 })
 
+// Un aidant redéfinit son rôle : aidant ou superviseur technique
+const roleOuvert = ref(null) // rôle choisi dans la fenêtre
+const changerMonRole = () => action(async () => {
+  await api('PUT', `${url.value}/mon-role`, { role: roleOuvert.value })
+  roleOuvert.value = null
+  await rafraichirSession()
+  await charger()
+})
+
 const inviter = (role) => action(async () => {
   const { jeton, expireLe, emailEnvoye, erreurEmail } = await api('POST', `${url.value}/invitations`, { role, email: emailInvite.value || undefined })
   invitation.value = { role, lien: `${location.origin}/invitation/${jeton}`, expireLe, emailEnvoye, erreurEmail }
@@ -209,6 +218,7 @@ const rejoindre = () => action(async () => {
               @click="lienOuvert = { id: m.id, lien: m.lien ?? '' }"
             />
             <BoutonIcone v-if="cercle.peutGerer && !m.decede && m.role !== 'auxiliaire'" icone="photo" :libelle="`Photos de ${m.prenom} pour les jeux`" @click="photosMembre = m" />
+            <BoutonIcone v-if="m.moi && ['aidant', 'superviseur'].includes(m.role)" icone="bouclier" libelle="Changer mon rôle dans ce cercle" @click="roleOuvert = m.role" />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
             <template v-if="cercle.peutGerer && !m.moi">
               <BoutonIcone v-if="m.decede" icone="annuler" :libelle="`Annuler le décès de ${m.prenom} (erreur)`" @click="deces = m" />
@@ -217,6 +227,17 @@ const rejoindre = () => action(async () => {
             <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
           </span>
         </div>
+        <Modale v-if="m.moi && roleOuvert" titre="Mon rôle dans ce cercle" @fermer="roleOuvert = null">
+          <form class="lien-form" @submit.prevent="changerMonRole">
+            <label><input v-model="roleOuvert" type="radio" value="aidant" /> Aidant</label>
+            <label><input v-model="roleOuvert" type="radio" value="superviseur" /> Superviseur technique</label>
+            <p class="aide">Le superviseur technique a les mêmes droits qu'un aidant, sauf dans la messagerie : pas de « Les aidants » ni de cahier de liaison.</p>
+            <div class="actions">
+              <button type="button" class="secondaire" @click="roleOuvert = null">Annuler</button>
+              <button type="submit">Enregistrer</button>
+            </div>
+          </form>
+        </Modale>
         <Modale v-if="lienOuvert?.id === m.id" :titre="`Lien de ${m.prenom}`" @fermer="lienOuvert = null">
           <form class="lien-form" @submit.prevent="enregistrerLien(m)">
             <label>Lien de {{ m.prenom }} avec la personne accompagnée <ChoixLien v-model="lienOuvert.lien" /></label>

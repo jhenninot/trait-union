@@ -456,6 +456,21 @@ router.delete('/:cercleId/membres/:membreId/deces', chargerCercle, exigerGestion
   res.json({ decede: false, dateDeces: null })
 })
 
+// Un aidant ou un superviseur technique redéfinit son propre rôle dans le cercle. Corps : { role }
+router.put('/:cercleId/mon-role', chargerCercle, async (req, res) => {
+  const role = req.body.role
+  if (!['aidant', 'superviseur'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  if (!['aidant', 'superviseur'].includes(req.role)) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
+  if (role === req.role) return res.json({ role })
+  if (req.role === 'aidant') {
+    // Le cercle doit garder au moins un aidant
+    const [{ n }] = await db.select({ n: count() }).from(membres).where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'aidant')))
+    if (n <= 1) return res.status(409).json({ erreur: 'Vous êtes le seul aidant du cercle : nommez un autre aidant avant de changer de rôle' })
+  }
+  await db.update(membres).set({ role }).where(and(eq(membres.cercleId, req.cercle.id), eq(membres.utilisateurId, req.utilisateur.id)))
+  res.json({ role })
+})
+
 // Lien d'un membre avec la personne accompagnée (fils, petite-fille...) : chacun règle le sien,
 // les aidants celui de tous. Corps : { lien } (null pour l'effacer)
 router.put('/:cercleId/membres/:membreId/lien', chargerCercle, async (req, res) => {
