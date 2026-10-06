@@ -117,6 +117,14 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink :to="`/cercles/${cercle.id}`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}`) }">
         <Icone nom="famille" /> Famille et aidants
       </RouterLink>
+      <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
+        <Icone nom="compte" /> Personnes accompagnées
+      </RouterLink>
+      <template v-if="peutGerer && dansTablettes">
+        <RouterLink v-for="a in aides" :key="a.id" :to="`/cercles/${cercle.id}/tablettes/${a.id}`" class="lien sous-lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes/${a.id}`) }">
+          {{ a.prenom }}
+        </RouterLink>
+      </template>
       <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/arbre`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/arbre`) }">
         <Icone nom="arbre" /> Arbre généalogique
       </RouterLink>
@@ -131,14 +139,6 @@ const estActif = (chemin) => route.path === chemin
       </RouterLink>
       <template v-if="voitJeux && dansJeux">
         <RouterLink v-for="a in aides" :key="a.id" :to="`/cercles/${cercle.id}/jeux/${a.utilisateurId}`" class="lien sous-lien" :class="{ actif: estActif(`/cercles/${cercle.id}/jeux/${a.utilisateurId}`) }">
-          {{ a.prenom }}
-        </RouterLink>
-      </template>
-      <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
-        <Icone nom="compte" /> Personnes accompagnées
-      </RouterLink>
-      <template v-if="peutGerer && dansTablettes">
-        <RouterLink v-for="a in aides" :key="a.id" :to="`/cercles/${cercle.id}/tablettes/${a.id}`" class="lien sous-lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes/${a.id}`) }">
           {{ a.prenom }}
         </RouterLink>
       </template>
