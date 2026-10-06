@@ -123,6 +123,9 @@ export const personnes = pgTable('personnes', {
   aSavoir: text('a_savoir'),
   // Montrée dans « Ma famille » des personnes accompagnées (défunts compris, au choix des aidants)
   visibleAide: boolean('visible_aide').notNull().default(true),
+  // Personne extérieure à la famille (voisin, ami, personnalité...) : seulement une photo, un prénom et une
+  // date de naissance pour les jeux. Hors arbre, « Ma famille », anniversaires et assistant vocal.
+  exterieur: boolean('exterieur').notNull().default(false),
   creeParId: uuid('cree_par_id').references(() => utilisateurs.id, { onDelete: 'set null' })
 }, (t) => [
   index('personnes_cercle_idx').on(t.cercleId),

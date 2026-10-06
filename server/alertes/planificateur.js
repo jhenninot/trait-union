@@ -224,6 +224,7 @@ async function envoyerAnniversaires(maintenant) {
 async function envoyerAnniversairesArbre(maintenant, duree) {
   const fetes = await db.select().from(personnes).where(and(
     isNull(personnes.utilisateurId),
+    eq(personnes.exterieur, false),
     eq(personnes.decede, false),
     inArray(sql`to_char(${personnes.dateNaissance}, 'MM-DD')`, joursFetes(maintenant)),
       // Pas de « 0 an » le jour de la naissance

@@ -4,7 +4,7 @@ import { db } from '../db/index.js'
 import { personnes, relations, membres, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
-import { chargerArbre, parente, phrase, lienPossessif, filiation, ancetres } from '../arbre.js'
+import { chargerArbre, chargerExterieurs, parente, phrase, lienPossessif, filiation, ancetres } from '../arbre.js'
 import { preparerEnvoi, changerAvatar } from '../avatars.js'
 import { marquerDeces, annulerDeces } from '../deces.js'
 
@@ -22,6 +22,11 @@ function exigerGestion(req, res, next) {
   if (!req.peutGerer) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
   next()
 }
+
+// Personnes extérieures à la famille, pour les jeux (aidants)
+router.get('/exterieurs', exigerGestion, async (req, res) => {
+  res.json(await chargerExterieurs([req.cercle.id]))
+})
 
 router.get('/', async (req, res) => {
   const g = await chargerArbre(req.cercle.id)
@@ -197,9 +202,11 @@ router.post('/personnes', exigerGestion, async (req, res) => {
     } else {
       valeurs = lireFiche(req.body)
       if (!valeurs.prenom) throw new ErreurSaisie('Le champ « prénom » est obligatoire')
+      // Personne extérieure : jamais placée dans l'arbre, ni montrée dans « Ma famille »
+      if (req.body.exterieur === true) Object.assign(valeurs, { exterieur: true, visibleAide: false, decede: false, dateDeces: null })
     }
     const [p] = await tx.insert(personnes).values({ ...valeurs, cercleId: req.cercle.id, creeParId: req.utilisateur.id }).returning()
-    if (rel) {
+    if (rel && !valeurs.exterieur) {
       await verifierDansCercle(tx, req.cercle.id, [rel.de, rel.autreParent])
       if (rel.type === 'enfant') {
         await ajouterRelation(tx, req.cercle.id, 'parent', rel.de, p.id)

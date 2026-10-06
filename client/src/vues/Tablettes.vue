@@ -9,6 +9,7 @@ import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
 import Modale from '../navigation/Modale.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
+import PersonnesJeux from './PersonnesJeux.vue'
 import { confirmer } from '../fenetre.js'
 
 // Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
@@ -199,6 +200,7 @@ const adresseApk = `${location.host}/apk`
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.exterieurs" @change="changerJeux(m, { exterieurs: $event.target.checked })" /> Inclure les personnes extérieures à la famille (« Qui est-ce ? » et « Quel âge ? »)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">
               <span class="libelle-reglage">Niveau</span>
@@ -222,6 +224,7 @@ const adresseApk = `${location.host}/apk`
             </div>
             <button type="button" class="secondaire petit" @click="nouvelleChanson = { membre: m, type: 'chanson', titre: '', artiste: '', style: '' }"><Icone nom="ajouter" class="en-ligne" /> Ajouter une préférence</button>
           </div>
+          <PersonnesJeux :cercle-id="cercle.id" />
           <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Par défaut, les personnes décédées ne sont pas proposées.</span>
         </div>
         </template>

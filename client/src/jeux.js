@@ -5,7 +5,7 @@ import { api } from './api.js'
 import { age } from './coordonnees.js'
 
 // Réglages des jeux de la personne connectée, choisis par ses aidants (null tant qu'ils ne sont pas chargés)
-export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, musique: true, musiqueScore: false, decedes: false, niveau: 3, questions: 5 })
+export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, musique: true, musiqueScore: false, exterieurs: true, decedes: false, niveau: 3, questions: 5 })
 export const jeuxDisponibles = () => reglagesJeux.actif && (reglagesJeux.qui || reglagesJeux.age || reglagesJeux.musique || reglagesJeux.musiqueScore)
 export async function chargerReglagesJeux() {
   try { Object.assign(reglagesJeux, await api('GET', '/jeux/reglages'), { charge: true }) } catch { /* hors ligne : on garde l'état précédent */ }

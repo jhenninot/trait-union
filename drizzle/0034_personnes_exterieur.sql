@@ -1,0 +1,1 @@
+ALTER TABLE "personnes" ADD COLUMN "exterieur" boolean DEFAULT false NOT NULL;

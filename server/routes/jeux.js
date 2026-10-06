@@ -6,6 +6,7 @@ import { membres, utilisateurs } from '../db/schema.js'
 import { aLesDroits } from '../auth/roles.js'
 import { reglages } from '../jeux.js'
 import { compterJeux } from '../statistiques.js'
+import { chargerExterieurs } from '../arbre.js'
 
 // Réglages des jeux de la personne connectée (choisis par ses aidants, voir routes/cercles.js)
 const router = Router()
@@ -42,6 +43,14 @@ export async function chargerCible(req, res, next) {
 router.post('/partie', (req, res) => {
   if (req.session?.type === 'appareil') compterJeux(req.utilisateur.id)
   res.json({ ok: true })
+})
+
+// Personnes extérieures à la famille (fiches ajoutées par les aidants) de tous les cercles de la personne
+router.get('/exterieurs', chargerCible, async (req, res) => {
+  if (!reglages(req.cible.jeux).exterieurs) return res.json([])
+  const cercles = (await db.select({ id: membres.cercleId }).from(membres)
+    .where(and(eq(membres.utilisateurId, req.cible.id), eq(membres.role, 'accompagne')))).map((m) => m.id)
+  res.json((await chargerExterieurs(cercles)).map(({ avatarChoix, ...p }) => ({ ...p, groupe: 'exterieur' })))
 })
 
 router.get('/reglages', chargerCible, (req, res) => res.json(reglages(req.cible.jeux)))

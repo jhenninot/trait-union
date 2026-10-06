@@ -34,13 +34,16 @@ const routeur = useRouter()
 onMounted(async () => {
   if (essai) {
     Object.assign(r, await api('GET', `/jeux/reglages?pour=${props.pour}`).catch(() => ({})), { actif: true, charge: true })
-    personnes.value = (await chargerFamille({ pour: props.pour, cercles: [{ id: props.cercleId }] })).personnes
+    personnes.value = [
+      ...(await chargerFamille({ pour: props.pour, cercles: [{ id: props.cercleId }] })).personnes,
+      ...await api('GET', `/jeux/exterieurs?pour=${props.pour}`).catch(() => [])
+    ]
     return (charge.value = true)
   }
   await chargerReglagesJeux()
   // Les aidants ont coupé l'accès aux jeux : retour à l'accueil
   if (!jeuxDisponibles()) return routeur.replace('/')
-  personnes.value = (await chargerFamille()).personnes
+  personnes.value = [...(await chargerFamille()).personnes, ...await api('GET', '/jeux/exterieurs').catch(() => [])]
   charge.value = true
 })
 onUnmounted(arreterParole)

@@ -20,7 +20,7 @@ export async function chargerArbre(cercleId) {
       .from(personnes)
       .leftJoin(utilisateurs, eq(personnes.utilisateurId, utilisateurs.id))
       .leftJoin(membres, and(eq(membres.cercleId, personnes.cercleId), eq(membres.utilisateurId, personnes.utilisateurId)))
-      .where(eq(personnes.cercleId, cercleId)),
+      .where(and(eq(personnes.cercleId, cercleId), eq(personnes.exterieur, false))),
     db.select().from(relations).where(eq(relations.cercleId, cercleId))
   ])
   const lienAvatar = await liensAvatars()
@@ -44,6 +44,19 @@ export async function chargerArbre(cercleId) {
     }
   })
   return graphe(liste, rels)
+}
+
+// Personnes extérieures à la famille d'un ou plusieurs cercles (fiches pour les jeux seulement)
+export async function chargerExterieurs(cercleIds) {
+  if (!cercleIds.length) return []
+  const [lignes, lienAvatar] = await Promise.all([
+    db.select().from(personnes).where(and(inArray(personnes.cercleId, cercleIds), eq(personnes.exterieur, true))).orderBy(personnes.creeLe),
+    liensAvatars()
+  ])
+  return lignes.map((p) => ({
+    id: p.id, cercleId: p.cercleId, prenom: p.prenom, nom: p.nom, genre: p.genre, dateNaissance: p.dateNaissance,
+    avatar: lienAvatar(p.id, p.avatar), avatarChoix: p.avatar
+  }))
 }
 
 export function graphe(liste, rels) {
