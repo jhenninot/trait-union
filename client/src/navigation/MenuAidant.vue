@@ -52,8 +52,9 @@ const voitSondages = computed(() => voitMessages.value && !estAuxiliaire(cercle.
 // Jeux : un sous-menu par personne accompagnée, pour essayer ses jeux
 const aides = ref([])
 const voitJeux = computed(() => Boolean(cercle.value) && voitPhotos.value)
+const dansTablettes = computed(() => cercle.value && route.path.startsWith(`/cercles/${cercle.value.id}/tablettes`))
 const dansJeux = computed(() => cercle.value && route.path.startsWith(`/cercles/${cercle.value.id}/jeux`))
-watch(() => [cercleId.value, voitJeux.value], async ([id, voit]) => {
+watch(() => [cercleId.value, voitJeux.value || peutGerer.value], async ([id, voit]) => {
   aides.value = []
   if (!id || !voit) return
   const c = await api('GET', `/cercles/${id}`).catch(() => null)
@@ -68,6 +69,7 @@ watch(() => route.fullPath, () => (ouvert.value = false))
 function changerCercle(id) {
   if (route.path === '/') return memoriserCercle(id)
   let rubrique = route.path.match(/\/(agenda|photos|tablettes|arbre|messages|sondages)$/)?.[0] ?? ''
+  if (route.path.includes('/tablettes')) rubrique = '/tablettes'
   if (route.path.includes('/jeux')) rubrique = '/jeux'
   const cible = choix.value.find((c) => c.id === id)
   if ((rubrique === '/photos' || rubrique === '/arbre' || rubrique === '/sondages' || rubrique === '/jeux') && !session.utilisateur.estAdmin && estAuxiliaire(cible?.role)) rubrique = ''
@@ -134,6 +136,11 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink v-if="peutGerer" :to="`/cercles/${cercle.id}/tablettes`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes`) }">
         <Icone nom="compte" /> Personnes accompagnées
       </RouterLink>
+      <template v-if="peutGerer && dansTablettes">
+        <RouterLink v-for="a in aides" :key="a.id" :to="`/cercles/${cercle.id}/tablettes/${a.id}`" class="lien sous-lien" :class="{ actif: estActif(`/cercles/${cercle.id}/tablettes/${a.id}`) }">
+          {{ a.prenom }}
+        </RouterLink>
+      </template>
     </template>
 
     <template v-if="session.utilisateur.estAdmin">

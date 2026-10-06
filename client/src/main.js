@@ -61,7 +61,7 @@ const router = createRouter({
     { path: '/messages', component: MessagesAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
     { path: '/cercles/:id/arbre', component: Arbre, meta: { connecte: true } },
     { path: '/mon-arbre', component: ArbreAccompagne, meta: { connecte: true, appareil: true, seulementAppareil: true } },
-    { path: '/cercles/:id/tablettes', component: Tablettes, meta: { connecte: true } },
+    { path: '/cercles/:id/tablettes/:membre?', component: Tablettes, meta: { connecte: true } },
     { path: '/recevoir', component: Recevoir, meta: { connecte: true, appareil: true } },
     { path: '/profil', component: Profil, meta: { connecte: true } },
     { path: '/alertes', component: Alertes, meta: { connecte: true } },

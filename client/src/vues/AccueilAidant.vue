@@ -260,7 +260,7 @@ const aujourdhui = (() => {
             <strong>{{ m.prenom }} n'a pas encore d'appareil relié</strong>
             <p class="aide">Reliez sa tablette ou son téléphone avec un code à 6 chiffres : l'agenda et les photos s'y afficheront.</p>
           </div>
-          <RouterLink :to="`${base}/tablettes`" class="bouton petit">Relier</RouterLink>
+          <RouterLink :to="`${base}/tablettes/${m.id}`" class="bouton petit">Relier</RouterLink>
         </div>
         <div v-if="alertes" class="tache">
           <Icone nom="cloche" />
@@ -336,7 +336,7 @@ const aujourdhui = (() => {
                 <span v-if="usage(m).niveau !== 'aucun'" class="semaine" :title="`${usage(m).semaine.filter((j) => j.ecrans).length} jours d'utilisation sur les 7 derniers`">
                   <span v-for="j in usage(m).semaine" :key="j.jour" :class="{ plein: j.ecrans }" />
                 </span>
-                <RouterLink :to="`${base}/tablettes`" class="detail">Détail</RouterLink>
+                <RouterLink :to="`${base}/tablettes/${m.id}`" class="detail">Détail</RouterLink>
               </p>
               <p v-if="etatPhotos(m)" class="etat" :class="{ ok: etatPhotos(m).vu }">
                 <Icone :nom="etatPhotos(m).vu ? 'coche' : 'photo'" class="en-ligne" /> {{ etatPhotos(m).texte }}

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
 import { api } from '../api.js'
 import { utiliserCercle, heure, copier } from '../cercle.js'
 import { mentionDeces, lienWhatsAppMessage, lienSmsMessage } from '../coordonnees.js'
@@ -12,6 +13,19 @@ import { confirmer } from '../fenetre.js'
 
 // Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
+
+// Sans personne choisie : la liste des personnes accompagnées. Avec /tablettes/<membre> (sous-menu de
+// la barre latérale) : les réglages de cette personne, rangés en onglets.
+const route = useRoute()
+const choisi = computed(() => accompagnes.value.find((m) => m.id === route.params.membre) ?? null)
+const ONGLETS = [
+  { cle: 'appareils', libelle: 'Appareils', icone: 'mobile' },
+  { cle: 'alertes', libelle: 'Alertes', icone: 'cloche' },
+  { cle: 'jeux', libelle: 'Jeux', icone: 'jeux' },
+  { cle: 'messages', libelle: 'Messages', icone: 'message' }
+]
+const onglet = ref('appareils')
+watch(() => route.params.membre, () => { onglet.value = 'appareils' })
 
 // Utilisation de l'application par chaque personne accompagnée (aidants seulement)
 const utilisation = ref([])
@@ -121,14 +135,23 @@ const adresseApk = `${location.host}/apk`
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-if="cercle">
       <p class="aide surtitre">{{ cercle.nom }}</p>
-      <h1>Personnes accompagnées</h1>
-      <p class="aide">Chaque personne accompagnée utilise une tablette (ou un téléphone) avec un écran très simple, sans mot de passe.
+      <RouterLink v-if="choisi" :to="`${url}/tablettes`" class="retour-liste"><Icone nom="precedent" class="en-ligne" /> Personnes accompagnées</RouterLink>
+      <h1>{{ choisi ? `${choisi.prenom} ${choisi.nom ?? ''}` : 'Personnes accompagnées' }}</h1>
+      <p v-if="!choisi" class="aide">Chaque personne accompagnée utilise une tablette (ou un téléphone) avec un écran très simple, sans mot de passe.
         Un cercle peut en réunir plusieurs, un couple par exemple : chaque appareil est configuré pour une seule personne.</p>
 
-      <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
-      <div v-for="m in accompagnes" :key="m.id" class="carte">
-        <div class="ligne">
+      <template v-if="!choisi">
+        <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
+        <RouterLink v-for="m in accompagnes" :key="m.id" :to="`${url}/tablettes/${m.id}`" class="carte resume">
           <strong>{{ m.prenom }} {{ m.nom }}</strong>
+          <span v-if="m.decede" class="aide">{{ mentionDeces(m) }}</span>
+          <span v-else class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
+          <Icone nom="suivant" class="fleche" />
+        </RouterLink>
+      </template>
+      <p v-else-if="!choisi" class="aide">Personne introuvable.</p>
+      <div v-for="m in (choisi ? [choisi] : [])" :key="m.id" class="carte">
+        <div class="ligne">
           <span v-if="m.decede" class="aide">{{ mentionDeces(m) }}</span>
           <span v-else class="aide">{{ m.appareils }} appareil{{ m.appareils > 1 ? 's' : '' }} connecté{{ m.appareils > 1 ? 's' : '' }}</span>
         </div>
@@ -137,6 +160,10 @@ const adresseApk = `${location.host}/apk`
             En cas d'erreur, annulez le décès depuis <RouterLink :to="url">Famille et aidants</RouterLink>.</p>
         </template>
         <template v-else>
+        <div class="onglets" role="tablist">
+          <button v-for="o in ONGLETS" :key="o.cle" type="button" role="tab" :aria-selected="onglet === o.cle" :class="{ actif: onglet === o.cle }" @click="onglet = o.cle"><Icone :nom="o.icone" class="en-ligne" /> {{ o.libelle }}</button>
+        </div>
+        <template v-if="onglet === 'appareils'">
         <p v-if="m.appareilsAMettreAJour" class="mise-a-jour">
           <Icone nom="telecharger" class="en-ligne" />
           Nouvelle version de l'application à installer sur {{ m.appareilsAMettreAJour > 1 ? `${m.appareilsAMettreAJour} de ses appareils` : 'son appareil' }} :
@@ -144,6 +171,14 @@ const adresseApk = `${location.host}/apk`
           puis ouvrez le fichier téléchargé et touchez « Mettre à jour ».
         </p>
         <UtilisationAccompagne v-if="cercle.peutGerer" :utilisation="utilisationDe(m)" :prenom="m.prenom" :appareils="m.appareils" />
+        <div v-if="cercle.peutGerer" class="actions">
+          <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>
+          <button class="secondaire" @click="ouvrirEnvoiApp(m)">Envoyer l'application</button>
+          <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
+          <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
+        </div>
+        </template>
+        <template v-else-if="onglet === 'alertes'">
         <div v-if="m.alertes" class="alertes">
           <span class="titre-alertes"><Icone nom="cloche" class="en-ligne" /> Alertes</span>
           <label class="case"><input type="checkbox" :checked="m.alertes.rendezVous" @change="changerAlertes(m, 'rendezVous', $event.target.checked)" /> Rappels de rendez-vous</label>
@@ -154,6 +189,8 @@ const adresseApk = `${location.host}/apk`
             ? `Reçues sur ${m.alertes.appareils} appareil${m.alertes.appareils > 1 ? 's' : ''}.`
             : `Pas encore activées : sur l'appareil de ${m.prenom}, touchez « Recevoir les alertes » sur l'écran d'accueil.` }}</span>
         </div>
+        </template>
+        <template v-else-if="onglet === 'jeux'">
         <div v-if="m.jeux" class="messagerie">
           <span class="titre-alertes"><Icone nom="jeux" class="en-ligne" /> Jeux</span>
           <label class="case"><input type="checkbox" :checked="m.jeux.actif" @change="changerJeux(m, { actif: $event.target.checked })" /> {{ m.prenom }} a accès aux jeux</label>
@@ -187,6 +224,8 @@ const adresseApk = `${location.host}/apk`
           </div>
           <span class="aide">Les jeux utilisent les photos et les dates de naissance de l'arbre de la famille. Par défaut, les personnes décédées ne sont pas proposées.</span>
         </div>
+        </template>
+        <template v-else-if="onglet === 'messages'">
         <div v-if="m.messagerie" class="messagerie">
           <span class="titre-alertes"><Icone nom="message" class="en-ligne" /> Messages</span>
           <div class="reglage">
@@ -211,12 +250,7 @@ const adresseApk = `${location.host}/apk`
           <label class="case"><input type="checkbox" :checked="m.messagerie.lectureAuto" @change="changerMessagerie(m, { lectureAuto: $event.target.checked })" /> Lire les nouveaux messages à voix haute dès leur arrivée</label>
           <label class="case"><input type="checkbox" :checked="m.messagerie.vocal" @change="changerMessagerie(m, { vocal: $event.target.checked })" /> {{ m.prenom }} peut envoyer un message vocal ou une photo</label>
         </div>
-        <div v-if="cercle.peutGerer" class="actions">
-          <button class="secondaire" @click="genererCode(m)">Configurer un appareil</button>
-          <button class="secondaire" @click="ouvrirEnvoiApp(m)">Envoyer l'application</button>
-          <BoutonIcone v-if="m.appareils" icone="deconnexion" libelle="Déconnecter ses appareils" danger @click="deconnecterAppareils(m)" />
-          <BoutonIcone icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
-        </div>
+        </template>
         <Modale v-if="nouvelleChanson?.membre.id === m.id" :titre="`Préférence musicale de ${m.prenom}`" @fermer="nouvelleChanson = null">
           <form class="envoi-app" @submit.prevent="ajouterChanson">
             <div class="reglage">
@@ -271,7 +305,7 @@ const adresseApk = `${location.host}/apk`
         </div>
       </Modale>
 
-      <button v-if="cercle.peutGerer" class="secondaire" @click="ajoutOuvert = true"><Icone nom="ajouter" class="en-ligne" /> Ajouter une personne accompagnée</button>
+      <button v-if="cercle.peutGerer && !choisi" class="secondaire" @click="ajoutOuvert = true"><Icone nom="ajouter" class="en-ligne" /> Ajouter une personne accompagnée</button>
       <Modale v-if="ajoutOuvert" titre="Ajouter une personne accompagnée" @fermer="ajoutOuvert = false">
         <form @submit.prevent="ajouterAccompagne">
           <label>Prénom <input v-model="nouvelAccompagne.prenom" required /></label>
@@ -296,6 +330,13 @@ const adresseApk = `${location.host}/apk`
   font-size: 0.95rem;
 }
 .surtitre { margin: 0; }
+.retour-liste { display: inline-flex; align-items: center; gap: 6px; font-size: 0.95rem; text-decoration: none; margin: 4px 0; }
+.resume { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; flex-wrap: wrap; }
+.resume strong { flex: 1; min-width: 40%; }
+.resume .fleche { width: 20px; height: 20px; color: var(--gris); }
+.onglets { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid #ebe8e3; margin: 8px 0 12px; }
+.onglets button { background: none; color: var(--gris); border-radius: 8px 8px 0 0; padding: 8px 14px; font-weight: 600; white-space: nowrap; border-bottom: 3px solid transparent; }
+.onglets button.actif { color: var(--vert); border-bottom-color: var(--vert); }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .alertes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ebe8e3; }
@@ -320,4 +361,5 @@ const adresseApk = `${location.host}/apk`
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .encart .actions { align-items: center; margin-top: 8px; }
 .code { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.3em; text-align: center; color: var(--bleu-nuit); margin: 8px 0; }
+@media (max-width: 600px) { .onglets button { padding: 8px 8px; font-size: 0.85rem; } .onglets .icone { display: none; } }
 </style>
