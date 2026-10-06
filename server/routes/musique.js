@@ -5,7 +5,7 @@ import { db } from '../db/index.js'
 import { chansons } from '../db/schema.js'
 import { reglages } from '../jeux.js'
 import { construireQuiz } from '../musique/quiz.js'
-import { cleChanson } from '../musique/itunes.js'
+import { cleChanson } from '../musique/sources.js'
 import * as valider from '../auth/validation.js'
 
 // Quiz musical de la personne accompagnée (voir server/musique/)

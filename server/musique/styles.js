@@ -1,5 +1,5 @@
 // Styles musicaux proposés aux aidants : chacun est représenté par quelques artistes connus, dont
-// les titres sont cherchés dans iTunes au moment de jouer (server/musique/itunes.js).
+// les titres sont cherchés chez Deezer ou iTunes au moment de jouer (server/musique/itunes.js).
 export const STYLES = {
   'Chanson française': ['Édith Piaf', 'Charles Aznavour', 'Jacques Brel', 'Georges Brassens', 'Barbara', 'Yves Montand', 'Charles Trenet'],
   'Variété française': ['Claude François', 'Joe Dassin', 'Dalida', 'Michel Sardou', 'Johnny Hallyday', 'Sheila', 'Michel Fugain', 'Mireille Mathieu'],
@@ -13,6 +13,7 @@ export const STYLES = {
   'Musiques latines': ['Los Machucambos', 'Luis Mariano', 'Julio Iglesias', 'Gipsy Kings', 'Enrico Macias'],
   'Country': ['Johnny Cash', 'Dolly Parton', 'Kenny Rogers', 'Willie Nelson', 'Hugues Aufray'],
   // Pas d'artistes : des œuvres célèbres (PIECES_CLASSIQUES ci-dessous)
+  'Instrumental': ['Paul Mauriat', 'Richard Clayderman', 'Franck Pourcel', 'James Last', 'Ray Conniff', 'Mantovani', 'Caravelli', 'Raymond Lefèvre'],
   'Musique classique': []
 }
 export const NOMS_STYLES = Object.keys(STYLES)

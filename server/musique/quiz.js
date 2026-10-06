@@ -3,7 +3,7 @@ import { db } from '../db/index.js'
 import { chansons } from '../db/schema.js'
 import { chansonsDeJeunesse } from './catalogue.js'
 import { STYLES, PIECES_CLASSIQUES } from './styles.js'
-import { trouverExtrait, chansonsDeArtiste, cleChanson } from './itunes.js'
+import { trouverExtrait, chansonsDeArtiste, cleChanson } from './sources.js'
 
 const melanger = (liste) => {
   const l = [...liste]

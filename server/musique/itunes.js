@@ -7,10 +7,10 @@ const DUREE_SANS_RESULTAT = 30 * 60 * 1000
 const ESPACEMENT = 250 // ms entre deux appels
 const cache = new Map()
 
-const normaliser = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
-const mots = (t) => normaliser(t).split(' ').filter((m) => m.length >= 3)
-const attendre = (ms) => new Promise((r) => setTimeout(r, ms))
-const MAUVAISES_VERSIONS = /live|karaoke|instrumental|cover|tribute|remix/
+export const normaliser = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+export const mots = (t) => normaliser(t).split(' ').filter((m) => m.length >= 3)
+export const attendre = (ms) => new Promise((r) => setTimeout(r, ms))
+export const MAUVAISES_VERSIONS = /live|karaoke|instrumental|cover|tribute|remix/
 
 // --- Appels espacés, avec une nouvelle tentative si l'API refuse (limite atteinte)
 let file = Promise.resolve()
@@ -89,7 +89,7 @@ async function chercherArtiste(artiste, cle) {
 }
 
 // Chanson de la liste qui ressemble le plus au titre demandé (tous les mots, ou presque)
-function parmi(liste, titre) {
+export function parmi(liste, titre) {
   const motsTitre = mots(titre)
   const voulu = normaliser(titre)
   let choix = null
