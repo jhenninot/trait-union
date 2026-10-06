@@ -10,7 +10,7 @@ import Icone from '../navigation/Icone.vue'
 import Modale from '../navigation/Modale.vue'
 import UtilisationAccompagne from './UtilisationAccompagne.vue'
 import PersonnesJeux from './PersonnesJeux.vue'
-import { confirmer } from '../fenetre.js'
+import { confirmer, avertir } from '../fenetre.js'
 
 // Page « Personnes accompagnées » d'un cercle : personnes accompagnées et configuration de leurs appareils
 const { url, cercle, erreur, charger, action, accompagnes } = utiliserCercle()
@@ -89,6 +89,13 @@ const changerAlertes = (m, cle, valeur) => action(async () => {
 // Jeux de la personne accompagnée : accès, jeux proposés, nombre de propositions et de questions
 const changerJeux = (m, modifs) => action(async () => {
   m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
+})
+// Remise à zéro des scores d'un jeu (tous les joueurs)
+const JEUX_SCORE = [['musique', 'Quiz musical'], ['qui', 'Qui est-ce ?'], ['age', 'Quel âge ?']]
+const remettreAZero = (m, [jeu, nom]) => action(async () => {
+  if (!await confirmer(`Effacer tous les scores de « ${nom} » pour ${m.prenom} ? Les meilleurs scores de toute la famille seront remis à zéro.`, { oui: 'Effacer les scores', danger: true })) return
+  const { effaces } = await api('DELETE', `${url.value}/membres/${m.id}/scores/${jeu}`)
+  await avertir(effaces ? `Scores de « ${nom} » effacés (${effaces}).` : `Il n'y avait aucun score pour « ${nom} ».`, { icone: 'coche' })
 })
 // Chansons du quiz musical : celles choisies par les aidants et les réactions de la personne
 const chansons = ref({}) // par membre : { chansons: [...], styles: [...] }
@@ -202,6 +209,12 @@ const adresseApk = `${location.host}/apk`
             <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.quiScore" @change="changerJeux(m, { quiScore: $event.target.checked })" /> « Qui est-ce ? avec score » : points et bonus de rapidité</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.ageScore" @change="changerJeux(m, { ageScore: $event.target.checked })" /> « Quel âge ? avec score » : points et bonus de rapidité</label>
+            <div class="reglage">
+              <span class="libelle-reglage">Scores</span>
+              <div class="etiquettes">
+                <button v-for="j in JEUX_SCORE" :key="j[0]" type="button" class="secondaire petit" @click="remettreAZero(m, j)">Remettre à zéro : {{ j[1] }}</button>
+              </div>
+            </div>
             <label class="case"><input type="checkbox" :checked="m.jeux.exterieurs" @change="changerJeux(m, { exterieurs: $event.target.checked })" /> Inclure les personnes extérieures à la famille (« Qui est-ce ? » et « Quel âge ? »)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">

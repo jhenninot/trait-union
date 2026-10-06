@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons } from '../db/schema.js'
+import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons, scoresQuiz } from '../db/schema.js'
 import { cleChanson } from '../musique/sources.js'
 import { NOMS_STYLES } from '../musique/styles.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
@@ -386,6 +386,15 @@ router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, ch
   const jeux = lireJeux(req.body)
   await db.update(utilisateurs).set({ jeux }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(reglagesJeux(jeux))
+})
+
+// Remise à zéro des scores d'un jeu (« musique », « qui » ou « age ») d'une personne accompagnée :
+// efface les scores de tous les joueurs de ce jeu pour elle. Renvoie le nombre de scores effacés.
+router.delete('/:cercleId/membres/:membreId/scores/:jeu', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  if (!['musique', 'qui', 'age'].includes(req.params.jeu)) return res.status(400).json({ erreur: 'Jeu inconnu' })
+  const effaces = await db.delete(scoresQuiz)
+    .where(and(eq(scoresQuiz.aideId, req.membre.utilisateurId), eq(scoresQuiz.jeu, req.params.jeu))).returning({ id: scoresQuiz.id })
+  res.json({ effaces: effaces.length })
 })
 
 // Préférences musicales d'une personne accompagnée (quiz musical) : chansons, artistes ou styles
