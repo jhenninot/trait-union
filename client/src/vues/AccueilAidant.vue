@@ -189,6 +189,8 @@ const totalNouvelles = computed(() => albums.value.reduce((n, a) => n + a.nouvel
 const lienPhoto = (album, photo) => `${base.value}/photos?album=${album}&photo=${photo.id}`
 
 // --- À faire : appareils à relier (aidants) et alertes à activer sur cet appareil ---
+// Cercle sans aucun aidant (un aidant peut se redéfinir superviseur technique) : alerte pour tous
+const sansAidant = computed(() => Boolean(cercle.value?.membres) && !cercle.value.membres.some((m) => m.role === 'aidant' && !m.decede))
 const sansAppareil = computed(() => (peutGerer.value ? accompagnes.value.filter((m) => m.appareils === 0) : []))
 const alertes = ref(null) // { clePublique, proposer, fait, erreur }
 async function chargerAlertes() {
@@ -252,8 +254,16 @@ const aujourdhui = (() => {
         </div>
       </section>
 
-      <section v-if="sansAppareil.length || alertes" class="a-faire">
+      <section v-if="sansAidant || sansAppareil.length || alertes" class="a-faire">
         <p class="titre-a-faire"><Icone nom="cloche" /> À faire</p>
+        <div v-if="sansAidant" class="tache">
+          <Icone nom="bouclier" />
+          <div class="grandit">
+            <strong>Ce cercle n'a aucun aidant</strong>
+            <p class="aide">Personne ne gère le cercle comme aidant. Un membre peut redéfinir son rôle en aidant, ou vous pouvez inviter un aidant.</p>
+          </div>
+          <RouterLink v-if="peutGerer" :to="base" class="bouton petit">Ouvrir le cercle</RouterLink>
+        </div>
         <div v-for="m in sansAppareil" :key="m.id" class="tache">
           <Icone nom="tablette" />
           <div class="grandit">
