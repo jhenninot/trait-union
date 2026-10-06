@@ -1,8 +1,8 @@
-// Directive v-zoom : écarter deux doigts sur la photo pour l'agrandir (jusqu'à 5 fois), puis la
+// Directive v-zoom : écarter deux doigts sur la photo pour l'agrandir (jusqu'à 12 fois ; molette sur ordinateur), puis la
 // déplacer avec un doigt ; resserrer les doigts pour revenir. Valeur : true quand le zoom est
 // permis (visionneuse en plein écran). À poser sur le même élément que v-balayage : tant que la
 // photo est agrandie, glisser le doigt la déplace au lieu de changer de photo (el.dataset.zoom).
-const MAX = 5
+const MAX = 12
 
 // Sur une piste (v-balayage), seule la photo du milieu s'agrandit
 const image = (el) => el.querySelector('[data-role="courante"] img') ?? el.querySelector('img')
@@ -89,6 +89,21 @@ export const zoom = {
       appliquer(el)
       z.bouge = true
     })
+
+    // Ordinateur : la molette agrandit autour du pointeur
+    el.addEventListener('wheel', (e) => {
+      if (!z.actif || !z.img) return
+      e.preventDefault()
+      const c = centre(z)
+      const e1 = Math.min(MAX, Math.max(1, z.echelle * Math.exp(-e.deltaY * 0.002)))
+      const q = { x: (e.clientX - c.x - z.x) / z.echelle, y: (e.clientY - c.y - z.y) / z.echelle }
+      z.echelle = e1
+      z.x = e.clientX - c.x - q.x * e1
+      z.y = e.clientY - c.y - q.y * e1
+      if (e1 < 1.05) return reinitialiser(el, 150)
+      borner(z)
+      appliquer(el)
+    }, { passive: false })
 
     const fin = (e) => {
       if (!z.pointeurs.delete(e.pointerId)) return
