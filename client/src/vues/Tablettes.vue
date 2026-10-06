@@ -312,6 +312,7 @@ const adresseApk = `${location.host}/apk`
 .case { flex-direction: row; align-items: center; gap: 6px; font-weight: normal; }
 .envoi-app { display: flex; flex-direction: column; gap: 12px; }
 .envoi-app input { width: 100%; }
+.envoi-app input[type="radio"], .envoi-app input[type="checkbox"] { width: auto; flex: none; }
 .encart { background: var(--vert-clair); border-radius: 8px; padding: 12px; margin-top: 12px; }
 .rond { width: 44px; height: 44px; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; flex: none; }
 .encart .actions { align-items: center; margin-top: 8px; }
