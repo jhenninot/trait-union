@@ -170,6 +170,7 @@ const estActif = (chemin) => route.path === chemin
     <RouterLink v-else-if="cercle" :to="`/cercles/${cercle.id}`" :class="{ actif: estActif(`/cercles/${cercle.id}`) }"><Icone nom="famille" />Famille</RouterLink>
     <RouterLink v-if="cercle" :to="`/cercles/${cercle.id}/agenda`" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }"><Icone nom="agenda" />Agenda</RouterLink>
     <RouterLink v-if="cercle && voitPhotos" :to="`/cercles/${cercle.id}/photos`" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }"><Icone nom="photo" />Photos</RouterLink>
+    <RouterLink v-if="cercle && voitJeux" :to="`/cercles/${cercle.id}/jeux`" :class="{ actif: dansJeux }"><Icone nom="jeux" />Jeux</RouterLink>
     <button :class="{ actif: ouvert }" @click="ouvert = !ouvert"><Icone nom="plus" />Plus</button>
   </nav>
 </template>
