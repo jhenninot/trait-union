@@ -103,8 +103,11 @@ function suivante() {
 <template>
   <div class="quiz">
     <template v-if="etat === 'chargement'">
-      <h1>Quelle est cette chanson ?</h1>
-      <p class="sous">Un instant, je cherche de la musique…</p>
+      <div class="attente" role="status" aria-live="polite">
+        <div class="vinyle-attente" aria-hidden="true"><i></i><i></i><span></span></div>
+        <p class="grand-texte">Un instant, je cherche de la musique…</p>
+        <p class="sous">Cela peut prendre quelques secondes.</p>
+      </div>
     </template>
 
     <template v-else-if="etat === 'vide'">
@@ -186,6 +189,17 @@ function suivante() {
 .rang { width: 36px; height: 36px; border-radius: 50%; background: #f3f0ea; display: grid; place-items: center; font-weight: 700; flex: none; }
 .nom { flex: 1; }
 .podium strong { white-space: nowrap; }
+.attente { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.grand-texte { font-size: 2.2rem; font-weight: 700; color: var(--bleu-nuit); margin: 24px 0 0; max-width: 700px; }
+.vinyle-attente { position: relative; width: 220px; height: 220px; display: grid; place-items: center; }
+.vinyle-attente i { position: absolute; inset: 0; border-radius: 50%; border: 6px solid var(--vert); opacity: 0; animation: onde 1.8s ease-out infinite; }
+.vinyle-attente i:nth-child(2) { animation-delay: 0.9s; }
+.vinyle-attente span { position: relative; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, #faf8f4 0 20px, var(--vert) 22px 29px, var(--bleu-nuit) 31px 100%); animation: tourne 2.4s linear infinite; }
+.vinyle-attente span::after { content: ''; position: absolute; left: 50%; top: 14px; width: 12px; height: 30px; margin-left: -6px; border-radius: 6px; background: var(--vert-clair); }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@keyframes onde { 0% { transform: scale(0.8); opacity: 0.7; } 100% { transform: scale(1.5); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vinyle-attente span { animation-duration: 8s; } .vinyle-attente i { display: none; } }
+@media (max-width: 600px) { .vinyle-attente { width: 170px; height: 170px; } .vinyle-attente span { width: 150px; height: 150px; } .grand-texte { font-size: 1.6rem; } }
 .quiz { display: flex; flex-direction: column; align-items: center; width: 100%; }
 h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .sous { font-size: 1.5rem; color: var(--gris); margin: 10px 0 18px; text-align: center; max-width: 700px; }
