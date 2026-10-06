@@ -280,8 +280,8 @@ router.get('/cercles/:cercleId', async (req, res) => {
     // Pour le cahier de liaison : les personnes accompagnées du cercle
     accompagnes: vue.liste.filter((m) => m.role === 'accompagne' && !m.decede).map((m) => personne(lienAvatar, m)),
     // Les aidants créent des groupes : les membres qu'ils peuvent y mettre
-    peutCreerGroupe: vue.aLesDroits(moi.role, 'aidant'),
-    membresCercle: vue.aLesDroits(moi.role, 'aidant')
+    peutCreerGroupe: aLesDroits(vue.moi.role, 'aidant'),
+    membresCercle: aLesDroits(vue.moi.role, 'aidant')
       ? vue.liste.filter((m) => !m.decede).map((m) => personne(lienAvatar, m)).sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr'))
       : []
   })
@@ -539,7 +539,7 @@ async function chargerLeSondage(req, res, next) {
   chargerConversation(req, res, next)
 }
 
-const peutGererSondage = (req) => req.sondage.sondage.creeParId === req.moi.utilisateurId || req.aLesDroits(moi.role, 'aidant')
+const peutGererSondage = (req) => req.sondage.sondage.creeParId === req.moi.utilisateurId || aLesDroits(req.moi.role, 'aidant')
 
 async function detailSondage(req) {
   const s = await chargerSondage(req.sondage.sondage.id)
