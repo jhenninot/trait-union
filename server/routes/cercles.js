@@ -101,6 +101,12 @@ router.post('/', exigerAdmin, async (req, res) => {
   res.status(201).json(cercle)
 })
 
+router.put('/:cercleId', chargerCercle, exigerAdmin, async (req, res) => {
+  const nom = valider.texte(req.body.nom, 'nom du cercle')
+  const [c] = await db.update(cercles).set({ nom }).where(eq(cercles.id, req.cercle.id)).returning()
+  res.json(c)
+})
+
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
     .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, jeux: utilisateurs.jeux, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
