@@ -2,7 +2,7 @@ import { and, eq, inArray, or, count } from 'drizzle-orm'
 import { db } from './db/index.js'
 import { photosJeu } from './db/schema.js'
 import { ErreurSaisie } from './auth/validation.js'
-import { preparerEnvoi, verifierPhotoJeu, supprimerPhotosJeu, lienPhotoJeu } from './avatars.js'
+import { preparerEnvoi, verifierPhotoJeu, supprimerPhotosJeu, lienPhotoJeu, copierPhotoJeu } from './avatars.js'
 import { stockageActif } from './stockage/s3.js'
 
 // Photos supplémentaires pour les jeux (en plus de la photo de contact). Elles appartiennent soit à un
@@ -68,4 +68,29 @@ export function routesPhotosJeu(router, chemin, mw, ownerDe) {
 export async function purgerPhotos(owner) {
   const lignes = await db.select({ jeton: photosJeu.jeton }).from(photosJeu).where(filtre(owner))
   await supprimerPhotosJeu(idDe(owner), lignes.map((l) => l.jeton))
+}
+
+// Une fiche de l'arbre devient un compte (invitation acceptée) : ses photos de jeu passent sur le compte
+// (10 au plus en tout) ; celles qui n'ont pas pu être copiées restent sur la fiche.
+export async function transfererPhotos(tx, personneId, utilisateurId) {
+  const aDeplacer = await tx.select().from(photosJeu).where(eq(photosJeu.personneId, personneId)).orderBy(photosJeu.creeLe)
+  if (!aDeplacer.length) return
+  const [{ n }] = await tx.select({ n: count() }).from(photosJeu).where(eq(photosJeu.utilisateurId, utilisateurId))
+  let place = MAX - n
+  const copiees = []
+  const inutiles = []
+  for (const l of aDeplacer) {
+    if (place > 0 && await copierPhotoJeu(personneId, utilisateurId, l.jeton)) {
+      await tx.insert(photosJeu).values({ utilisateurId, cercleId: l.cercleId, jeton: l.jeton })
+      place--
+      copiees.push(l)
+    } else if (place <= 0) {
+      inutiles.push(l)
+    }
+  }
+  const retirees = [...copiees, ...inutiles]
+  if (retirees.length) {
+    await tx.delete(photosJeu).where(inArray(photosJeu.id, retirees.map((l) => l.id)))
+    await supprimerPhotosJeu(personneId, retirees.map((l) => l.jeton))
+  }
 }

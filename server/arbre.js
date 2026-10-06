@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.js'
 import { personnes, relations, utilisateurs, membres } from './db/schema.js'
 import { liensAvatars, copierPhotoFiche } from './avatars.js'
-import { photosDe } from './photosJeu.js'
+import { photosDe, transfererPhotos } from './photosJeu.js'
 import { ageTexte } from './anniversaires.js'
 
 // Arbre généalogique d'un cercle : chargement, liens de parenté calculés à partir des seules
@@ -280,6 +280,8 @@ export async function rattacherCompte(tx, personneId, utilisateur) {
     if (photo) complement.avatar = photo
   }
   if (Object.keys(complement).length) await tx.update(utilisateurs).set(complement).where(eq(utilisateurs.id, u.id))
+  // Photos supplémentaires pour les jeux : reprises sur le compte
+  await transfererPhotos(tx, p.id, u.id)
 }
 
 // Liens calculés des membres d'un cercle vus depuis une personne accompagnée :

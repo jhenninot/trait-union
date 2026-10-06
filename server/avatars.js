@@ -90,6 +90,19 @@ export async function verifierPhotoJeu(personneId, photo) {
   return jeton
 }
 
+// Copie la photo d'une fiche chez un compte (invitation acceptée). Renvoie true si la copie a réussi.
+export async function copierPhotoJeu(personneId, utilisateurId, jeton) {
+  try {
+    const stockage = await stockageActif()
+    if (!stockage) return false
+    await copierObjet(stockage, cleObjet(personneId, jeton), cleObjet(utilisateurId, jeton))
+    return true
+  } catch (e) {
+    console.error('Copie d\'une photo de jeu :', e.message)
+    return false
+  }
+}
+
 export async function supprimerPhotosJeu(personneId, jetons) {
   const stockage = await stockageActif()
   if (!stockage) return
