@@ -111,6 +111,9 @@ const estActif = (chemin) => route.path === chemin
       <RouterLink v-if="voitMessages" :to="`/cercles/${cercle.id}/messages`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/messages`) }">
         <Icone nom="message" /> Messages<span v-if="nonLus" class="badge">{{ nonLus }}</span>
       </RouterLink>
+      <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
+        <Icone nom="agenda" /> Agenda
+      </RouterLink>
       <RouterLink v-if="voitSondages" :to="`/cercles/${cercle.id}/sondages`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/sondages`) }">
         <Icone nom="sondage" /> Sondages
       </RouterLink>
@@ -127,9 +130,6 @@ const estActif = (chemin) => route.path === chemin
       </template>
       <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/arbre`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/arbre`) }">
         <Icone nom="arbre" /> Arbre généalogique
-      </RouterLink>
-      <RouterLink :to="`/cercles/${cercle.id}/agenda`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/agenda`) }">
-        <Icone nom="agenda" /> Agenda
       </RouterLink>
       <RouterLink v-if="voitPhotos" :to="`/cercles/${cercle.id}/photos`" class="lien" :class="{ actif: estActif(`/cercles/${cercle.id}/photos`) }">
         <Icone nom="photo" /> Photos
