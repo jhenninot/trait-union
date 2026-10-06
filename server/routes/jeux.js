@@ -70,7 +70,7 @@ async function classement(aideId, jeu, questions, moiId) {
 // Fin d'une partie d'un jeu avec score. Corps : { jeu: 'musique' | 'qui' | 'age', points, questions }.
 // Enregistre le score du joueur connecté et renvoie son meilleur score d'avant et le classement
 // (« ?pour= » : un membre de la famille joue pour une personne accompagnée).
-router.post('/scores', chargerCible, async (req, res) => {
+export async function enregistrerScore(req, res) {
   const r = reglages(req.cible.jeux)
   const jeu = String(req.body.jeu ?? 'musique')
   if (!JEUX_SCORE[jeu]) return res.status(400).json({ erreur: 'Jeu inconnu' })
@@ -83,7 +83,8 @@ router.post('/scores', chargerCible, async (req, res) => {
     .where(and(eq(scoresQuiz.aideId, req.cible.id), eq(scoresQuiz.joueurId, req.utilisateur.id), eq(scoresQuiz.jeu, jeu), eq(scoresQuiz.questions, questions)))
   await db.insert(scoresQuiz).values({ aideId: req.cible.id, joueurId: req.utilisateur.id, jeu, points, questions })
   res.json({ meilleur: avant.meilleur, classement: await classement(req.cible.id, jeu, questions, req.utilisateur.id) })
-})
+}
+router.post('/scores', chargerCible, enregistrerScore)
 
 router.get('/reglages', chargerCible, (req, res) => res.json(reglages(req.cible.jeux)))
 

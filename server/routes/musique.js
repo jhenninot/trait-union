@@ -4,7 +4,7 @@ import { exigerConnexion } from '../auth/sessions.js'
 import { db } from '../db/index.js'
 import { chansons } from '../db/schema.js'
 import { reglages } from '../jeux.js'
-import { chargerCible } from './jeux.js'
+import { chargerCible, enregistrerScore } from './jeux.js'
 import { construireQuiz } from '../musique/quiz.js'
 import { cleChanson } from '../musique/sources.js'
 import * as valider from '../auth/validation.js'
@@ -30,5 +30,10 @@ router.post('/reaction', async (req, res) => {
     .onConflictDoUpdate({ target: [chansons.utilisateurId, chansons.cle], set: { reaction, modifieLe: sql`now()` } })
   res.json({ ok: true })
 })
+
+// Ancienne adresse des scores (avant « /api/jeux/scores »), gardée pour les applications déjà installées
+// ou mises en cache qui n'ont pas encore la dernière version : sans elle, leur fin de partie n'affiche
+// ni record ni podium.
+router.post('/scores', chargerCible, (req, res) => { req.body.jeu = 'musique'; return enregistrerScore(req, res) })
 
 export default router
