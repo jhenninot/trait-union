@@ -151,7 +151,8 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
         <button v-if="parle" type="button" class="rond" aria-label="Écouter" @click="reponse ? parler(texteLu) : lireQuestion()"><Icone nom="son" /></button>
       </div>
       <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}
-        <span class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span></p>
+        <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
+        <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
       <Avatar :src="p.avatar" :prenom="p.prenom" :taille="petit ? 170 : 210" />
       <template v-if="!reponse">
         <p class="question">{{ enonce }}</p>
@@ -190,10 +191,12 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .retour :deep(.icone) { width: 26px; height: 26px; }
 .rond { position: absolute; right: 0; width: 60px; height: 60px; padding: 0; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; }
 .rond :deep(.icone) { width: 32px; height: 32px; }
-.etape { font-size: 1.25rem; color: var(--gris); display: flex; gap: 10px; align-items: center; margin: 0 0 12px; }
-.points { display: flex; gap: 8px; }
+.etape { font-size: 1.25rem; color: var(--gris); display: flex; flex-direction: column; gap: 10px; align-items: center; margin: 0 0 12px; max-width: 100%; }
+.points { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
 .points i { width: 16px; height: 16px; border-radius: 50%; background: #dcd8d0; }
 .points i.fait { background: var(--vert); }
+.barre { display: block; width: min(320px, 80vw); height: 14px; border-radius: 7px; background: #dcd8d0; overflow: hidden; }
+.barre i { display: block; height: 100%; background: var(--vert); border-radius: 7px; }
 .question { font-size: 2rem; color: var(--bleu-nuit); font-weight: 700; margin: 16px 0; text-align: center; max-width: 900px; }
 .reponses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 900px; }
 .rep { background: white; color: var(--bleu-nuit); border: 3px solid #e3dfd7; border-radius: 22px; min-height: 96px; font-size: 2.1rem; font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
@@ -222,6 +225,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .tete { justify-content: space-between; flex-wrap: wrap; }
   .tete h1 { order: 3; width: 100%; margin-top: 8px; }
   .etape { font-size: 1rem; }
+  .points { gap: 6px; }
+  .points i { width: 12px; height: 12px; }
   .question { font-size: 1.5rem; }
   .reponses { grid-template-columns: 1fr; gap: 12px; }
   .rep { min-height: 70px; font-size: 1.5rem; border-radius: 18px; }

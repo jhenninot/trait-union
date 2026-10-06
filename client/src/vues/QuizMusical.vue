@@ -97,7 +97,8 @@ function suivante() {
         <h1>Quelle est cette chanson ?</h1>
       </div>
       <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}
-        <span class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span></p>
+        <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
+        <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
       <div class="disque" :style="{ width: `${petit ? 170 : 210}px`, height: `${petit ? 170 : 210}px` }">
         <img v-if="reponse && q.pochette" :src="q.pochette" alt="" />
         <Icone v-else nom="son" />
@@ -136,10 +137,12 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .tete { width: 100%; position: relative; display: flex; justify-content: center; align-items: center; min-height: 60px; margin-bottom: 6px; }
 .retour { position: absolute; left: 0; display: flex; align-items: center; gap: 8px; background: #f3f0ea; color: var(--bleu-nuit); border-radius: 16px; padding: 12px 18px; font-weight: 700; font-size: 1.2rem; }
 .retour :deep(.icone) { width: 26px; height: 26px; }
-.etape { font-size: 1.25rem; color: var(--gris); display: flex; gap: 10px; align-items: center; margin: 0 0 12px; }
-.points { display: flex; gap: 8px; }
+.etape { font-size: 1.25rem; color: var(--gris); display: flex; flex-direction: column; gap: 10px; align-items: center; margin: 0 0 12px; max-width: 100%; }
+.points { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
 .points i { width: 16px; height: 16px; border-radius: 50%; background: #dcd8d0; }
 .points i.fait { background: var(--vert); }
+.barre { display: block; width: min(320px, 80vw); height: 14px; border-radius: 7px; background: #dcd8d0; overflow: hidden; }
+.barre i { display: block; height: 100%; background: var(--vert); border-radius: 7px; }
 .disque { border-radius: 50%; overflow: hidden; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; }
 .disque img { width: 100%; height: 100%; object-fit: cover; }
 .disque :deep(.icone) { width: 40%; height: 40%; }
@@ -170,6 +173,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .tete { flex-direction: column; align-items: flex-start; gap: 8px; }
   .retour { position: static; font-size: 0.95rem; padding: 9px 12px; }
   .etape { font-size: 1rem; }
+  .points { gap: 6px; }
+  .points i { width: 12px; height: 12px; }
   .gros { font-size: 1.2rem; padding: 14px 24px; }
   .question { font-size: 1.4rem; }
   .reponses { grid-template-columns: 1fr; gap: 12px; }
