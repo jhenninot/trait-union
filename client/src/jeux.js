@@ -5,7 +5,7 @@ import { api } from './api.js'
 import { age } from './coordonnees.js'
 
 // Réglages des jeux de la personne connectée, choisis par ses aidants (null tant qu'ils ne sont pas chargés)
-export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, musique: true, musiqueScore: false, quiScore: false, ageScore: false, exterieurs: true, decedes: false, niveau: 3, questions: 5 })
+export const reglagesJeux = reactive({ charge: false, actif: false, qui: true, age: true, musique: true, musiqueScore: false, quiScore: false, ageScore: false, ageDecennie: false, exterieurs: true, decedes: false, niveau: 3, questions: 5 })
 export const jeuxDisponibles = () => reglagesJeux.actif && (reglagesJeux.qui || reglagesJeux.age || reglagesJeux.musique || reglagesJeux.musiqueScore || reglagesJeux.quiScore || reglagesJeux.ageScore)
 export async function chargerReglagesJeux() {
   try { Object.assign(reglagesJeux, await api('GET', '/jeux/reglages'), { charge: true }) } catch { /* hors ligne : on garde l'état précédent */ }
@@ -65,13 +65,18 @@ export const TRANCHES = [
 ]
 const trancheDe = (a) => TRANCHES.find((t) => a <= t.max)
 
+// Option des aidants : réponses par tranches de 10 ans (« 30 à 39 ans »)
+export const DECENNIES = [{ cle: 0, texte: 'Moins de 10 ans', max: 9 }, ...[1, 2, 3, 4, 5, 6, 7, 8].map((d) => ({ cle: d, texte: `${d * 10} à ${d * 10 + 9} ans`, max: d * 10 + 9 })), { cle: 9, texte: '90 ans ou plus', max: 200 }]
+const decennieDe = (a) => DECENNIES.find((t) => a <= t.max)
+
 // « Quel âge ? » : la tranche d'âge à retrouver parmi 3 propositions
-export function questionsAge(personnes, { niveau = 3, questions = 5 } = {}) {
+export function questionsAge(personnes, { niveau = 3, questions = 5, ageDecennie = false } = {}) {
+  const liste = ageDecennie ? DECENNIES : TRANCHES
   return tirer(candidats(personnes, { age: true }), questions).map((p) => {
-    const bonne = trancheDe(age(p.dateNaissance))
-    const i = TRANCHES.indexOf(bonne)
+    const bonne = (ageDecennie ? decennieDe : trancheDe)(age(p.dateNaissance))
+    const i = liste.indexOf(bonne)
     // Propositions éloignées les unes des autres pour que le choix reste net
-    const faux = melanger(TRANCHES.filter((t, k) => t !== bonne && Math.abs(k - i) >= 1)).slice(0, niveau - 1)
+    const faux = melanger(liste.filter((t, k) => t !== bonne && Math.abs(k - i) >= 1)).slice(0, niveau - 1)
     return { personne: p, photo: photoDe(p), choix: melanger([bonne, ...faux]).map((t) => ({ texte: t.texte, bonne: t === bonne })) }
   })
 }

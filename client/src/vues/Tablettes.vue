@@ -205,6 +205,7 @@ const adresseApk = `${location.host}/apk`
           <template v-if="m.jeux.actif">
             <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
+            <label v-if="m.jeux.age || m.jeux.ageScore" class="case"><input type="checkbox" :checked="m.jeux.ageDecennie" @change="changerJeux(m, { ageDecennie: $event.target.checked })" /> « Quel âge ? » : réponses par tranches de 10 ans (« 30 à 39 ans ») au lieu de grandes tranches (enfant, adulte, senior)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.quiScore" @change="changerJeux(m, { quiScore: $event.target.checked })" /> « Qui est-ce ? avec score » : points et bonus de rapidité</label>
