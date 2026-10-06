@@ -28,7 +28,6 @@ const choisi = computed(() => accompagnes.value.find((m) => m.utilisateurId === 
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-else-if="cercle">
       <template v-if="choisi">
-        <p class="bandeau">Essai des jeux de {{ choisi.prenom }} : ses réglages sont appliqués, rien n'est compté dans ses statistiques. Seuls vos scores des jeux avec score sont enregistrés, à votre nom.</p>
         <p v-if="choisi.jeux && choisi.jeux.actif === false" class="info">Les jeux sont désactivés pour {{ choisi.prenom }} : il n'y a pas accès sur sa tablette.</p>
         <Jeux :key="choisi.utilisateurId" :pour="choisi.utilisateurId" :cercle-id="cercle.id" />
       </template>
@@ -53,7 +52,6 @@ h1 { margin: 0 0 4px; }
 .sous { color: var(--gris); margin: 0 0 16px; }
 .liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; max-width: 760px; }
 .carte { display: flex; align-items: center; gap: 12px; background: white; border-radius: 14px; padding: 14px 16px; text-decoration: none; color: var(--bleu-nuit); box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
-.bandeau { background: var(--vert-clair); color: var(--vert); border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-weight: 600; }
 .info { background: #fff7ec; color: #b46a22; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
 .erreur { color: var(--rouge); }
 </style>
