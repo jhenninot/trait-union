@@ -20,7 +20,7 @@ const essai = Boolean(props.pour)
 const r = essai ? reactive({ ...reglagesJeux, actif: true, charge: false }) : reglagesJeux
 const personnes = ref([])
 const charge = ref(false)
-const jeu = ref(null) // null (accueil des jeux), 'qui', 'age' ou 'musique'
+const jeu = ref(null) // null (accueil des jeux), 'qui', 'age', 'musique' ou 'musiqueScore'
 const partie = ref(0) // change à chaque partie de musique, pour repartir de zéro
 const questions = ref([])
 const n = ref(0) // question en cours
@@ -48,13 +48,13 @@ onUnmounted(arreterParole)
 const nbQui = computed(() => candidats(personnes.value, { decedes: r.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
 const propose = (k) => r[k]
-const dispo = (k) => k === 'musique' || (k === 'qui' ? nbQui.value : nbAge.value) >= 2
+const dispo = (k) => k === 'musique' || k === 'musiqueScore' || (k === 'qui' ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
   if (!essai) api('POST', '/jeux/partie').catch(() => {})
-  if (k === 'musique') { partie.value++; return }
+  if (k === 'musique' || k === 'musiqueScore') { partie.value++; return }
   questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, r)
   n.value = 0
   reponse.value = null
@@ -123,6 +123,10 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
           <strong>Quelle est cette chanson ?</strong><span>Reconnaître les chansons d'autrefois</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
+        <button v-if="propose('musiqueScore')" type="button" class="jeu" @click="jouer('musiqueScore')">
+          <strong>Quiz musical avec score</strong><span>Gagner des points, avec un bonus si vous répondez vite</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
       </div>
       <p v-if="charge && ((propose('qui') && !dispo('qui')) || (propose('age') && !dispo('age')))" class="manque">
         Il faut quelques photos de la famille (et leurs dates de naissance) pour jouer. Vos proches peuvent les ajouter.
@@ -130,7 +134,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
     </template>
 
     <!-- Quiz musical -->
-    <QuizMusical v-else-if="jeu === 'musique'" :key="partie" :pour="pour" @quitter="retour" @rejouer="jouer('musique')" />
+    <QuizMusical v-else-if="jeu === 'musique' || jeu === 'musiqueScore'" :key="partie" :pour="pour" :score="jeu === 'musiqueScore'" @quitter="retour" @rejouer="jouer(jeu)" />
 
     <!-- Fin de partie -->
     <template v-else-if="fini">

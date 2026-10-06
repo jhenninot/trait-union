@@ -6,7 +6,7 @@ import Icone from '../navigation/Icone.vue'
 // « Quelle est cette chanson ? » : un extrait de 30 secondes, 2 ou 3 titres à choisir. Comme les
 // autres jeux, pas de score ni de chrono : une erreur ou « Je ne sais pas » donne la réponse, et
 // l'extrait continue. « J'aime » / « J'aime moins » aident les aidants à choisir les prochaines chansons.
-const props = defineProps({ pour: { type: String, default: null } }) // essai par un aidant : pas de réactions enregistrées
+const props = defineProps({ pour: { type: String, default: null }, score: { type: Boolean, default: false } }) // essai par un aidant : pas de réactions enregistrées
 const emit = defineEmits(['quitter', 'rejouer'])
 const questions = ref([])
 const etat = ref('chargement') // 'chargement', 'jeu', 'vide' ou 'fini'
@@ -17,12 +17,37 @@ const lecture = ref(false)
 const petit = window.matchMedia('(max-width: 600px)').matches
 let audio = null
 
+// Version avec score : 100 points par bonne réponse, plus jusqu'à 100 points de bonus de rapidité
+// (qui diminue pendant 20 secondes après l'affichage de la question). Une erreur ne retire rien.
+const BASE = 100, BONUS = 100, DELAI = 20
+const total = ref(0)
+const gain = ref(null) // { base, bonus } de la question en cours
+let depart = 0
+const maximum = computed(() => questions.value.length * (BASE + BONUS))
+const cleRecord = `quiz-score-${props.pour ?? 'moi'}`
+const record = ref(0)
+const nouveauRecord = ref(false)
+try { record.value = Number(localStorage.getItem(cleRecord)) || 0 } catch { /* stockage indisponible */ }
+function gagner() {
+  const t = (Date.now() - depart) / 1000
+  gain.value = { base: BASE, bonus: Math.round(BONUS * Math.max(0, 1 - t / DELAI)) }
+  total.value += gain.value.base + gain.value.bonus
+}
+function terminer() {
+  etat.value = 'fini'
+  if (props.score && total.value > record.value) {
+    nouveauRecord.value = record.value > 0
+    record.value = total.value
+    try { localStorage.setItem(cleRecord, String(total.value)) } catch { /* stockage indisponible */ }
+  }
+}
+
 onMounted(async () => {
   try {
     questions.value = (await api('GET', `/musique/quiz${props.pour ? `?pour=${props.pour}` : ''}`)).questions
   } catch { /* hors ligne : message plus bas */ }
   etat.value = questions.value.length ? 'jeu' : 'vide'
-  if (etat.value === 'jeu') jouerExtrait()
+  if (etat.value === 'jeu') { depart = Date.now(); jouerExtrait() }
 })
 onUnmounted(arreter)
 
@@ -52,7 +77,11 @@ const reecouter = () => {
 const titreReponse = computed(() => ({ bonne: 'Oui, bravo !', presque: 'Presque !', inconnu: 'Ce n\'est pas grave.' })[reponse.value])
 const phrase = computed(() => `C'était « ${q.value.titre} », de ${q.value.artiste}${q.value.annee ? ` (${q.value.annee})` : ''}.`)
 
-const repondre = (c) => { if (!reponse.value) reponse.value = c.bonne ? 'bonne' : 'presque' }
+function repondre(c) {
+  if (reponse.value) return
+  reponse.value = c.bonne ? 'bonne' : 'presque'
+  if (props.score && c.bonne) gagner()
+}
 const passer = () => { if (!reponse.value) reponse.value = 'inconnu' }
 function noter(r) {
   if (reaction.value) return
@@ -61,10 +90,12 @@ function noter(r) {
   api('POST', '/musique/reaction', { titre: q.value.titre, artiste: q.value.artiste, reaction: r }).catch(() => {})
 }
 function suivante() {
-  if (n.value + 1 >= questions.value.length) { arreter(); etat.value = 'fini'; return }
+  if (n.value + 1 >= questions.value.length) { arreter(); terminer(); return }
   n.value++
+  gain.value = null
   reponse.value = null
   reaction.value = null
+  depart = Date.now()
   jouerExtrait()
 }
 </script>
@@ -84,7 +115,11 @@ function suivante() {
 
     <template v-else-if="etat === 'fini'">
       <h1>Bravo !</h1>
-      <div class="bulle"><p class="grand">Vous avez écouté {{ questions.length }} chanson{{ questions.length > 1 ? 's' : '' }}.</p><p class="moyen">C'était un beau moment.</p></div>
+      <div v-if="score" class="bulle">
+        <p class="grand">{{ total }} points sur {{ maximum }}</p>
+        <p class="moyen">{{ nouveauRecord ? 'Nouveau record, bravo !' : record > total ? `Votre meilleur score : ${record} points.` : 'C\'était un beau moment.' }}</p>
+      </div>
+      <div v-else class="bulle"><p class="grand">Vous avez écouté {{ questions.length }} chanson{{ questions.length > 1 ? 's' : '' }}.</p><p class="moyen">C'était un beau moment.</p></div>
       <div class="actions">
         <button type="button" class="gros" @click="emit('rejouer')"><Icone nom="lecture" /> Rejouer</button>
         <button type="button" class="gros second" @click="emit('quitter')">Retour aux jeux</button>
@@ -94,9 +129,9 @@ function suivante() {
     <template v-else>
       <div class="tete">
         <button type="button" class="retour" @click="emit('quitter')"><Icone nom="precedent" /> Jeux</button>
-        <h1>Quelle est cette chanson ?</h1>
+        <h1>{{ score ? 'Quiz avec score' : 'Quelle est cette chanson ?' }}</h1>
       </div>
-      <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}
+      <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}<span v-if="score" class="score">{{ total }} point{{ total > 1 ? 's' : '' }}</span>
         <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
         <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
       <div class="disque" :style="{ width: `${petit ? 170 : 210}px`, height: `${petit ? 170 : 210}px` }">
@@ -117,6 +152,7 @@ function suivante() {
       <template v-else>
         <div class="bulle" :class="{ chaude: reponse !== 'bonne' }">
           <p class="grand">{{ titreReponse }}</p>
+          <p v-if="score && gain" class="points-gagnes">+ {{ gain.base + gain.bonus }} points <small>({{ gain.base }} + {{ gain.bonus }} de bonus de rapidité)</small></p>
           <p class="moyen">{{ phrase }}</p>
         </div>
         <div v-if="!reaction" class="avis">
@@ -131,6 +167,9 @@ function suivante() {
 </template>
 
 <style scoped>
+.score { background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.5rem; border-radius: 16px; padding: 8px 18px; }
+.points-gagnes { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); margin: 8px 0 !important; }
+.points-gagnes small { font-size: 1.1rem; font-weight: 500; color: var(--gris); }
 .quiz { display: flex; flex-direction: column; align-items: center; width: 100%; }
 h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .sous { font-size: 1.5rem; color: var(--gris); margin: 10px 0 18px; text-align: center; max-width: 700px; }
@@ -172,6 +211,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .sous { font-size: 1.15rem; }
   .tete { flex-direction: column; align-items: flex-start; gap: 8px; }
   .retour { position: static; font-size: 0.95rem; padding: 9px 12px; }
+  .score { font-size: 1.1rem; padding: 4px 12px; }
+  .points-gagnes { font-size: 1.3rem; }
   .etape { font-size: 1rem; }
   .points { gap: 6px; }
   .points i { width: 12px; height: 12px; }

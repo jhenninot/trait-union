@@ -158,6 +158,7 @@ const adresseApk = `${location.host}/apk`
             <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">
               <span class="libelle-reglage">Niveau</span>
@@ -169,7 +170,7 @@ const adresseApk = `${location.host}/apk`
               <label v-for="n in [3, 5, 8, 10, 15, 20]" :key="n" class="case"><input type="radio" :name="`questions-${m.id}`" :checked="m.jeux.questions === n" @change="changerJeux(m, { questions: n })" /> {{ n }} questions</label>
             </div>
           </template>
-          <div v-if="m.jeux.actif && m.jeux.musique" class="reglage">
+          <div v-if="m.jeux.actif && (m.jeux.musique || m.jeux.musiqueScore)" class="reglage">
             <span class="libelle-reglage">Préférences musicales de {{ m.prenom }}</span>
             <p class="aide">Une chanson, un artiste (tous ses titres) ou un style : le quiz les mélange avec des succès de sa jeunesse (d'après sa date de naissance). Les extraits viennent d'iTunes : il faut une connexion Internet.</p>
             <div class="etiquettes">

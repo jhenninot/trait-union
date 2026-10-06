@@ -17,7 +17,7 @@ router.use(exigerConnexion)
 router.get('/quiz', chargerCible, async (req, res) => {
   const r = reglages(req.cible.jeux)
   // Un essai par un aidant ou un proche se fait même si l'accès est coupé pour la personne
-  if (!req.essai && (!r.actif || !r.musique)) return res.status(403).json({ erreur: 'Le quiz musical n\'est pas activé' })
+  if (!req.essai && (!r.actif || !(r.musique || r.musiqueScore))) return res.status(403).json({ erreur: 'Le quiz musical n\'est pas activé' })
   res.json({ questions: await construireQuiz(req.cible, r) })
 })
 
