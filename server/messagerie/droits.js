@@ -6,8 +6,8 @@ import { membres, utilisateurs, personnes } from '../db/schema.js'
 // Qui voit quelle conversation, et qui peut écrire à qui en privé (choix de Julien, 2026-10-01) :
 // - « Toute la famille » : tout le cercle, personnes accompagnées comprises, sauf les auxiliaires ;
 // - « Les aidants » : les aidants seulement (le superviseur technique, qui a les droits d'un
-//   aidant ailleurs, n'y a pas accès : Julien, 2026-10-06) ;
-// - « Cahier de liaison » : aidants et auxiliaires de vie ;
+//   aidant ailleurs, n'a accès ni à celle-ci ni au cahier de liaison : Julien, 2026-10-06) ;
+// - « Cahier de liaison » : aidants et auxiliaires de vie (pas le superviseur technique) ;
 // - conversations privées à deux, entre membres du cercle, sauf auxiliaire ↔ proche. Une
 //   personne accompagnée ne reçoit de message privé que de ceux que ses aidants autorisent
 //   (réglage « prive ») ; les aidants ne lisent pas ses conversations privées ;
@@ -20,7 +20,7 @@ export const GROUPES = ['famille', 'aidants', 'liaison']
 const ROLES_GROUPE = {
   famille: ['accompagne', 'aidant', 'superviseur', 'proche'],
   aidants: ['aidant'],
-  liaison: ['aidant', 'superviseur', 'auxiliaire']
+  liaison: ['aidant', 'auxiliaire']
 }
 export const TITRES = { famille: 'Toute la famille', aidants: 'Les aidants', liaison: 'Cahier de liaison' }
 

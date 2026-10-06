@@ -97,7 +97,7 @@ const icone = (c) => ({ famille: 'famille', aidants: 'cadenas', liaison: 'carnet
 const note = computed(() => {
   const r = donnees.value?.monRole
   if (r === 'aidant') return '« Toute la famille » réunit tout le cercle, personnes accompagnées comprises (pas les auxiliaires). « Les aidants » et le cahier de liaison ne sont pas visibles par les personnes accompagnées. « Nouveau groupe » crée une conversation avec les personnes de votre choix.'
-  if (r === 'superviseur') return '« Toute la famille » réunit tout le cercle, personnes accompagnées comprises. Vous avez accès au cahier de liaison, mais pas à « Les aidants », réservé aux aidants. « Nouveau groupe » crée une conversation avec les personnes de votre choix.'
+  if (r === 'superviseur') return '« Toute la famille » réunit tout le cercle, personnes accompagnées comprises. « Les aidants » et le cahier de liaison sont réservés aux aidants (et aux auxiliaires pour le cahier). « Nouveau groupe » crée une conversation avec les personnes de votre choix.'
   if (r === 'auxiliaire') return 'Le cahier de liaison est partagé avec les aidants de la famille. Vous pouvez aussi écrire en privé aux aidants et aux personnes accompagnées.'
   return null
 })
