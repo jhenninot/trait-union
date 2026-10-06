@@ -112,6 +112,35 @@ export function disposer(personnes, relations, { L = 150, H = 172, ecartCouple =
   // Ce qui reste (cas particuliers) devient une racine de plus
   for (const p of ordre) if (!pris.has(p.id)) racines.push(unite(p.id))
 
+  // Une famille reliée à une autre par un mariage se place juste à côté d'elle plutôt qu'à la fin
+  const racineDe = new Map()
+  racines.forEach((r, i) => {
+    const visiter = (u) => { u.membres.forEach((m) => racineDe.set(m, i)); u.enfants.forEach(visiter) }
+    visiter(r)
+  })
+  const voisines = racines.map((r, i) => {
+    const liees = new Set()
+    const visiter = (u) => {
+      for (const m of u.membres) for (const q of ix.parents(m)) {
+        const j = racineDe.get(q)
+        if (j !== undefined && j !== i) liees.add(j)
+      }
+      u.enfants.forEach(visiter)
+    }
+    visiter(r)
+    return [...liees]
+  })
+  const ordreRacines = []
+  const placees = new Set()
+  const suivre = (i) => {
+    if (placees.has(i)) return
+    placees.add(i)
+    ordreRacines.push(racines[i])
+    voisines[i].forEach(suivre)
+  }
+  racines.forEach((_, i) => suivre(i))
+  racines.splice(0, racines.length, ...ordreRacines)
+
   // Largeurs puis positions
   const largeurUnite = (u) => u.membres.length * L + (u.membres.length - 1) * ecartCouple
   function mesurer(u) {
