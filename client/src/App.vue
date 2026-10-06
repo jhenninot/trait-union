@@ -8,6 +8,7 @@ import BandeauApplication from './navigation/BandeauApplication.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
 import FenetreDialogue from './navigation/FenetreDialogue.vue'
 import PanneauAide from './navigation/PanneauAide.vue'
+import FenetreSignalement from './navigation/FenetreSignalement.vue'
 import { etatPartage } from './partage.js'
 
 // Trois mises en page : la tablette de la personne accompagnée (barre de gros boutons),
@@ -36,6 +37,7 @@ const miseEnPage = computed(() => {
   <RouterView v-else />
   <p v-if="etatPartage.message" class="bulle-partage" role="status">{{ etatPartage.message }}</p>
   <PanneauAide v-if="miseEnPage !== 'publique'" />
+  <FenetreSignalement />
   <FenetreDialogue />
 </template>
 

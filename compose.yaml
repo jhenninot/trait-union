@@ -12,6 +12,9 @@
 # L'envoi d'emails (Brevo) et le stockage des photos (S3, ex. OVHcloud Object Storage)
 # se configurent dans l'application, écrans d'administration. Les photos ne sont pas
 # stockées sur ce serveur : aucun volume à prévoir pour elles.
+# Signalement de bugs (« Signaler un problème ») : rien à ajouter ici. Les signalements partent par
+# email (Brevo, Administration > Envoi d'emails) à tous les administrateurs, et la référence est
+# tracée dans Administration > Journal.
 # Alertes (rappels de rendez-vous, nouvelles photos) : rien à ajouter ici. Le Web Push des
 # navigateurs et de la PWA marche tout seul (clés créées en base au premier démarrage) ; pour
 # l'application Android, le compte de service Firebase se saisit dans Administration, Alertes.

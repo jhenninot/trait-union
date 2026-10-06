@@ -12,6 +12,8 @@ export function tracer(action) {
   if (actions.length > 10) actions.shift()
 }
 
+export const dernieresActions = () => actions.slice()
+
 export function signaler(module, message, details) {
   try {
     const maintenant = Date.now()

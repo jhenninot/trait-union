@@ -10,6 +10,7 @@ import logo from '../logo.svg'
 import icone from '../icone.svg'
 import Icone from './Icone.vue'
 import { ouvrirAide } from '../aide.js'
+import { ouvrirSignalement } from '../signalement.js'
 import Avatar from '../vues/Avatar.vue'
 
 // Menu des aidants, proches et administrateurs : barre latérale sur grand écran,
@@ -158,6 +159,7 @@ const estActif = (chemin) => route.path === chemin
 
     <div class="bas-menu">
       <button class="lien" @click="ouvrirAide"><Icone nom="question" /> Aide sur cet écran</button>
+      <button class="lien" @click="ouvrirSignalement"><Icone nom="bug" /> Signaler un problème</button>
       <RouterLink to="/alertes" class="lien" :class="{ actif: estActif('/alertes') }"><Icone nom="cloche" /> Mes alertes</RouterLink>
       <RouterLink to="/application" class="lien" :class="{ actif: estActif('/application') }"><Icone nom="mobile" /> Application mobile</RouterLink>
       <RouterLink to="/profil" class="lien qui" :class="{ actif: estActif('/profil') }" title="Mon profil">

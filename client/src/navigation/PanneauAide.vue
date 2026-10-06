@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { aide, fermerAide, fiche } from '../aide.js'
 import { session } from '../session.js'
+import { ouvrirSignalement } from '../signalement.js'
 import Icone from './Icone.vue'
 
 // Panneau d'aide contextuelle : la fiche de l'écran affiché (voir aide.js).
@@ -61,6 +62,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', touche))
             <li v-for="v in contenu.voix" :key="v">« {{ v }} »</li>
           </ul>
         </section>
+
+        <section class="signaler">
+          <h3>Un problème ?</h3>
+          <button type="button" class="lien-signaler" @click="ouvrirSignalement"><Icone nom="bug" class="en-ligne" /> Signaler un problème</button>
+        </section>
       </div>
 
       <footer v-if="accompagne">
@@ -105,6 +111,8 @@ details p { margin: 0; padding: 0 14px 14px; line-height: 1.55; color: #3a3a44; 
 .astuces .icone { width: 16px; height: 16px; margin-top: 3px; color: var(--vert); }
 .legende { margin: 0 0 8px; color: var(--gris); font-size: 0.9rem; }
 .voix li { padding: 10px 14px; border-radius: 10px; background: var(--vert-clair); color: var(--vert); font-style: italic; }
+.lien-signaler { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; background: white; border: 1px solid #ebe8e3; color: var(--bleu-nuit); font-weight: 600; }
+.accompagne .lien-signaler { font-size: 1.3rem; padding: 18px; }
 footer { display: none; }
 
 /* Appareil de la personne accompagnée : lisible de loin, gros boutons */

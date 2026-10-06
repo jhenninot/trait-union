@@ -22,6 +22,7 @@ import { derniereApk, versionApk, APK_URL } from './application.js'
 import { ErreurEmail } from './email/brevo.js'
 import { ErreurStockage } from './stockage/s3.js'
 import routesJournal from './routes/journal.js'
+import routesSignalements from './routes/signalements.js'
 import { installerJournal, demarrerJournal, journaliserRequete } from './journal.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -34,7 +35,10 @@ installerJournal()
 const app = express()
 // Derrière Nginx Proxy Manager (réseau local) : req.secure et req.ip viennent des en-têtes X-Forwarded-*
 app.set('trust proxy', 'loopback, linklocal, uniquelocal')
-app.use(express.json())
+// Signalement de bug : captures d'écran en base64 dans le corps (voir server/signalement.js)
+const jsonDefaut = express.json()
+const jsonSignalement = express.json({ limit: '6mb' })
+app.use((req, res, next) => (req.path === '/api/signalements' ? jsonSignalement : jsonDefaut)(req, res, next))
 // Application privée : jamais indexée par les moteurs de recherche (voir aussi robots.txt)
 app.use((req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow')
@@ -70,6 +74,7 @@ app.use('/api/alertes', routesAlertes)
 app.use('/api/presentation', routesPresentation)
 app.use('/api/messagerie', routesMessagerie)
 app.use('/api/journal', routesJournal)
+app.use('/api/signalements', routesSignalements)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })

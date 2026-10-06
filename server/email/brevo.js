@@ -61,7 +61,8 @@ export async function verifierCompte(cleApi) {
 }
 
 // Envoie un email. `a` : { email, nom }. Lève ErreurEmail si l'envoi n'est pas configuré ou échoue.
-export async function envoyerEmail({ a, sujet, html, texte }, config = null) {
+// `piecesJointes` : [{ nom, contenu (base64) }] ; `repondreA` : { email, nom } (adresse de réponse).
+export async function envoyerEmail({ a, sujet, html, texte, piecesJointes, repondreA }, config = null) {
   const c = config ?? await lireConfiguration()
   if (!config && !c.actif) throw new ErreurEmail('L\'envoi d\'emails n\'est pas activé')
   if (!c.cleApi || !c.expediteurEmail) throw new ErreurEmail('L\'envoi d\'emails n\'est pas configuré')
@@ -70,7 +71,9 @@ export async function envoyerEmail({ a, sujet, html, texte }, config = null) {
     to: [a.nom ? { email: a.email, name: a.nom } : { email: a.email }],
     subject: sujet,
     htmlContent: html,
-    textContent: texte
+    textContent: texte,
+    ...(repondreA && { replyTo: repondreA.nom ? { email: repondreA.email, name: repondreA.nom } : { email: repondreA.email } }),
+    ...(piecesJointes?.length && { attachment: piecesJointes.map((p) => ({ name: p.nom, content: p.contenu })) })
   })
 }
 
