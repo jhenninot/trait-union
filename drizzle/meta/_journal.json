@@ -253,6 +253,13 @@
       "when": 1791293110184,
       "tag": "0035_photos_jeu",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791293486844,
+      "tag": "0036_photos_jeu_compte",
+      "breakpoints": true
     }
   ]
 }

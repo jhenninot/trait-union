@@ -136,11 +136,14 @@ export const personnes = pgTable('personnes', {
 // personnes.avatar ou utilisateurs.avatar). Objet chez l'hébergeur : avatars/<personne>/<jeton>.jpg
 export const photosJeu = pgTable('photos_jeu', {
   ...commun,
-  personneId: uuid('personne_id').notNull().references(() => personnes.id, { onDelete: 'cascade' }),
-  cercleId: uuid('cercle_id').notNull().references(() => cercles.id, { onDelete: 'cascade' }),
+  // Une photo appartient à un compte (valable dans tous ses cercles) ou à une fiche de l'arbre sans compte
+  personneId: uuid('personne_id').references(() => personnes.id, { onDelete: 'cascade' }),
+  utilisateurId: uuid('utilisateur_id').references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  cercleId: uuid('cercle_id').references(() => cercles.id, { onDelete: 'cascade' }),
   jeton: text('jeton').notNull()
 }, (t) => [
-  index('photos_jeu_cercle_idx').on(t.cercleId, t.personneId)
+  index('photos_jeu_personne_idx').on(t.personneId),
+  index('photos_jeu_utilisateur_idx').on(t.utilisateurId)
 ])
 
 // Liens de l'arbre : « parent » (personne_a est un parent de personne_b) ou « conjoint »

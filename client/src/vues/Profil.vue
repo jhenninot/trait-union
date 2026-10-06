@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { session } from '../session.js'
 import ChoixAvatar from './ChoixAvatar.vue'
+import PhotosJeu from './PhotosJeu.vue'
 import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 import ChoixLien from './ChoixLien.vue'
 import Icone from '../navigation/Icone.vue'
@@ -75,6 +76,8 @@ async function enregistrerLiens() {
 }
 
 const avatarChange = (a) => Object.assign(session.utilisateur, a)
+const photosJeu = ref([])
+api('GET', '/profil/photos').then((l) => (photosJeu.value = l)).catch(() => {})
 </script>
 
 <template>
@@ -105,6 +108,12 @@ const avatarChange = (a) => Object.assign(session.utilisateur, a)
         :prenom="session.utilisateur.prenom"
         @change="avatarChange"
       />
+    </div>
+    <div class="carte">
+      <strong>Mes photos pour les jeux</strong>
+      <p class="aide">Les jeux de la personne accompagnée utilisent votre photo ci-dessus, et aussi ces photos : ajoutez-en d'autres,
+        à d'autres âges ou sous un autre angle, pour que le jeu reste varié.</p>
+      <PhotosJeu base="/profil" :photos="photosJeu" @change="photosJeu = $event" />
     </div>
     <form class="carte" @submit.prevent="enregistrer">
       <strong>Mon nom</strong>

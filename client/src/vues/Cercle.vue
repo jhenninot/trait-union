@@ -9,6 +9,7 @@ import { aDesCoordonnees, mentionDeces } from '../coordonnees.js'
 import Avatar from './Avatar.vue'
 import ChoixAvatar from './ChoixAvatar.vue'
 import Coordonnees from './Coordonnees.vue'
+import PhotosJeu from './PhotosJeu.vue'
 import FormulaireCoordonnees from './FormulaireCoordonnees.vue'
 import ChoixLien from './ChoixLien.vue'
 import FenetreDeces from './FenetreDeces.vue'
@@ -29,6 +30,7 @@ const texteInvitation = (i) => `Bonjour, je vous invite à rejoindre le cercle �
 const partageNatif = () => typeof navigator.share === 'function'
 const partagerInvitation = () => navigator.share({ text: texteInvitation(invitation.value) }).catch(() => {})
 const avatarOuvert = ref(null) // personne accompagnée dont on choisit l'avatar
+const photosMembre = ref(null) // membre dont un aidant gère les photos pour les jeux
 const coordonneesOuvertes = ref(null) // personne accompagnée dont on modifie les coordonnées
 const erreurCoordonnees = ref('')
 
@@ -147,6 +149,7 @@ const rejoindre = () => action(async () => {
               :libelle="avatarOuvert === m.id ? 'Fermer' : 'Changer son avatar'"
               @click="ouvrir('avatar', m.id)"
             />
+            <BoutonIcone v-if="cercle.peutGerer && !m.decede && m.role !== 'auxiliaire'" icone="photo" :libelle="`Photos de ${m.prenom} pour les jeux`" @click="photosMembre = m" />
             <RouterLink :to="`${url}/tablettes`" class="bouton-icone" aria-label="Gérer sa tablette" title="Gérer sa tablette"><Icone nom="tablette" /></RouterLink>
             <BoutonIcone icone="fleur" :libelle="`Indiquer le décès de ${m.prenom}`" @click="deces = m" />
           </span>
@@ -171,6 +174,11 @@ const rejoindre = () => action(async () => {
           @change="Object.assign(m, $event)"
         />
       </div>
+
+      <Modale v-if="photosMembre" :titre="`Photos de ${photosMembre.prenom} pour les jeux`" @fermer="photosMembre = null">
+        <PhotosJeu :base="`${url}/membres/${photosMembre.id}`" :photos="photosMembre.photosJeu ?? []" @change="photosMembre.photosJeu = $event" />
+        <div class="actions"><button type="button" @click="photosMembre = null">Terminer</button></div>
+      </Modale>
 
       <h2>Aidants, proches et auxiliaires</h2>
       <div v-for="m in autres" :key="m.id" class="carte" :class="{ decede: m.decede }">
@@ -200,6 +208,7 @@ const rejoindre = () => action(async () => {
               :libelle="`Préciser le lien de ${m.prenom} avec la personne accompagnée`"
               @click="lienOuvert = { id: m.id, lien: m.lien ?? '' }"
             />
+            <BoutonIcone v-if="cercle.peutGerer && !m.decede && m.role !== 'auxiliaire'" icone="photo" :libelle="`Photos de ${m.prenom} pour les jeux`" @click="photosMembre = m" />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
             <template v-if="cercle.peutGerer && !m.moi">
               <BoutonIcone v-if="m.decede" icone="annuler" :libelle="`Annuler le décès de ${m.prenom} (erreur)`" @click="deces = m" />

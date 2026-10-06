@@ -6,6 +6,7 @@ import { exigerConnexion, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { presenterAvatar, preparerEnvoi, changerAvatar } from '../avatars.js'
 import { noterUtilisation } from '../utilisation.js'
+import { routesPhotosJeu } from '../photosJeu.js'
 
 // « Mon profil » : prénom, nom, coordonnées et avatar de la personne connectée
 const router = Router()
@@ -50,5 +51,8 @@ router.post('/avatar/envoi', async (req, res) => {
 router.put('/avatar', async (req, res) => {
   res.json(await changerAvatar(req.utilisateur, req.body.avatar))
 })
+
+// Photos supplémentaires pour les jeux (GET/POST /photos, POST /photos/envoi, DELETE /photos/:id)
+routesPhotosJeu(router, '', [], (req) => ({ utilisateurId: req.utilisateur.id }))
 
 export default router

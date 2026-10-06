@@ -31,7 +31,7 @@ export function candidats(personnes, { age: avecAge = false, decedes = false } =
 }
 
 // Photo montrée dans le jeu : au hasard parmi la photo de contact et les photos supplémentaires
-const photos = (p) => [p.avatar, ...(p.photosJeu ?? [])].filter(Boolean)
+const photos = (p) => [p.avatar, ...(p.photosJeu ?? []).map((x) => x.url ?? x)].filter(Boolean)
 const photoDe = (p) => { const l = photos(p); return l[Math.floor(Math.random() * l.length)] }
 
 function tirer(liste, n) {

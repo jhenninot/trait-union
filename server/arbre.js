@@ -1,8 +1,8 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.js'
-import { personnes, relations, utilisateurs, membres, photosJeu } from './db/schema.js'
-import { liensAvatars, copierPhotoFiche, lienPhotoJeu } from './avatars.js'
-import { stockageActif } from './stockage/s3.js'
+import { personnes, relations, utilisateurs, membres } from './db/schema.js'
+import { liensAvatars, copierPhotoFiche } from './avatars.js'
+import { photosDe } from './photosJeu.js'
 import { ageTexte } from './anniversaires.js'
 
 // Arbre généalogique d'un cercle : chargement, liens de parenté calculés à partir des seules
@@ -25,7 +25,10 @@ export async function chargerArbre(cercleId) {
     db.select().from(relations).where(eq(relations.cercleId, cercleId))
   ])
   const lienAvatar = await liensAvatars()
-  const photos = await photosParPersonne([cercleId])
+  const photos = await photosDe({
+    utilisateurIds: lignes.map(({ p }) => p.utilisateurId).filter(Boolean),
+    personneIds: lignes.filter(({ p }) => !p.utilisateurId).map(({ p }) => p.id)
+  })
   const liste = lignes.map(({ p, u, membreId, role }) => {
     const compte = Boolean(p.utilisateurId && u?.prenom)
     return {
@@ -43,39 +46,23 @@ export async function chargerArbre(cercleId) {
       dateDeces: compte ? u.dateDeces : p.dateDeces,
       avatarChoix: compte ? u.avatar : p.avatar,
       avatar: compte && u.avatar ? lienAvatar(p.utilisateurId, u.avatar) : lienAvatar(p.id, p.avatar),
-      photosJeu: photos.get(p.id) ?? []
+      photosJeu: photos.get(compte ? `u:${p.utilisateurId}` : `p:${p.id}`) ?? []
     }
   })
   return graphe(liste, rels)
 }
 
-// Photos supplémentaires (pour les jeux) : Map personneId → [{ id, url }]
-async function photosParPersonne(cercleIds) {
-  const [lignes, stockage] = await Promise.all([
-    db.select().from(photosJeu).where(inArray(photosJeu.cercleId, cercleIds)).orderBy(photosJeu.creeLe),
-    stockageActif()
-  ])
-  const m = new Map()
-  for (const l of lignes) {
-    const url = lienPhotoJeu(stockage, l.personneId, l.jeton)
-    if (!url) continue
-    if (!m.has(l.personneId)) m.set(l.personneId, [])
-    m.get(l.personneId).push({ id: l.id, url })
-  }
-  return m
-}
-
 // Personnes extérieures à la famille d'un ou plusieurs cercles (fiches pour les jeux seulement)
 export async function chargerExterieurs(cercleIds) {
   if (!cercleIds.length) return []
-  const [lignes, lienAvatar, photos] = await Promise.all([
+  const [lignes, lienAvatar] = await Promise.all([
     db.select().from(personnes).where(and(inArray(personnes.cercleId, cercleIds), eq(personnes.exterieur, true))).orderBy(personnes.creeLe),
-    liensAvatars(),
-    photosParPersonne(cercleIds)
+    liensAvatars()
   ])
+  const photos = await photosDe({ personneIds: lignes.map((p) => p.id) })
   return lignes.map((p) => ({
     id: p.id, cercleId: p.cercleId, prenom: p.prenom, nom: p.nom, genre: p.genre, dateNaissance: p.dateNaissance,
-    avatar: lienAvatar(p.id, p.avatar), avatarChoix: p.avatar, photosJeu: photos.get(p.id) ?? []
+    avatar: lienAvatar(p.id, p.avatar), avatarChoix: p.avatar, photosJeu: photos.get(`p:${p.id}`) ?? []
   }))
 }
 

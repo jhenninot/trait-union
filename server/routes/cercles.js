@@ -24,6 +24,7 @@ import { reglages as reglagesJeux, lireReglages as lireJeux } from '../jeux.js'
 import { reglages as reglagesMessagerie, REPONSES_DEFAUT } from '../messagerie/droits.js'
 import { supprimerFichiersDe } from '../messagerie/conservation.js'
 import { marquerDeces, annulerDeces } from '../deces.js'
+import { routesPhotosJeu, photosDe } from '../photosJeu.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -53,6 +54,15 @@ function refuserAuxiliaires(req, res, next) {
 
 function exigerGestion(req, res, next) {
   if (!req.peutGerer) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
+  next()
+}
+
+// N'importe quel membre qui a un compte (photos pour les jeux des autres membres)
+async function chargerMembreCompte(req, res, next) {
+  const [membre] = await db.select().from(membres)
+    .where(and(eq(membres.id, req.params.membreId), eq(membres.cercleId, req.cercle.id)))
+  if (!membre?.utilisateurId) return res.status(404).json({ erreur: 'Membre introuvable' })
+  req.membre = membre
   next()
 }
 
@@ -121,6 +131,7 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     .groupBy(appareilsAlertes.utilisateurId)
   const alertesParUtilisateur = new Map(avecAlertes.map((a) => [a.utilisateurId, a.n]))
   const lienAvatar = await liensAvatars()
+  const photos = await photosDe({ utilisateurIds: liste.map((m) => m.utilisateurId).filter(Boolean) })
   // Lien avec la personne accompagnée calculé par l'arbre généalogique, quand le membre y est
   // placé (vu depuis la personne connectée si elle est accompagnée) ; sinon le lien saisi
   const { g, liens } = await liensDesMembres(req.cercle.id, req.role === 'accompagne' ? req.utilisateur.id : null)
@@ -146,6 +157,8 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       // Sert à choisir la personne accompagnée concernée par un rendez-vous (agenda)
       utilisateurId: m.role === 'accompagne' ? utilisateurId : undefined,
       avatar: lienAvatar(utilisateurId, avatar),
+      // Photos supplémentaires pour les jeux (les aidants peuvent les retirer : identifiants)
+      photosJeu: voitTout ? (photos.get(`u:${utilisateurId}`) ?? []).map((x) => (req.peutGerer ? x : x.url)) : undefined,
       // Les aidants choisissent l'avatar des personnes accompagnées
       avatarChoix: req.peutGerer && m.role === 'accompagne' ? avatar : undefined,
       email: req.peutGerer ? email : undefined,
@@ -469,6 +482,10 @@ router.post('/:cercleId/membres/:membreId/avatar/envoi', chargerCercle, exigerGe
 router.put('/:cercleId/membres/:membreId/avatar', chargerCercle, exigerGestion, chargerAccompagne, chargerCompteAccompagne, async (req, res) => {
   res.json(await changerAvatar(req.compte, req.body.avatar))
 })
+
+// Photos supplémentaires d'un membre pour les jeux, gérées par les aidants (le membre gère les siennes dans « Mon profil »)
+routesPhotosJeu(router, '/:cercleId/membres/:membreId', [chargerCercle, exigerGestion, chargerMembreCompte],
+  (req) => ({ utilisateurId: req.membre.utilisateurId }))
 
 router.delete('/:cercleId/membres/:membreId', chargerCercle, exigerGestion, async (req, res) => {
   const [membre] = await db.delete(membres)
