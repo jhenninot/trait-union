@@ -352,10 +352,11 @@ export const scoresQuiz = pgTable('scores_quiz', {
   ...commun,
   aideId: uuid('aide_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
   joueurId: uuid('joueur_id').notNull().references(() => utilisateurs.id, { onDelete: 'cascade' }),
+  jeu: text('jeu').notNull().default('musique'), // 'musique', 'qui' ou 'age'
   points: integer('points').notNull(),
   questions: integer('questions').notNull()
 }, (t) => [
-  index('scores_quiz_aide').on(t.aideId, t.questions)
+  index('scores_quiz_aide').on(t.aideId, t.jeu, t.questions)
 ])
 
 // Compteurs d'utilisation par jour, pour les statistiques de l'administration

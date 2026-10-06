@@ -200,6 +200,8 @@ const adresseApk = `${location.host}/apk`
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.quiScore" @change="changerJeux(m, { quiScore: $event.target.checked })" /> « Qui est-ce ? avec score » : points et bonus de rapidité</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.ageScore" @change="changerJeux(m, { ageScore: $event.target.checked })" /> « Quel âge ? avec score » : points et bonus de rapidité</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.exterieurs" @change="changerJeux(m, { exterieurs: $event.target.checked })" /> Inclure les personnes extérieures à la famille (« Qui est-ce ? » et « Quel âge ? »)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.decedes" @change="changerJeux(m, { decedes: $event.target.checked })" /> Proposer aussi des personnes décédées (« Qui est-ce ? » seulement)</label>
             <div class="reglage">

@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { lectureDisponible, parler, arreterParole } from '../voix.js'
 import Avatar from './Avatar.vue'
 import QuizMusical from './QuizMusical.vue'
+import ClassementScore from './ClassementScore.vue'
 import Icone from '../navigation/Icone.vue'
 
 // Jeux de la personne accompagnée : « Qui est-ce ? » (retrouver un prénom) et « Quel âge ? »
@@ -20,7 +21,9 @@ const essai = Boolean(props.pour)
 const r = essai ? reactive({ ...reglagesJeux, actif: true, charge: false }) : reglagesJeux
 const personnes = ref([])
 const charge = ref(false)
-const jeu = ref(null) // null (accueil des jeux), 'qui', 'age', 'musique' ou 'musiqueScore'
+const jeu = ref(null) // null (accueil des jeux), 'qui', 'age', 'musique', 'musiqueScore', 'quiScore' ou 'ageScore'
+const score = computed(() => jeu.value === 'quiScore' || jeu.value === 'ageScore')
+const base = computed(() => jeu.value?.replace('Score', '')) // 'qui' ou 'age'
 const partie = ref(0) // change à chaque partie de musique, pour repartir de zéro
 const questions = ref([])
 const n = ref(0) // question en cours
@@ -51,18 +54,23 @@ onUnmounted(arreterParole)
 const nbQui = computed(() => candidats(personnes.value, { decedes: r.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
 const propose = (k) => r[k]
-const dispo = (k) => k === 'musique' || k === 'musiqueScore' || (k === 'qui' ? nbQui.value : nbAge.value) >= 2
+const dispo = (k) => k === 'musique' || k === 'musiqueScore' || (k.startsWith('qui') ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
   if (!essai) api('POST', '/jeux/partie').catch(() => {})
   if (k === 'musique' || k === 'musiqueScore') { partie.value++; return }
-  questions.value = (k === 'qui' ? questionsQui : questionsAge)(personnes.value, r)
+  questions.value = (k.startsWith('qui') ? questionsQui : questionsAge)(personnes.value, r)
   n.value = 0
+  total.value = 0
+  gain.value = null
+  meilleur.value = 0
+  classement.value = []
   reponse.value = null
   choisi.value = null
   fini.value = false
+  depart = Date.now()
 }
 function retour() {
   arreterParole()
@@ -72,24 +80,47 @@ function retour() {
 const q = computed(() => questions.value[n.value])
 const p = computed(() => q.value?.personne)
 const lien = computed(() => p.value?.lienAide ?? p.value?.lien ?? '')
-const enonce = computed(() => jeu.value === 'qui' ? 'Quel est son prénom ?'
+const enonce = computed(() => base.value === 'qui' ? 'Quel est son prénom ?'
   : `${p.value.prenom}${lien.value ? `, ${lien.value.charAt(0).toLowerCase()}${lien.value.slice(1)}` : ''}. Quel âge a-t-il ou elle ?`)
 
 // Phrase donnée une fois la question passée (toujours bienveillante)
 const phrase = computed(() => {
   if (!p.value) return ''
   const qui = p.value.phrase ?? `${p.value.prenom}${lien.value ? `, ${lien.value.toLowerCase()}` : ''}.`
-  if (jeu.value === 'qui') return `C'est ${p.value.prenom}. ${p.value.phrase ? qui : ''}`.trim()
+  if (base.value === 'qui') return `C'est ${p.value.prenom}. ${p.value.phrase ? qui : ''}`.trim()
   const naiss = p.value.dateNaissance ? `, né${p.value.genre === 'femme' ? 'e' : ''} le ${dateLongue(p.value.dateNaissance)}` : ''
   return `${p.value.prenom} a ${ageTexte(p.value.dateNaissance)}${naiss}.`
 })
 const titreReponse = computed(() => ({ bonne: 'Oui, bravo !', presque: 'Presque !', inconnu: 'Ce n\'est pas grave.' })[reponse.value])
 const texteLu = computed(() => `${titreReponse.value} ${phrase.value}`)
 
+// Jeux avec score : 100 points par bonne réponse, plus jusqu'à 100 points de bonus de rapidité
+// (qui diminue pendant 20 secondes après l'affichage de la question). Une erreur ne retire rien.
+const BASE = 100, BONUS = 100, DELAI = 20
+const total = ref(0)
+const gain = ref(null) // { base, bonus } de la question en cours
+const meilleur = ref(0) // meilleur score du joueur avant cette partie
+const classement = ref([]) // les trois meilleurs scores de ce jeu, tous joueurs confondus
+const maximum = computed(() => questions.value.length * (BASE + BONUS))
+let depart = 0
+function gagner() {
+  const t = (Date.now() - depart) / 1000
+  gain.value = { base: BASE, bonus: Math.round(BONUS * Math.max(0, 1 - t / DELAI)) }
+  total.value += gain.value.base + gain.value.bonus
+}
+async function enregistrerScore() {
+  try {
+    const rep = await api('POST', `/jeux/scores${props.pour ? `?pour=${props.pour}` : ''}`, { jeu: base.value, points: total.value, questions: questions.value.length })
+    meilleur.value = rep.meilleur
+    classement.value = rep.classement
+  } catch { /* hors ligne : le score de la partie reste affiché */ }
+}
+
 function repondre(c) {
   if (reponse.value) return
   choisi.value = c
   reponse.value = c.bonne ? 'bonne' : 'presque'
+  if (score.value && c.bonne) gagner()
   if (parle) parler(texteLu.value)
 }
 function passer() {
@@ -99,12 +130,14 @@ function passer() {
 }
 function suivante() {
   arreterParole()
-  if (n.value + 1 >= questions.value.length) { fini.value = true; return }
+  if (n.value + 1 >= questions.value.length) { fini.value = true; if (score.value) enregistrerScore(); return }
   n.value++
+  gain.value = null
+  depart = Date.now()
   reponse.value = null
   choisi.value = null
 }
-const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom ?' : enonce.value}`)
+const lireQuestion = () => parler(`${base.value === 'qui' ? 'Quel est son prénom ?' : enonce.value}`)
 </script>
 
 <template>
@@ -122,6 +155,14 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
           <strong>Quel âge ?</strong><span>Deviner l'âge des personnes</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
+        <button v-if="propose('quiScore')" type="button" class="jeu" :disabled="!dispo('quiScore')" @click="jouer('quiScore')">
+          <strong>Qui est-ce ? avec score</strong><span>Gagner des points, avec un bonus si vous répondez vite</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
+        <button v-if="propose('ageScore')" type="button" class="jeu" :disabled="!dispo('ageScore')" @click="jouer('ageScore')">
+          <strong>Quel âge ? avec score</strong><span>Gagner des points, avec un bonus si vous répondez vite</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
         <button v-if="propose('musique')" type="button" class="jeu" @click="jouer('musique')">
           <strong>Quelle est cette chanson ?</strong><span>Reconnaître les chansons d'autrefois</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
@@ -131,7 +172,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
       </div>
-      <p v-if="charge && ((propose('qui') && !dispo('qui')) || (propose('age') && !dispo('age')))" class="manque">
+      <p v-if="charge && ((propose('qui') && !dispo('qui')) || (propose('age') && !dispo('age')) || (propose('quiScore') && !dispo('quiScore')) || (propose('ageScore') && !dispo('ageScore')))" class="manque">
         Il faut quelques photos de la famille (et leurs dates de naissance) pour jouer. Vos proches peuvent les ajouter.
       </p>
     </template>
@@ -142,7 +183,8 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
     <!-- Fin de partie -->
     <template v-else-if="fini">
       <h1>Bravo !</h1>
-      <div class="bulle"><p class="grand">Vous avez revu {{ questions.length }} personne{{ questions.length > 1 ? 's' : '' }} de votre famille.</p><p class="moyen">C'était un beau moment.</p></div>
+      <ClassementScore v-if="score" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
+      <div v-else class="bulle"><p class="grand">Vous avez revu {{ questions.length }} personne{{ questions.length > 1 ? 's' : '' }} de votre famille.</p><p class="moyen">C'était un beau moment.</p></div>
       <div class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.photo" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>
       <div class="actions">
         <button type="button" class="gros" @click="jouer(jeu)"><Icone nom="jeux" /> Rejouer</button>
@@ -154,10 +196,10 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
     <template v-else-if="q">
       <div class="tete">
         <button type="button" class="retour" @click="retour"><Icone nom="precedent" /> Jeux</button>
-        <h1>{{ jeu === 'qui' ? 'Qui est-ce ?' : 'Quel âge ?' }}</h1>
+        <h1>{{ base === 'qui' ? 'Qui est-ce ?' : 'Quel âge ?' }}</h1>
         <button v-if="parle" type="button" class="rond" aria-label="Écouter" @click="reponse ? parler(texteLu) : lireQuestion()"><Icone nom="son" /></button>
       </div>
-      <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}
+      <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}<span v-if="score" class="score">{{ total }} point{{ total > 1 ? 's' : '' }}</span>
         <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
         <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
       <Avatar :src="q.photo" :prenom="p.prenom" :taille="petit ? 170 : 210" />
@@ -171,6 +213,7 @@ const lireQuestion = () => parler(`${jeu.value === 'qui' ? 'Quel est son prénom
       <template v-else>
         <div class="bulle" :class="{ chaude: reponse !== 'bonne' }">
           <p class="grand">{{ titreReponse }}</p>
+          <p v-if="score && gain" class="points-gagnes">+ {{ gain.base + gain.bonus }} points <small>({{ gain.base }} + {{ gain.bonus }} de bonus de rapidité)</small></p>
           <p class="moyen">{{ phrase }}</p>
         </div>
         <button v-if="parle" type="button" class="ecouter" @click="parler(texteLu)"><Icone nom="son" /> Écouter</button>
@@ -199,6 +242,9 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .rond { position: absolute; right: 0; width: 60px; height: 60px; padding: 0; border-radius: 50%; background: var(--vert-clair); color: var(--vert); display: grid; place-items: center; }
 .rond :deep(.icone) { width: 32px; height: 32px; }
 .etape { font-size: 1.25rem; color: var(--gris); display: flex; flex-direction: column; gap: 10px; align-items: center; margin: 0 0 12px; max-width: 100%; }
+.score { background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.5rem; border-radius: 16px; padding: 8px 18px; }
+.points-gagnes { font-size: 1.7rem; font-weight: 700; color: var(--bleu-nuit); margin: 8px 0 !important; }
+.points-gagnes small { font-size: 1.1rem; font-weight: 500; color: var(--gris); }
 .points { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
 .points i { width: 16px; height: 16px; border-radius: 50%; background: #dcd8d0; }
 .points i.fait { background: var(--vert); }
@@ -232,6 +278,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .tete { justify-content: space-between; flex-wrap: wrap; }
   .tete h1 { order: 3; width: 100%; margin-top: 8px; }
   .etape { font-size: 1rem; }
+  .score { font-size: 1.1rem; padding: 4px 12px; }
+  .points-gagnes { font-size: 1.3rem; }
   .points { gap: 6px; }
   .points i { width: 12px; height: 12px; }
   .question { font-size: 1.5rem; }

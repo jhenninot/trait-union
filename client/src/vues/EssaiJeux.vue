@@ -28,7 +28,7 @@ const choisi = computed(() => accompagnes.value.find((m) => m.utilisateurId === 
     <p v-if="erreur" class="erreur">{{ erreur }}</p>
     <template v-else-if="cercle">
       <template v-if="choisi">
-        <p class="bandeau">Essai des jeux de {{ choisi.prenom }} : ses réglages sont appliqués, rien n'est compté dans ses statistiques. Seuls vos scores du quiz avec score sont enregistrés, à votre nom.</p>
+        <p class="bandeau">Essai des jeux de {{ choisi.prenom }} : ses réglages sont appliqués, rien n'est compté dans ses statistiques. Seuls vos scores des jeux avec score sont enregistrés, à votre nom.</p>
         <p v-if="choisi.jeux && choisi.jeux.actif === false" class="info">Les jeux sont désactivés pour {{ choisi.prenom }} : il n'y a pas accès sur sa tablette.</p>
         <Jeux :key="choisi.utilisateurId" :pour="choisi.utilisateurId" :cercle-id="cercle.id" />
       </template>
