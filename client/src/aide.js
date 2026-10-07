@@ -15,16 +15,20 @@ const FICHES = {
     comment: [
       { q: 'Appeler ou écrire à un proche', r: 'Les boutons téléphone, SMS et WhatsApp à côté de chaque nom ouvrent directement l\'application de votre appareil.' },
       { q: 'Changer de cercle', r: 'Utilisez la liste déroulante en haut du menu (ou en haut de l\'écran sur téléphone). L\'écran garde la même rubrique.' },
-      { q: 'Voir comment la personne accompagnée utilise sa tablette', r: 'Le bloc « Personne accompagnée » indique si elle s\'est servie de l\'appareil ces derniers jours. Le détail est dans « Personnes accompagnées ».' }
+      { q: 'Voir comment la personne accompagnée utilise sa tablette', r: 'Le bloc « Personne accompagnée » indique si elle s\'est servie de l\'appareil ces derniers jours. Le détail est dans « Personnes accompagnées ».' },
+      { q: 'Que veut dire l\'alerte « Aucun aidant » ?', r: 'Le cercle n\'a plus personne pour le gérer. Un membre qui peut le faire doit se définir comme aidant (« Changer mon rôle » dans « Famille et aidants »).' },
+      { q: 'Signaler un problème', r: 'En bas du menu, « Signaler un problème » envoie un message aux administrateurs, avec une capture d\'écran si vous le souhaitez.' }
     ],
-    astuces: ['Les boutons « Ajouter un rendez-vous » et « Ajouter des photos » vous évitent de passer par le menu.']
+    astuces: ['Les boutons « Ajouter un rendez-vous » et « Ajouter des photos » vous évitent de passer par le menu.', 'Le menu suit cet ordre : Accueil, Messages, Agenda, Photos, Famille et aidants, Personnes accompagnées, puis Jeux et Sondages.']
   },
   famille: {
     titre: 'Famille et aidants', icone: 'famille',
     intro: 'Tous les membres du cercle, avec leurs coordonnées, et les invitations pour faire entrer de nouvelles personnes.',
     comment: [
       { q: 'Inviter un aidant, un proche ou une auxiliaire de vie', r: 'Touchez le bouton d\'invitation du rôle voulu. Un lien est créé : envoyez-le par email, SMS ou WhatsApp. La personne choisit son mot de passe en l\'ouvrant.' },
-      { q: 'Quelle différence entre les rôles ?', r: 'Un aidant gère le cercle. Un proche suit la vie de la famille. Une auxiliaire de vie ne voit ni les photos ni l\'arbre, seulement les rendez-vous qui lui sont destinés.' },
+      { q: 'Quelle différence entre les rôles ?', r: 'Un aidant gère le cercle. Un proche suit la vie de la famille. Une auxiliaire de vie ne voit ni les photos ni l\'arbre, seulement les rendez-vous qui lui sont destinés. Un superviseur technique a les droits d\'un aidant, sauf l\'accès à la conversation « Les aidants » et au cahier de liaison.' },
+      { q: 'Changer le rôle d\'un membre', r: 'Un aidant ou un superviseur touche le bouton « Changer le rôle » à côté du membre et choisit son nouveau rôle. Le rôle de la personne accompagnée ne peut pas être changé. Vous pouvez aussi changer votre propre rôle, même si vous êtes le seul aidant.' },
+      { q: 'Savoir si une invitation a été acceptée', r: 'Vous recevez l\'alerte « Invitations acceptées » quand la personne que vous avez invitée a créé son compte (à activer dans « Mes alertes »).' },
       { q: 'Compléter une fiche', r: 'Touchez un membre pour renseigner son téléphone, sa date de naissance, son adresse et son lien avec la personne accompagnée (fils, petite-fille…).' },
       { q: 'Indiquer un décès', r: 'Dans la fiche de la personne : le compte est conservé en mémoire, sans plus d\'alertes ni de messages. L\'action peut être annulée.' }
     ],
@@ -53,6 +57,7 @@ const FICHES = {
       { q: 'Trier les photos par date', r: 'Au-dessus de la grille, « Trier par » propose la date d\'envoi ou la date de prise de vue, récentes ou anciennes d\'abord. La date de prise de vue est lue dans la photo à l\'envoi ; pour les photos plus anciennes, c\'est la date d\'envoi qui est utilisée.' },
       { q: 'Voir où une photo a été prise', r: 'Si la photo contient sa position GPS, ouvrez-la puis touchez « Voir sur la carte ». Le bouton « Carte » au-dessus de la grille montre sur une carte toutes les photos localisées de l\'album ; touchez un repère puis sa miniature pour ouvrir la photo. La position est lue à l\'envoi : les photos plus anciennes n\'en ont pas. Attention : Google Photos retire la position quand on partage une photo vers une autre application, sauf si l\'option « position » est activée dans son menu de partage. Dans l\'application Android, « Ajouter des photos » ouvre le gestionnaire de fichiers et demande une fois l\'autorisation de lire la position des photos : acceptez-la pour garder le lieu.' },
       { q: 'Sélectionner plusieurs photos', r: 'Restez appuyé sur une photo (ou touchez « Sélectionner »), puis touchez les autres. La barre du haut permet de tout sélectionner, partager, télécharger, ranger dans un album ou supprimer. Seuls l\'auteur d\'une photo et les aidants peuvent la déplacer ou la supprimer.' },
+      { q: 'Agrandir une photo', r: 'Ouverte en grand, pincez avec deux doigts pour zoomer (jusqu\'à douze fois), ou tournez la molette de la souris sur ordinateur. Glissez ensuite pour déplacer la photo.' },
       { q: 'Retirer une photo', r: 'Ouvrez-la puis supprimez-la. Seuls son auteur et les aidants peuvent le faire.' }
     ],
     astuces: ['Une légende simple aide beaucoup la personne accompagnée à reconnaître la photo.', 'Les auxiliaires de vie n\'ont pas accès aux photos.']
@@ -89,17 +94,29 @@ const FICHES = {
     ],
     astuces: ['Touchez une personne pour voir sa fiche en gros caractères, telle que la personne accompagnée la verra.']
   },
+  jeux: {
+    titre: 'Jeux', icone: 'jeux',
+    intro: 'Essayez les jeux d\'une personne accompagnée, tels qu\'elle les voit sur sa tablette. Choisissez la personne dans le sous-menu « Jeux ».',
+    comment: [
+      { q: 'Quels jeux existent ?', r: '« Qui est-ce ? » (retrouver un prénom), « Quel âge ? » (deviner une tranche d\'âge) et « Quelle est cette chanson ? » (quiz musical). Chacun existe aussi en version avec score.' },
+      { q: 'Activer ou régler les jeux', r: 'Dans « Personnes accompagnées », onglet « Jeux » de la personne : accès, jeux proposés, niveau, nombre de questions, préférences musicales.' },
+      { q: 'Remettre les scores à zéro', r: 'Dans le même onglet, « Remettre à zéro » pour chaque jeu avec score. Les points comptent aussi le bonus de rapidité.' }
+    ],
+    astuces: ['Vos essais ne comptent pas dans les scores de la personne accompagnée.']
+  },
   tablettes: {
     titre: 'Personnes accompagnées', icone: 'compte',
     intro: 'Tout ce qui concerne la tablette ou le téléphone de la personne accompagnée : branchement de l\'appareil et réglages qui lui sont propres.',
     comment: [
       { q: 'Configurer un appareil', r: 'Touchez « Configurer un appareil » : un code à 6 chiffres est créé. Installez l\'application sur la tablette, ouvrez-la et saisissez ce code.' },
       { q: 'Envoyer l\'application', r: 'Utilisez « Envoyer l\'application » pour transmettre le lien d\'installation par email, SMS ou WhatsApp.' },
-      { q: 'Régler les alertes et la messagerie', r: 'Choisissez quelles alertes reçoit la tablette (rappels de rendez-vous, nouvelles photos, nouveaux messages, anniversaires), qui peut lui écrire en privé, et la lecture à voix haute des nouveaux messages.' },
+      { q: 'Où sont les réglages ?', r: 'Choisissez la personne dans le sous-menu « Personnes accompagnées » : ses réglages sont rangés en quatre onglets, Appareils, Alertes, Jeux et Messages.' },
+      { q: 'Régler les alertes et la messagerie', r: 'Onglet « Alertes » : quelles alertes reçoit la tablette (rappels de rendez-vous, nouvelles photos, nouveaux messages, anniversaires). Onglet « Messages » : qui peut lui écrire en privé et la lecture à voix haute des nouveaux messages.' },
+      { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille ou décédées, préférences musicales, remise à zéro des scores.' },
       { q: 'Préparer des réponses toutes faites', r: 'Ajoutez des phrases comme « J\'arrive » : la personne les envoie d\'un seul toucher.' },
       { q: 'Suivre l\'utilisation', r: 'Un bloc indique les jours où la tablette a servi, pour s\'assurer qu\'elle est bien utilisée.' }
     ],
-    astuces: ['Un cercle peut accompagner plusieurs personnes : chacune a ses propres réglages et ne voit pas les rendez-vous destinés aux autres.']
+    astuces: ['Le bouton SOS de la tablette appelle les aidants qui ont un numéro de téléphone : pensez à le renseigner dans leur fiche.', 'Un cercle peut accompagner plusieurs personnes : chacune a ses propres réglages et ne voit pas les rendez-vous destinés aux autres.']
   },
   profil: {
     titre: 'Mon profil', icone: 'compte',
@@ -117,7 +134,7 @@ const FICHES = {
     comment: [
       { q: 'Activer les alertes sur cet appareil', r: 'Touchez « Activer les alertes ici » et acceptez la demande du navigateur ou du téléphone. Chaque appareil s\'active séparément.' },
       { q: 'Vérifier que ça marche', r: 'Touchez « Envoyer une alerte d\'essai ».' },
-      { q: 'Choisir ce que je reçois', r: 'Cochez ou décochez chaque type d\'alerte dans « Ce que je reçois ».' }
+      { q: 'Choisir ce que je reçois', r: 'Cochez ou décochez chaque type d\'alerte dans « Ce que je reçois » : rendez-vous, photos, messages, anniversaires, invitations acceptées.' }
     ],
     astuces: ['Sur iPhone, les alertes demandent d\'abord d\'ajouter Trait d\'union à l\'écran d\'accueil.']
   },
@@ -127,6 +144,7 @@ const FICHES = {
     comment: [
       { q: 'Installer sur l\'écran d\'accueil', r: 'Depuis le navigateur, utilisez « Ajouter à l\'écran d\'accueil » : l\'application s\'ouvre ensuite en plein écran.' },
       { q: 'Installer l\'application Android', r: 'Téléchargez le fichier proposé sur cette page puis ouvrez-le. Autorisez l\'installation d\'applications de cette source si Android le demande.' },
+      { q: 'Le conseil d\'installation', r: 'À la première connexion, une carte vous propose d\'installer l\'application : touchez « Installer » (ou suivez le guide sur Safari). Si vous la fermez, elle revient au bout de 7 jours.' },
       { q: 'Mettre à jour', r: 'Un bandeau signale une nouvelle version ; cette page indique si votre application est à jour.' }
     ],
     astuces: ['La version Android permet de partager des photos depuis la galerie et d\'utiliser la voix.']
@@ -141,8 +159,10 @@ const FICHES = {
   },
   admin: {
     titre: 'Administration', icone: 'bouclier',
-    intro: 'Les réglages réservés à l\'administrateur : cercles, comptes, envoi d\'emails, stockage des photos, alertes, statistiques et journal des erreurs.',
+    intro: 'Les réglages réservés à l\'administrateur, réunis dans une seule page à onglets : statistiques, cercles, utilisateurs, journal, emails, photos, alertes, messagerie et présentation.',
     comment: [
+      { q: 'Renommer un cercle', r: 'Onglet « Cercles » : touchez le bouton de renommage du cercle, saisissez le nouveau nom dans la fenêtre puis validez.' },
+      { q: 'Activer la commande vocale en langage naturel', r: 'Dans la page « Famille et aidants » du cercle (administrateur global seulement) : saisissez la clé API Mistral du cercle et activez l\'option. Quand les mots-clés ne comprennent pas une phrase, un petit modèle de Mistral (UE) choisit l\'action ; seule la phrase dite lui est envoyée. Retirer la clé désactive l\'option, les mots-clés continuent de fonctionner.' },
       { q: 'Où régler l\'envoi des invitations par email ?', r: 'Dans « Envoi d\'emails » : renseignez la clé du service d\'envoi puis envoyez un message d\'essai.' },
       { q: 'Où sont stockées les photos ?', r: '« Stockage des photos » : indiquez les accès de votre stockage en ligne et touchez « Vérifier ». Rien n\'est conservé sur le serveur.' },
       { q: 'Supprimer un compte', r: 'Dans « Utilisateurs » : une alerte indique les cercles concernés et si la personne est le seul aidant d\'une personne accompagnée.' },
@@ -180,9 +200,11 @@ const FICHES_ACCOMPAGNE = {
     intro: 'Ici, vous voyez ce qui se passe aujourd\'hui. Les gros boutons du bas vous mènent partout.',
     comment: [
       { q: 'Écouter ma journée', r: 'Touchez « Écouter » : la tablette vous lit la date, l\'heure et ce qui est prévu.' },
-      { q: 'Voir mes nouvelles photos', r: 'Touchez la ligne des nouvelles photos pour les ouvrir.' }
+      { q: 'Voir mes nouvelles photos', r: 'Touchez la ligne des nouvelles photos pour les ouvrir.' },
+      { q: 'Appeler à l\'aide', r: 'Touchez le bouton « SOS » : les visages de vos aidants s\'affichent. Touchez « Appeler » sous celui que vous voulez joindre : le téléphone compose le numéro.' },
+      { q: 'Parler à la tablette', r: 'Touchez « Parler » et dites une phrase comme vous le feriez à quelqu\'un : la tablette comprend aussi les phrases de tous les jours.' }
     ],
-    voix: ['Qu\'est-ce que j\'ai aujourd\'hui ?', 'Quelle heure est-il ?']
+    voix: ['Qu\'est-ce que j\'ai aujourd\'hui ?', 'Quelle heure est-il ?', 'Quel âge a Marie ?', 'C\'est quand l\'anniversaire de Paul ?', 'Appelle Léa']
   },
   agenda: {
     titre: 'Mon agenda', icone: 'agenda',
@@ -203,7 +225,8 @@ const FICHES_ACCOMPAGNE = {
       { q: 'Écouter la légende', r: 'Touchez le haut-parleur : la tablette lit ce qui est écrit sous la photo.' },
       { q: 'Envoyer une photo à ma famille', r: 'Touchez le bouton « Partager » sous la photo.' },
       { q: 'Savoir où une photo a été prise', r: 'Quand la photo a un lieu, touchez le bouton avec le repère sous la photo : une carte s\'ouvre.' },
-      { q: 'Garder une photo sur la tablette', r: 'Touchez le bouton avec la flèche vers le bas sous la photo : elle est enregistrée dans la galerie de la tablette.' }
+      { q: 'Garder une photo sur la tablette', r: 'Touchez le bouton avec la flèche vers le bas sous la photo : elle est enregistrée dans la galerie de la tablette.' },
+      { q: 'Agrandir une photo', r: 'Pincez la photo avec deux doigts pour la voir plus grande, puis faites-la glisser.' }
     ],
     voix: ['Montre-moi les photos']
   },
@@ -214,7 +237,7 @@ const FICHES_ACCOMPAGNE = {
       { q: 'Voir une personne', r: 'Touchez son nom : sa fiche s\'affiche en grand, avec son numéro de téléphone.' },
       { q: 'Voir mon arbre de famille', r: 'Touchez « Mon arbre » : vous voyez qui est le fils, la petite-fille, le neveu de qui.' }
     ],
-    voix: ['Qui est Marie ?', 'Montre-moi ma famille']
+    voix: ['Qui est Marie ?', 'Montre-moi ma famille', 'Qui est le fils de Paul ?', 'Quel âge a Marie ?']
   },
   arbre: {
     titre: 'Mon arbre', icone: 'arbre',
@@ -232,6 +255,7 @@ const FICHES_ACCOMPAGNE = {
       { q: 'Jouer à « Qui est-ce ? »', r: 'Regardez la photo et touchez le prénom qui convient.' },
       { q: 'Jouer à « Quel âge ? »', r: 'Regardez la photo et touchez l\'âge qui convient. Pas besoin d\'être précis.' },
       { q: 'Jouer à « Quelle est cette chanson ? »', r: 'Écoutez l\'extrait de musique, puis touchez le titre qui convient. Touchez « Réécouter » pour l\'entendre encore, et « J\'aime » ou « J\'aime moins » à la fin.' },
+      { q: 'Jouer pour marquer des points', r: 'Certains jeux comptent des points : plus vous répondez vite, plus vous gagnez. À la fin, vous voyez votre meilleur score et les trois meilleurs scores.' },
       { q: 'Si je ne sais pas', r: 'Touchez « Je ne sais pas » : on vous donne la réponse.' },
       { q: 'Écouter', r: 'Touchez le haut-parleur : la tablette lit la question ou la réponse.' }
     ],
@@ -260,7 +284,8 @@ const FICHES_ACCOMPAGNE = {
     titre: 'Aide', icone: 'question',
     intro: 'Touchez un gros bouton en bas de l\'écran pour aller où vous voulez.',
     comment: [
-      { q: 'Parler à la tablette', r: 'Touchez « Parler » et dites par exemple « Qu\'est-ce que j\'ai aujourd\'hui ? ».' }
+      { q: 'Parler à la tablette', r: 'Touchez « Parler » et dites par exemple « Qu\'est-ce que j\'ai aujourd\'hui ? ».' },
+      { q: 'Appeler à l\'aide', r: 'Sur l\'accueil, touchez « SOS » puis « Appeler » sous le visage d\'un aidant.' }
     ],
     voix: ['Qu\'est-ce que j\'ai aujourd\'hui ?']
   }
