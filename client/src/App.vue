@@ -5,6 +5,7 @@ import { session } from './session.js'
 import MenuAidant from './navigation/MenuAidant.vue'
 import BarreAccompagne from './navigation/BarreAccompagne.vue'
 import BandeauApplication from './navigation/BandeauApplication.vue'
+import BandeauInstallation from './navigation/BandeauInstallation.vue'
 import AssistantVoix from './vues/AssistantVoix.vue'
 import FenetreDialogue from './navigation/FenetreDialogue.vue'
 import PanneauAide from './navigation/PanneauAide.vue'
@@ -31,6 +32,7 @@ const miseEnPage = computed(() => {
     <MenuAidant />
     <div class="page">
       <BandeauApplication />
+      <BandeauInstallation />
       <RouterView />
     </div>
   </div>
