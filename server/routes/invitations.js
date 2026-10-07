@@ -7,6 +7,7 @@ import { ouvrirSession, profilPublic } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { roleLePlusHaut } from '../auth/roles.js'
 import { rattacherCompte } from '../arbre.js'
+import { envoyerAlerte } from '../alertes/envoi.js'
 
 const router = Router()
 
@@ -32,6 +33,26 @@ router.get('/:jeton', async (req, res) => {
 // Rattache l'utilisateur (existant, ou à créer à partir de `nouveau`) au cercle de l'invitation.
 // Renvoie l'utilisateur, ou null si l'invitation vient d'être utilisée par quelqu'un d'autre.
 export async function accepterInvitation(invitation, utilisateur, nouveau = null) {
+  const resultat = await rattacher(invitation, utilisateur, nouveau)
+  if (resultat) prevenirAuteur(invitation, resultat).catch((e) => console.error('Alerte d\'inscription :', e.message))
+  return resultat
+}
+
+// Alerte l'auteur de l'invitation quand la personne invitée l'a acceptée
+async function prevenirAuteur(invitation, invite) {
+  if (!invitation.creeParId || invitation.creeParId === invite.id) return
+  const [cercle] = await db.select({ nom: cercles.nom }).from(cercles).where(eq(cercles.id, invitation.cercleId))
+  const qui = [invite.prenom, invite.nom].filter(Boolean).join(' ')
+  await envoyerAlerte([invitation.creeParId], {
+    categorie: 'invitations',
+    titre: 'Invitation acceptée',
+    corps: `${qui} a rejoint le cercle ${cercle?.nom ?? ''} suite à votre invitation.`.replace('  ', ' '),
+    url: '/',
+    tag: `invitation-${invitation.id}`
+  })
+}
+
+function rattacher(invitation, utilisateur, nouveau) {
   return db.transaction(async (tx) => {
     // Marque l'invitation utilisée en premier : un seul acceptant possible
     const [prise] = await tx.update(invitations).set({ accepteeLe: new Date() })

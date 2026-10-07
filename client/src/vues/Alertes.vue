@@ -32,6 +32,7 @@ const CATEGORIES = computed(() => [
   { valeur: 'rendezVous', icone: 'agenda', libelle: 'Rappels de rendez-vous', aide: 'Pour les rendez-vous de l\'agenda qui ont une alerte, au moment choisi.' },
   ...(voitPhotos.value ? [{ valeur: 'photos', icone: 'photo', libelle: 'Nouvelles photos', aide: 'Quand quelqu\'un ajoute des photos dans un de vos cercles.' }] : []),
   { valeur: 'messages', icone: 'message', libelle: 'Nouveaux messages', aide: 'Quand on vous écrit dans la messagerie (pas pour les conversations mises en sourdine).' },
+  { valeur: 'invitations', icone: 'famille', libelle: 'Invitations acceptées', aide: 'Quand une personne que vous avez invitée a créé son compte ou rejoint votre cercle.' },
   ...(voitPhotos.value ? [{ valeur: 'anniversaires', icone: 'gateau', libelle: 'Anniversaires', aide: 'Le jour de l\'anniversaire d\'un membre de vos cercles, à 9 h.' }] : []),
   ...(avecApk.value ? [{ valeur: 'application', icone: 'telecharger', libelle: 'Nouvelle version de l\'application', aide: 'Quand une mise à jour de l\'application Android est disponible.' }] : [])
 ])
