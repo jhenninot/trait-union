@@ -8,10 +8,13 @@ import { api } from '../api.js'
 import { parler, lectureDisponible } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
 import Avatar from './Avatar.vue'
+import FenetreSos from './FenetreSos.vue'
 import { estAnniversaire, age, ans } from '../coordonnees.js'
 import { chargerFamille } from '../famille.js'
 import { modeAlertes, autorisation, activerAlertes, alertesArretees, refuserAlertes } from '../alertes.js'
 import { ecouterMessagerie } from '../messagerie.js'
+
+const sos = ref(false)
 
 // Écran de la personne accompagnée : très lisible, sans bouton de déconnexion.
 const maintenant = ref(new Date())
@@ -126,6 +129,8 @@ const moment = () => {
 
 <template>
   <main class="accompagne">
+    <button class="bouton-sos" @click="sos = true"><Icone nom="telephone" class="en-ligne" /> SOS</button>
+    <FenetreSos v-if="sos" @fermer="sos = false" />
     <p class="bonjour">Bonjour {{ session.utilisateur.prenom }}</p>
     <p class="jour">Nous sommes {{ jour() }}</p>
     <p class="heure">{{ heure() }}</p>
@@ -195,6 +200,7 @@ const moment = () => {
   justify-content: safe center;
   text-align: center;
 }
+.bouton-sos { align-self: center; font-size: 2rem; font-weight: 700; padding: 14px 44px; border-radius: 24px; margin-bottom: 12px; background: #c62828; color: white; }
 .bonjour { font-size: 3rem; font-weight: 700; color: var(--bleu-nuit); margin: 0; }
 .jour { font-size: 2rem; margin: 16px 0 0; text-transform: none; }
 .heure { font-size: 4rem; font-weight: 700; color: var(--vert); margin: 8px 0; }
