@@ -92,10 +92,12 @@ async function retirerVoixIa() {
   await chargerVoixIa()
 }
 
-// Un aidant redéfinit son rôle : aidant ou superviseur technique
+// Un aidant redéfinit son rôle, ou celui d'un autre membre
 const roleOuvert = ref(null) // rôle choisi dans la fenêtre
-const changerMonRole = () => action(async () => {
-  await api('PUT', `${url.value}/mon-role`, { role: roleOuvert.value })
+const roleFenetre = ref(null) // membre dont on change le rôle
+const changerRole = (m) => action(async () => {
+  const chemin = m.moi ? 'mon-role' : `membres/${m.id}/role`
+  await api('PUT', `${url.value}/${chemin}`, { role: roleOuvert.value })
   roleOuvert.value = null
   await rafraichirSession()
   await charger()
@@ -274,7 +276,8 @@ const rejoindre = () => action(async () => {
               @click="lienOuvert = { id: m.id, lien: m.lien ?? '' }"
             />
             <BoutonIcone v-if="cercle.peutGerer && !m.decede && m.role !== 'auxiliaire'" icone="photo" :libelle="`Photos de ${m.prenom} pour les jeux`" @click="photosMembre = m" />
-            <BoutonIcone v-if="m.moi && ['aidant', 'superviseur'].includes(m.role)" icone="bouclier" libelle="Changer mon rôle dans ce cercle" @click="roleOuvert = m.role" />
+            <BoutonIcone v-if="m.moi && ['aidant', 'superviseur'].includes(m.role)" icone="bouclier" libelle="Changer mon rôle dans ce cercle" @click="roleOuvert = m.role; roleFenetre = m.id" />
+            <BoutonIcone v-else-if="cercle.peutGerer && !m.moi && m.role !== 'accompagne'" icone="bouclier" :libelle="`Changer le rôle de ${m.prenom}`" @click="roleOuvert = m.role; roleFenetre = m.id" />
             <RouterLink v-if="m.moi" to="/profil" class="bouton-icone" aria-label="Modifier mon profil" title="Modifier mon profil"><Icone nom="modifier" /></RouterLink>
             <template v-if="cercle.peutGerer && !m.moi">
               <BoutonIcone v-if="m.decede" icone="annuler" :libelle="`Annuler le décès de ${m.prenom} (erreur)`" @click="deces = m" />
@@ -283,10 +286,14 @@ const rejoindre = () => action(async () => {
             <BoutonIcone v-if="cercle.peutGerer" icone="effacer" :libelle="`Retirer ${m.prenom} du cercle`" danger @click="retirer(m)" />
           </span>
         </div>
-        <Modale v-if="m.moi && roleOuvert" titre="Mon rôle dans ce cercle" @fermer="roleOuvert = null">
-          <form class="lien-form" @submit.prevent="changerMonRole">
+        <Modale v-if="roleOuvert && roleFenetre === m.id" :titre="m.moi ? 'Mon rôle dans ce cercle' : `Rôle de ${m.prenom}`" @fermer="roleOuvert = null">
+          <form class="lien-form" @submit.prevent="changerRole(m)">
             <label><input v-model="roleOuvert" type="radio" value="aidant" /> Aidant</label>
             <label><input v-model="roleOuvert" type="radio" value="superviseur" /> Superviseur technique</label>
+            <template v-if="!m.moi">
+              <label><input v-model="roleOuvert" type="radio" value="proche" /> Proche</label>
+              <label><input v-model="roleOuvert" type="radio" value="auxiliaire" /> Auxiliaire de vie</label>
+            </template>
             <p class="aide">Le superviseur technique a les mêmes droits qu'un aidant, sauf dans la messagerie : pas de « Les aidants » ni de cahier de liaison.</p>
             <div class="actions">
               <button type="button" class="secondaire" @click="roleOuvert = null">Annuler</button>

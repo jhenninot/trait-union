@@ -497,6 +497,25 @@ router.put('/:cercleId/mon-role', chargerCercle, async (req, res) => {
   res.json({ role })
 })
 
+// Un aidant ou un superviseur technique change le rôle d'un autre membre : aidant, superviseur, proche ou auxiliaire.
+// Le rôle « accompagné » (compte appareil) n'est ni attribué ni retiré ici, et le dernier aidant ne peut pas être rétrogradé.
+router.put('/:cercleId/membres/:membreId/role', chargerCercle, exigerGestion, async (req, res) => {
+  const role = req.body.role
+  if (!['aidant', 'superviseur', 'proche', 'auxiliaire'].includes(role)) return res.status(400).json({ erreur: 'Rôle invalide' })
+  const [membre] = await db.select().from(membres)
+    .where(and(eq(membres.id, req.params.membreId), eq(membres.cercleId, req.cercle.id)))
+  if (!membre) return res.status(404).json({ erreur: 'Membre introuvable' })
+  if (membre.role === 'accompagne') return res.status(400).json({ erreur: 'Le rôle de la personne accompagnée ne peut pas être modifié' })
+  if (membre.role === role) return res.json({ role })
+  if (membre.role === 'aidant') {
+    const [{ n }] = await db.select({ n: count() }).from(membres)
+      .where(and(eq(membres.cercleId, req.cercle.id), eq(membres.role, 'aidant')))
+    if (n <= 1) return res.status(400).json({ erreur: 'Un cercle doit garder au moins un aidant' })
+  }
+  await db.update(membres).set({ role }).where(eq(membres.id, membre.id))
+  res.json({ role })
+})
+
 // Lien d'un membre avec la personne accompagnée (fils, petite-fille...) : chacun règle le sien,
 // les aidants celui de tous. Corps : { lien } (null pour l'effacer)
 router.put('/:cercleId/membres/:membreId/lien', chargerCercle, async (req, res) => {
