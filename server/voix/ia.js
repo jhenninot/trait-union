@@ -69,7 +69,7 @@ async function appelMistral(cle, modele, messages) {
     reponse = await fetch(API, {
       method: 'POST',
       headers: { authorization: `Bearer ${cle}`, 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ model: modele, messages, temperature: 0, max_tokens: 80, response_format: { type: 'json_object' } }),
+      body: JSON.stringify({ model: modele, messages, temperature: 0, max_tokens: 100, response_format: { type: 'json_object' } }),
       signal: AbortSignal.timeout(8000)
     })
   } catch {
@@ -91,21 +91,33 @@ export async function verifierCle(cle, modele = MODELE_DEFAUT) {
 }
 
 const CONSIGNE = `Tu aides une personne âgée à utiliser une application par la voix. Elle a dit une phrase (parfois mal reconnue ou mal formulée). Choisis l'action qui correspond le mieux.
-Actions possibles :
+Actions possibles ("sujet" = le prénom cité, ou vide) :
 - journee : son programme d'aujourd'hui, comment se passe la journée
 - demain : le programme de demain
+- jour : le programme d'un autre jour ; "sujet" = lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche ou "apres demain"
 - heure : l'heure qu'il est
 - date : le jour ou la date d'aujourd'hui
 - agenda : ses prochains rendez-vous
-- photos : voir des photos ou un album ; "sujet" = le nom ou le thème de l'album s'il est cité
+- rdv : quand ou à quelle heure a lieu un rendez-vous précis ; "sujet" = les mots qui le désignent (médecin, coiffeur...)
+- visites : qui vient la voir prochainement
+- photos : voir des photos ou un album ; "sujet" = le nom ou le thème de l'album ou le prénom
 - famille : voir sa famille
-- personne : quand elle verra ou aura rendez-vous avec quelqu'un ; "sujet" = le prénom
+- personne : quand elle verra quelqu'un ; "sujet" = le prénom
 - qui : demande qui est une personne ; "sujet" = le prénom
-- messages : lire ses messages, ce qu'on lui a écrit
+- age : l'âge d'une personne, ou d'elle-même (sujet vide)
+- naissance : la date de naissance d'une personne, ou d'elle-même (sujet vide)
+- deces : quand une personne est morte
+- anniversaire : la date du prochain anniversaire d'une personne, ou d'elle-même (sujet vide) ; sujet "ce mois" pour savoir qui fête son anniversaire ce mois-ci
+- lien : question sur la parenté (combien d'enfants, comment s'appelle sa fille, qui est le mari de Claire...) ; "relation" = enfants, filles, fils, petits_enfants, petits_fils, petites_filles, arriere_petits_enfants, mari, epouse, conjoint, mere, pere, parents, frere, soeur ou freres_soeurs ; "combien" = true si elle demande un nombre ; "sujet" = le prénom de la personne concernée, vide si c'est elle-même
+- classement : qui est le plus jeune, le plus âgé, ou qui a le plus d'enfants ou de petits-enfants ; "sujet" = jeune, age, enfants ou petits_enfants
+- telephone : le numéro de téléphone d'une personne
+- adresse : où habite une personne
+- appeler : appeler une personne au téléphone
+- messages : lire ses messages ; "sujet" = le prénom si elle veut ceux d'une personne précise
 - accueil : revenir à l'accueil
 - merci : remercier, arrêter, dire que c'est fini
 - inconnue : rien de ce qui précède, ou phrase incompréhensible
-Réponds uniquement en JSON : {"intention":"...","sujet":"..."} (sujet vide s'il n'y en a pas).`
+Réponds uniquement en JSON : {"intention":"...","sujet":"...","relation":"...","combien":false} (champs vides s'ils ne servent pas).`
 
 // Demande à Mistral l'intention de la phrase. Renvoie { intention, sujet } ou null si le
 // modèle ne sait pas ou si l'appel a échoué (erreur journalisée, les mots-clés restent le repli).
@@ -117,7 +129,7 @@ export async function deviner(config, phrase, intentions) {
     ])
     const r = JSON.parse(brut)
     if (!intentions.includes(r.intention) || r.intention === 'inconnue') return null
-    return { intention: r.intention, sujet: typeof r.sujet === 'string' ? r.sujet.slice(0, 60) : '' }
+    return { intention: r.intention, sujet: typeof r.sujet === 'string' ? r.sujet.slice(0, 60) : '', relation: typeof r.relation === 'string' ? r.relation : '', combien: r.combien === true }
   } catch (e) {
     journaliser('avertissement', 'serveur', 'voix', `Commande en langage naturel : ${e.message}`)
     return null

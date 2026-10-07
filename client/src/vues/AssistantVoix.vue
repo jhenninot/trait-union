@@ -18,6 +18,13 @@ async function traiter(demande) {
   try {
     const r = await demande()
     parler(r.texte)
+    if (r.lien?.startsWith('tel:')) {
+      // « Appeler Léa » : on laisse la phrase se terminer, puis le téléphone propose l'appel
+      reponse.value = r
+      etat.value = 'reponse'
+      setTimeout(() => { window.location.href = r.lien }, 1500)
+      return
+    }
     if (r.lien && !r.choix) {
       if (router.currentRoute.value.fullPath !== r.lien) router.push(r.lien)
       // Les réponses longues (programme du jour) restent affichées pour être relues
