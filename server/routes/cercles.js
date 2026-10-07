@@ -419,7 +419,7 @@ router.put('/:cercleId/membres/:membreId/jeux', chargerCercle, exigerGestion, ch
   res.json(reglagesJeux(jeux))
 })
 
-// Remise à zéro des scores d'un jeu (« musique », « qui » ou « age ») d'une personne accompagnée :
+// Remise à zéro des scores d'un jeu (« musique », « qui », « age » ou « souvenirs ») d'une personne accompagnée :
 // efface les scores de tous les joueurs de ce jeu pour elle. Renvoie le nombre de scores effacés.
 router.delete('/:cercleId/membres/:membreId/scores/:jeu', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
   if (!['musique', 'qui', 'age'].includes(req.params.jeu)) return res.status(400).json({ erreur: 'Jeu inconnu' })

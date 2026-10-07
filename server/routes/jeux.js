@@ -54,7 +54,7 @@ router.get('/exterieurs', chargerCible, async (req, res) => {
 })
 
 // Jeux avec score : clé du jeu → réglage qui l'active
-const JEUX_SCORE = { musique: 'musiqueScore', qui: 'quiScore', age: 'ageScore' }
+const JEUX_SCORE = { musique: 'musiqueScore', qui: 'quiScore', age: 'ageScore', souvenirs: 'souvenirsScore' }
 
 // Classement d'une personne accompagnée : le meilleur score de chaque joueur (elle-même ou un membre
 // de sa famille) à un jeu, pour les parties de ce nombre de questions, les trois premiers.
@@ -67,7 +67,7 @@ async function classement(aideId, jeu, questions, moiId) {
   return lignes.map((l) => ({ prenom: l.prenom, points: l.points, moi: l.joueurId === moiId }))
 }
 
-// Fin d'une partie d'un jeu avec score. Corps : { jeu: 'musique' | 'qui' | 'age', points, questions }.
+// Fin d'une partie d'un jeu avec score. Corps : { jeu: 'musique' | 'qui' | 'age' | 'souvenirs', points, questions }.
 // Enregistre le score du joueur connecté et renvoie son meilleur score d'avant et le classement
 // (« ?pour= » : un membre de la famille joue pour une personne accompagnée).
 export async function enregistrerScore(req, res) {
@@ -86,6 +86,7 @@ export async function enregistrerScore(req, res) {
 }
 router.post('/scores', chargerCible, enregistrerScore)
 
-router.get('/reglages', chargerCible, (req, res) => res.json(reglages(req.cible.jeux)))
+// Année de naissance en plus : le jeu « Il y a longtemps… » choisit les souvenirs de sa jeunesse
+router.get('/reglages', chargerCible, (req, res) => res.json({ ...reglages(req.cible.jeux), naissance: req.cible.dateNaissance ? Number(String(req.cible.dateNaissance).slice(0, 4)) : null }))
 
 export default router

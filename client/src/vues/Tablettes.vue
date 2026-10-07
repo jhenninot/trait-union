@@ -91,7 +91,7 @@ const changerJeux = (m, modifs) => action(async () => {
   m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
 })
 // Remise à zéro des scores d'un jeu (tous les joueurs)
-const JEUX_SCORE = [['musique', 'Quiz musical'], ['qui', 'Qui est-ce ?'], ['age', 'Quel âge ?']]
+const JEUX_SCORE = [['musique', 'Quiz musical'], ['qui', 'Qui est-ce ?'], ['age', 'Quel âge ?'], ['souvenirs', 'Il y a longtemps…']]
 const remettreAZero = (m, [jeu, nom]) => action(async () => {
   if (!await confirmer(`Effacer tous les scores de « ${nom} » pour ${m.prenom} ? Les meilleurs scores de toute la famille seront remis à zéro.`, { oui: 'Effacer les scores', danger: true })) return
   const { effaces } = await api('DELETE', `${url.value}/membres/${m.id}/scores/${jeu}`)
@@ -206,10 +206,12 @@ const adresseApk = `${location.host}/apk`
             <label class="case"><input type="checkbox" :checked="m.jeux.qui" @change="changerJeux(m, { qui: $event.target.checked })" /> « Qui est-ce ? » : retrouver un prénom</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.age" @change="changerJeux(m, { age: $event.target.checked })" /> « Quel âge ? » : deviner une tranche d'âge</label>
             <label v-if="m.jeux.age || m.jeux.ageScore" class="case"><input type="checkbox" :checked="m.jeux.ageDecennie" @change="changerJeux(m, { ageDecennie: $event.target.checked })" /> « Quel âge ? » : réponses par tranches de 10 ans (« 30 à 39 ans ») au lieu de grandes tranches (enfant, adulte, senior)</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.souvenirs" @change="changerJeux(m, { souvenirs: $event.target.checked })" /> « Il y a longtemps… » : retrouver les événements de sa jeunesse (d'après sa date de naissance)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musique" @change="changerJeux(m, { musique: $event.target.checked })" /> « Quelle est cette chanson ? » : quiz musical</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.musiqueScore" @change="changerJeux(m, { musiqueScore: $event.target.checked })" /> « Quiz musical avec score » : points et bonus de rapidité (pour les joueurs qui aiment la compétition)</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.quiScore" @change="changerJeux(m, { quiScore: $event.target.checked })" /> « Qui est-ce ? avec score » : points et bonus de rapidité</label>
             <label class="case"><input type="checkbox" :checked="m.jeux.ageScore" @change="changerJeux(m, { ageScore: $event.target.checked })" /> « Quel âge ? avec score » : points et bonus de rapidité</label>
+            <label class="case"><input type="checkbox" :checked="m.jeux.souvenirsScore" @change="changerJeux(m, { souvenirsScore: $event.target.checked })" /> « Il y a longtemps… avec score » : points et bonus de rapidité</label>
             <div class="reglage">
               <span class="libelle-reglage">Scores</span>
               <div class="etiquettes">

@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { chargerFamille } from '../famille.js'
 import { ageTexte, dateLongue } from '../coordonnees.js'
+import { questionsSouvenirs } from '../souvenirs.js'
 import { questionsQui, questionsAge, candidats, reglagesJeux, chargerReglagesJeux, jeuxDisponibles } from '../jeux.js'
 import { useRouter } from 'vue-router'
 import { lectureDisponible, parler, arreterParole } from '../voix.js'
@@ -21,9 +22,10 @@ const essai = Boolean(props.pour)
 const r = essai ? reactive({ ...reglagesJeux, actif: true, charge: false }) : reglagesJeux
 const personnes = ref([])
 const charge = ref(false)
-const jeu = ref(null) // null (accueil des jeux), 'qui', 'age', 'musique', 'musiqueScore', 'quiScore' ou 'ageScore'
-const score = computed(() => jeu.value === 'quiScore' || jeu.value === 'ageScore')
-const base = computed(() => jeu.value?.replace('Score', '')) // 'qui' ou 'age'
+const jeu = ref(null) // null (accueil des jeux), 'qui', 'age', 'souvenirs', 'musique', 'musiqueScore', 'quiScore', 'ageScore' ou 'souvenirsScore'
+const score = computed(() => ['quiScore', 'ageScore', 'souvenirsScore'].includes(jeu.value))
+const base = computed(() => jeu.value?.replace('Score', '')) // 'qui', 'age' ou 'souvenirs'
+const souvenirs = computed(() => base.value === 'souvenirs')
 const partie = ref(0) // change à chaque partie de musique, pour repartir de zéro
 const questions = ref([])
 const n = ref(0) // question en cours
@@ -54,14 +56,14 @@ onUnmounted(arreterParole)
 const nbQui = computed(() => candidats(personnes.value, { decedes: r.decedes }).length)
 const nbAge = computed(() => candidats(personnes.value, { age: true }).length)
 const propose = (k) => r[k]
-const dispo = (k) => k === 'musique' || k === 'musiqueScore' || (k.startsWith('qui') ? nbQui.value : nbAge.value) >= 2
+const dispo = (k) => k === 'musique' || k === 'musiqueScore' || k.startsWith('souvenirs') || (k.startsWith('qui') ? nbQui.value : nbAge.value) >= 2
 
 function jouer(k) {
   arreterParole()
   jeu.value = k
   if (!essai) api('POST', '/jeux/partie').catch(() => {})
   if (k === 'musique' || k === 'musiqueScore') { partie.value++; return }
-  questions.value = (k.startsWith('qui') ? questionsQui : questionsAge)(personnes.value, r)
+  questions.value = k.startsWith('souvenirs') ? questionsSouvenirs(r.naissance, r) : (k.startsWith('qui') ? questionsQui : questionsAge)(personnes.value, r)
   n.value = 0
   total.value = 0
   gain.value = null
@@ -80,11 +82,13 @@ function retour() {
 const q = computed(() => questions.value[n.value])
 const p = computed(() => q.value?.personne)
 const lien = computed(() => p.value?.lienAide ?? p.value?.lien ?? '')
-const enonce = computed(() => base.value === 'qui' ? 'Quel est son prénom ?'
+const enonce = computed(() => souvenirs.value ? `Il y a ${q.value.ilYa} ans, en ${q.value.annee}. Que s'est-il passé ?`
+  : base.value === 'qui' ? 'Quel est son prénom ?'
   : `${p.value.prenom}${lien.value ? `, ${lien.value.charAt(0).toLowerCase()}${lien.value.slice(1)}` : ''}. Quel âge a-t-il ou elle ?`)
 
 // Phrase donnée une fois la question passée (toujours bienveillante)
 const phrase = computed(() => {
+  if (souvenirs.value) return `En ${q.value.annee}, ${q.value.fait}.`
   if (!p.value) return ''
   const qui = p.value.phrase ?? `${p.value.prenom}${lien.value ? `, ${lien.value.toLowerCase()}` : ''}.`
   if (base.value === 'qui') return `C'est ${p.value.prenom}. ${p.value.phrase ? qui : ''}`.trim()
@@ -135,7 +139,7 @@ function suivante() {
   reponse.value = null
   choisi.value = null
 }
-const lireQuestion = () => parler(`${base.value === 'qui' ? 'Quel est son prénom ?' : enonce.value}`)
+const lireQuestion = () => parler(base.value === 'qui' ? 'Quel est son prénom ?' : enonce.value)
 </script>
 
 <template>
@@ -161,6 +165,14 @@ const lireQuestion = () => parler(`${base.value === 'qui' ? 'Quel est son préno
           <strong>Quel âge ? avec score</strong><span>Gagner des points, avec un bonus si vous répondez vite</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
         </button>
+        <button v-if="propose('souvenirs')" type="button" class="jeu" @click="jouer('souvenirs')">
+          <strong>Il y a longtemps…</strong><span>Se souvenir des grands moments de sa jeunesse</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
+        <button v-if="propose('souvenirsScore')" type="button" class="jeu" @click="jouer('souvenirsScore')">
+          <strong>Il y a longtemps… avec score</strong><span>Gagner des points, avec un bonus si vous répondez vite</span>
+          <span class="gros"><Icone nom="suivant" /> Jouer</span>
+        </button>
         <button v-if="propose('musique')" type="button" class="jeu" @click="jouer('musique')">
           <strong>Quelle est cette chanson ?</strong><span>Reconnaître les chansons d'autrefois</span>
           <span class="gros"><Icone nom="suivant" /> Jouer</span>
@@ -182,8 +194,9 @@ const lireQuestion = () => parler(`${base.value === 'qui' ? 'Quel est son préno
     <template v-else-if="fini">
       <h1>Bravo !</h1>
       <ClassementScore v-if="score" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
+      <div v-else-if="souvenirs" class="bulle"><p class="grand">Vous avez remonté le temps.</p><p class="moyen">C'était un beau moment.</p></div>
       <div v-else class="bulle"><p class="grand">Vous avez revu {{ questions.length }} personne{{ questions.length > 1 ? 's' : '' }} de votre famille.</p><p class="moyen">C'était un beau moment.</p></div>
-      <div class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.photo" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>
+      <div v-if="!souvenirs" class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.photo" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>
       <div class="actions">
         <button type="button" class="gros" @click="jouer(jeu)"><Icone nom="jeux" /> Rejouer</button>
         <button type="button" class="gros second" @click="retour">Retour aux jeux</button>
@@ -194,17 +207,18 @@ const lireQuestion = () => parler(`${base.value === 'qui' ? 'Quel est son préno
     <template v-else-if="q">
       <div class="tete">
         <button type="button" class="retour" @click="retour"><Icone nom="precedent" /> Jeux</button>
-        <h1>{{ base === 'qui' ? 'Qui est-ce ?' : 'Quel âge ?' }}</h1>
+        <h1 :class="{ long: souvenirs }">{{ souvenirs ? 'Il y a longtemps…' : base === 'qui' ? 'Qui est-ce ?' : 'Quel âge ?' }}</h1>
         <button v-if="parle" type="button" class="rond" aria-label="Écouter" @click="reponse ? parler(texteLu) : lireQuestion()"><Icone nom="son" /></button>
       </div>
       <p class="etape">Question {{ n + 1 }} sur {{ questions.length }}<span v-if="score" class="score">{{ total }} point{{ total > 1 ? 's' : '' }}</span>
         <span v-if="questions.length <= 10" class="points"><i v-for="k in questions.length" :key="k" :class="{ fait: k <= n + 1 }"></i></span>
         <span v-else class="barre"><i :style="{ width: `${(n + 1) / questions.length * 100}%` }"></i></span></p>
-      <Avatar :src="q.photo" :prenom="p.prenom" :taille="petit ? 170 : 210" />
+      <Avatar v-if="!souvenirs" :src="q.photo" :prenom="p.prenom" :taille="petit ? 170 : 210" />
+      <p v-else class="annee">{{ q.annee }}</p>
       <template v-if="!reponse">
         <p class="question">{{ enonce }}</p>
-        <div class="reponses">
-          <button v-for="c in q.choix" :key="c.texte" type="button" class="rep" @click="repondre(c)">{{ c.texte }}</button>
+        <div class="reponses" :class="{ longues: souvenirs }">
+          <button v-for="c in q.choix" :key="c.texte" type="button" class="rep" :class="{ texte: souvenirs }" @click="repondre(c)">{{ c.texte }}</button>
         </div>
         <button type="button" class="pas-sur" @click="passer"><Icone nom="question" /> Je ne sais pas</button>
       </template>
@@ -249,6 +263,10 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
 .barre { display: block; width: min(320px, 80vw); height: 14px; border-radius: 7px; background: #dcd8d0; overflow: hidden; }
 .barre i { display: block; height: 100%; background: var(--vert); border-radius: 7px; }
 .question { font-size: 2rem; color: var(--bleu-nuit); font-weight: 700; margin: 16px 0; text-align: center; max-width: 900px; }
+.tete h1.long { font-size: 2.1rem; }
+.annee { font-size: 6rem; font-weight: 700; color: var(--vert); margin: 4px 0; line-height: 1; }
+.rep.texte { font-size: 1.6rem; padding: 14px 20px; }
+.reponses.longues { grid-template-columns: 1fr; }
 .reponses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 900px; }
 .rep { background: white; color: var(--bleu-nuit); border: 3px solid #e3dfd7; border-radius: 22px; min-height: 96px; font-size: 2.1rem; font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
 .pas-sur { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 1.35rem; font-weight: 700; color: var(--bleu-nuit); background: #f3f0ea; border-radius: 18px; padding: 16px 26px; }
@@ -281,6 +299,8 @@ h1 { font-size: 2.6rem; text-align: center; margin: 0; }
   .points { gap: 6px; }
   .points i { width: 12px; height: 12px; }
   .question { font-size: 1.5rem; }
+  .annee { font-size: 4rem; }
+  .rep.texte { font-size: 1.2rem; }
   .reponses { grid-template-columns: 1fr; gap: 12px; }
   .rep { min-height: 70px; font-size: 1.5rem; border-radius: 18px; }
   .pas-sur { font-size: 1.05rem; padding: 12px 18px; }
