@@ -159,7 +159,7 @@ const AUSSI = [
   { icone: 'telephone', titre: 'Les coordonnées de chacun', texte: 'Téléphone, adresse, âge et lien avec elle : une fiche en gros caractères, lue à voix haute, pour qu\'elle sache qui est qui, et qui appeler.' },
   { icone: 'compte', titre: 'Un visage pour chacun', texte: 'Une photo ou un avatar illustré pour chaque membre, pour reconnaître tout le monde d\'un coup d\'oeil.' },
   { icone: 'partager', titre: 'Partager depuis le téléphone', texte: 'Sur Android, « Partager » depuis la galerie envoie directement des photos dans un album du cercle.' },
-  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? », « Lis mes messages » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Sans intelligence artificielle.' },
+  { icone: 'micro', titre: 'Commandes vocales', texte: 'Elle appuie sur « Parler » et demande « Qu\'est-ce que je fais aujourd\'hui ? », « Lis mes messages » ou « Montre-moi les photos » : l\'appareil répond à voix haute et ouvre le bon écran. Par défaut sans intelligence artificielle ; en option, pour les familles qui le souhaitent, une phrase dite librement est comprise elle aussi (seule la phrase est envoyée, vers un service européen).' },
   { icone: 'mobile', titre: 'Sur tous les écrans', texte: 'Ordinateur, téléphone ou tablette : application installable sur iPhone et Android, et application Android dédiée.' },
   { icone: 'repeter', titre: 'Toujours à jour', texte: 'Quand une nouvelle version de l\'application Android sort, chacun est prévenu, et les aidants voient quels appareils mettre à jour.' }
 ]
