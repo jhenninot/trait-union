@@ -87,7 +87,7 @@ function fermer() {
 .monte-enter-active, .monte-leave-active { transition: opacity 0.3s, translate 0.3s; }
 .monte-enter-from, .monte-leave-to { opacity: 0; translate: 0 20px; }
 /* Au-dessus de la barre de navigation du bas sur téléphone */
-@media (max-width: 800px) {
+@media (max-width: 760px) {
   .conteneur { bottom: 88px; width: calc(100% - 20px); }
 }
 </style>
