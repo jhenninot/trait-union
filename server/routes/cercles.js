@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, isNull, count, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons, scoresQuiz } from '../db/schema.js'
+import { voixIa, cercles, membres, utilisateurs, invitations, codesConnexion, sessions, appareilsAlertes, personnes, chansons, scoresQuiz } from '../db/schema.js'
 import { cleChanson } from '../musique/sources.js'
 import { NOMS_STYLES } from '../musique/styles.js'
 import { exigerConnexion, exigerAdmin } from '../auth/sessions.js'
@@ -25,6 +25,7 @@ import { reglages as reglagesMessagerie, REPONSES_DEFAUT } from '../messagerie/d
 import { supprimerFichiersDe } from '../messagerie/conservation.js'
 import { marquerDeces, annulerDeces } from '../deces.js'
 import { routesPhotosJeu, photosDe } from '../photosJeu.js'
+import { configurationPublique as voixIaPublique, chiffrer, verifierCle, MODELE_DEFAUT } from '../voix/ia.js'
 
 const router = Router()
 router.use(exigerConnexion)
@@ -105,6 +106,30 @@ router.put('/:cercleId', chargerCercle, exigerAdmin, async (req, res) => {
   const nom = valider.texte(req.body.nom, 'nom du cercle')
   const [c] = await db.update(cercles).set({ nom }).where(eq(cercles.id, req.cercle.id)).returning()
   res.json(c)
+})
+
+// Commande vocale en langage naturel du cercle : réservé à l'administrateur global, qui renseigne
+// la clé API Mistral du cercle. La clé ne repart jamais vers le navigateur (4 derniers caractères).
+router.get('/:cercleId/voix-ia', chargerCercle, exigerAdmin, async (req, res) => {
+  res.json((await voixIaPublique(req.cercle.id)) ?? { actif: false, cle: null, modele: MODELE_DEFAUT })
+})
+
+router.put('/:cercleId/voix-ia', chargerCercle, exigerAdmin, async (req, res) => {
+  const cle = valider.texte(req.body.cle, 'clé API', { obligatoire: false, max: 200 })
+  const modele = valider.texte(req.body.modele, 'modèle', { obligatoire: false, max: 80 }) ?? MODELE_DEFAUT
+  if (!/^[\w.:-]+$/.test(modele)) return res.status(400).json({ erreur: 'Nom de modèle invalide' })
+  const [existante] = await db.select().from(voixIa).where(eq(voixIa.cercleId, req.cercle.id))
+  if (!cle && !existante) return res.status(400).json({ erreur: 'Saisissez la clé API Mistral' })
+  if (cle) await verifierCle(cle, modele) // refuse une clé invalide avant de l'enregistrer
+  const valeurs = { modele, actif: req.body.actif !== false, ...(cle && { cleChiffree: await chiffrer(cle) }) }
+  if (existante) await db.update(voixIa).set(valeurs).where(eq(voixIa.cercleId, req.cercle.id))
+  else await db.insert(voixIa).values({ cercleId: req.cercle.id, ...valeurs })
+  res.json(await voixIaPublique(req.cercle.id))
+})
+
+router.delete('/:cercleId/voix-ia', chargerCercle, exigerAdmin, async (req, res) => {
+  await db.delete(voixIa).where(eq(voixIa.cercleId, req.cercle.id))
+  res.status(204).end()
 })
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {

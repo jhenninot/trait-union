@@ -53,6 +53,17 @@ export const cercles = pgTable('cercles', {
 // superviseur : superviseur technique, mêmes droits qu'un aidant sauf la conversation « Les aidants » ;
 // auxiliaire : auxiliaire de vie (professionnel) ; ne voit ni les photos ni l'agenda familial,
 // seulement les rendez-vous ouverts aux auxiliaires (server/routes/agenda.js).
+// Commande vocale en langage naturel d'un cercle (server/voix/ia.js) : option réservée à
+// l'administrateur global, qui renseigne la clé API Mistral du cercle (chiffrée). Table à part
+// pour que la clé ne parte jamais avec les autres données du cercle.
+export const voixIa = pgTable('voix_ia', {
+  ...commun,
+  cercleId: uuid('cercle_id').notNull().unique().references(() => cercles.id, { onDelete: 'cascade' }),
+  cleChiffree: text('cle_chiffree').notNull(),
+  modele: text('modele').notNull().default('ministral-8b-latest'),
+  actif: boolean('actif').notNull().default(true)
+})
+
 export const roleMembre = pgEnum('role_membre', ['accompagne', 'aidant', 'proche', 'auxiliaire', 'superviseur'])
 
 export const membres = pgTable('membres', {

@@ -7,6 +7,7 @@ import { filtreNiveaux } from '../routes/agenda.js'
 import { estAnniversaire, age } from '../anniversaires.js'
 import { chargerArbre, phrase as phraseArbre } from '../arbre.js'
 import { messagesAccompagne } from '../routes/messagerie.js'
+import { configurationActive, deviner } from './ia.js'
 
 // Assistant vocal de la personne accompagnée, sans IA : on cherche des mots-clés dans ce
 // qu'elle a dit (reconnaissance vocale du téléphone ou du navigateur) et on répond par une
@@ -251,5 +252,26 @@ export async function comprendre(utilisateur, phrases) {
     if (proche && (!intention || intention === 'agenda')) return { intention: 'personne', parametres: { prenom: proche.prenom } }
     if (intention) return { intention, parametres: {} }
   }
-  return { intention: 'inconnue', parametres: {} }
+  return (await langageNaturel(utilisateur, normalisees[0], famille, listeAlbums)) ?? { intention: 'inconnue', parametres: {} }
+}
+
+// Option « langage naturel » du cercle (server/voix/ia.js) : quand aucun mot-clé ne correspond,
+// un petit modèle choisit l'intention. Seule la phrase part chez Mistral ; le prénom ou l'album
+// qu'il renvoie est revérifié ici contre les données de la personne.
+async function langageNaturel(utilisateur, phrase, famille, listeAlbums) {
+  const ids = (await mesCercles(utilisateur.id)).filter((c) => c.role === 'accompagne').map((c) => c.id)
+  const config = await configurationActive(ids)
+  if (!config) return null
+  const choix = await deviner(config, phrase, INTENTIONS)
+  if (!choix) return null
+  const mots = normaliser(choix.sujet).split(' ').filter(Boolean)
+  const proche = famille.find((p) => mots.includes(normaliser(p.prenom)))
+  if (choix.intention === 'qui' || choix.intention === 'personne') {
+    return proche ? { intention: choix.intention, parametres: { prenom: proche.prenom } } : { intention: 'famille', parametres: {} }
+  }
+  if (choix.intention === 'photos') {
+    const album = listeAlbums.find((a) => normaliser(a.nom).split(' ').some((m) => m.length > 3 && !/^\d+$/.test(m) && !MOTS_ALBUM_IGNORES.has(m) && mots.includes(m)))
+    return { intention: 'photos', parametres: album ? { album } : {} }
+  }
+  return { intention: choix.intention, parametres: {} }
 }

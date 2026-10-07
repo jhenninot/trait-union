@@ -17,6 +17,7 @@ import routesAlertes from './routes/alertes.js'
 import routesPresentation from './routes/presentation.js'
 import routesMessagerie from './routes/messagerie.js'
 import { ErreurAlertes } from './alertes/envoi.js'
+import { ErreurVoixIa } from './voix/ia.js'
 import { demarrerAlertes } from './alertes/planificateur.js'
 import { derniereApk, versionApk, APK_URL } from './application.js'
 import { ErreurEmail } from './email/brevo.js'
@@ -78,7 +79,7 @@ app.use('/api/signalements', routesSignalements)
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue' }))
 app.use('/api', (err, req, res, next) => {
   if (err instanceof ErreurSaisie) return res.status(400).json({ erreur: err.message })
-  if (err instanceof ErreurEmail || err instanceof ErreurStockage || err instanceof ErreurAlertes) {
+  if (err instanceof ErreurEmail || err instanceof ErreurStockage || err instanceof ErreurAlertes || err instanceof ErreurVoixIa) {
     journaliserRequete('erreur', req, err)
     return res.status(502).json({ erreur: err.message })
   }

@@ -57,6 +57,41 @@ const enregistrerLien = (m) => action(async () => {
   lienOuvert.value = null
 })
 
+// Commande vocale en langage naturel : option du cercle, réservée à l'administrateur global,
+// qui renseigne la clé API Mistral du cercle (jamais renvoyée en entier)
+const voixIa = ref(null) // { actif, cle, modele } ; null tant que non chargé
+const voixIaOuverte = ref(null) // { cle, modele, actif } pendant la saisie
+const erreurVoixIa = ref('')
+const enregistrementVoixIa = ref(false)
+const urlVoixIa = () => `${url.value}/voix-ia`
+async function chargerVoixIa() {
+  if (!session.utilisateur.estAdmin) return
+  try { voixIa.value = await api('GET', urlVoixIa()) } catch { voixIa.value = null }
+}
+watch(() => cercle.value?.id, chargerVoixIa, { immediate: true })
+function ouvrirVoixIa() {
+  erreurVoixIa.value = ''
+  voixIaOuverte.value = { cle: '', modele: voixIa.value.modele, actif: voixIa.value.cle ? voixIa.value.actif : true }
+}
+async function enregistrerVoixIa() {
+  erreurVoixIa.value = ''
+  enregistrementVoixIa.value = true
+  try {
+    voixIa.value = await api('PUT', urlVoixIa(), voixIaOuverte.value)
+    voixIaOuverte.value = null
+  } catch (e) {
+    erreurVoixIa.value = e.message
+  } finally {
+    enregistrementVoixIa.value = false
+  }
+}
+async function retirerVoixIa() {
+  if (!await confirmer('Retirer la clé API de ce cercle ? La commande en langage naturel sera désactivée ; les commandes par mots-clés continueront de fonctionner.', { oui: 'Oui, retirer', danger: true })) return
+  await api('DELETE', urlVoixIa())
+  voixIaOuverte.value = null
+  await chargerVoixIa()
+}
+
 // Un aidant redéfinit son rôle : aidant ou superviseur technique
 const roleOuvert = ref(null) // rôle choisi dans la fenêtre
 const changerMonRole = () => action(async () => {
@@ -132,6 +167,27 @@ const rejoindre = () => action(async () => {
         <span v-else>Vous êtes proche dans ce cercle.</span>
         <button @click="rejoindre">Rejoindre comme aidant</button>
       </div>
+
+      <div v-if="session.utilisateur.estAdmin && voixIa" class="carte ligne">
+        <span>
+          <strong>Commande vocale en langage naturel</strong><br />
+          <span class="aide">{{ voixIa.cle ? (voixIa.actif ? `Activée (clé ${voixIa.cle})` : `Clé ${voixIa.cle} enregistrée, option désactivée`) : 'Désactivée : aucune clé API Mistral pour ce cercle.' }}</span>
+        </span>
+        <button class="secondaire" @click="ouvrirVoixIa">{{ voixIa.cle ? 'Modifier' : 'Activer' }}</button>
+      </div>
+      <Modale v-if="voixIaOuverte" titre="Commande vocale en langage naturel" @fermer="voixIaOuverte = null">
+        <form @submit.prevent="enregistrerVoixIa">
+          <p class="aide">Quand les mots-clés ne comprennent pas la phrase, un petit modèle de Mistral (UE) choisit l'action. Seule la phrase dite est envoyée, jamais l'agenda ni les données du cercle. Le coût est facturé sur le compte Mistral de la clé.</p>
+          <label>Clé API Mistral
+            <input v-model="voixIaOuverte.cle" type="password" autocomplete="off" :placeholder="voixIa.cle ? `${voixIa.cle} (laisser vide pour la garder)` : 'Collez la clé'" :required="!voixIa.cle" />
+          </label>
+          <label>Modèle <input v-model="voixIaOuverte.modele" required maxlength="80" /></label>
+          <label class="case"><input v-model="voixIaOuverte.actif" type="checkbox" /> Option activée pour ce cercle</label>
+          <p v-if="erreurVoixIa" class="erreur">{{ erreurVoixIa }}</p>
+          <button :disabled="enregistrementVoixIa">{{ enregistrementVoixIa ? 'Vérification…' : 'Enregistrer' }}</button>
+          <button v-if="voixIa.cle" type="button" class="secondaire" @click="retirerVoixIa">Retirer la clé</button>
+        </form>
+      </Modale>
 
       <h2>Personnes accompagnées</h2>
       <p v-if="!accompagnes.length" class="aide">Personne pour l'instant.</p>
@@ -310,6 +366,7 @@ const rejoindre = () => action(async () => {
 </template>
 
 <style scoped>
+.case { flex-direction: row; align-items: center; gap: 8px; font-weight: normal; }
 .surtitre { margin: 0; }
 .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .personne { display: flex; align-items: center; gap: 12px; }
