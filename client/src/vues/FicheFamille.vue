@@ -1,6 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { api } from '../api.js'
+import { computed, ref } from 'vue'
 import { dateLongue, ageTexte, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { lienMessage } from '../messagerie.js'
@@ -18,14 +17,9 @@ const ans = (date) => ageTexte(date)
 const annee = (d) => d?.slice(0, 4)
 const lecture = lectureDisponible()
 // Phrase de l'arbre (« Léo est votre arrière-petit-fils… ») ou, à défaut, prénom et lien
-// Photos envoyées par cette personne (si elle est inscrite dans un cercle) : grille, puis grande photo
-const photosPersonne = ref([])
+// Photos du profil de la personne (aussi utilisées dans les jeux) : grille, puis grande photo
+const photosPersonne = computed(() => (p.value.photosJeu ?? []).map((x) => x.url ?? x).filter(Boolean))
 const ouverte = ref(null)
-onMounted(async () => {
-  if (!p.value.membreId || !p.value.cercleId || p.value.decede) return
-  const r = await api('GET', `/cercles/${p.value.cercleId}/photos?membre=${p.value.membreId}&limite=200`).catch(() => null)
-  photosPersonne.value = r?.photos ?? []
-})
 const decaler = (n) => {
   const t = photosPersonne.value.length
   ouverte.value = (ouverte.value + n + t) % t
@@ -70,15 +64,14 @@ const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].
       <section v-if="photosPersonne.length" class="photos" aria-label="Ses photos">
         <h3>Ses photos</h3>
         <div class="grille">
-          <button v-for="(ph, i) in photosPersonne" :key="ph.id" type="button" @click="ouverte = i"><img :src="ph.miniature" alt="" loading="lazy" /></button>
+          <button v-for="(ph, i) in photosPersonne" :key="ph" type="button" @click="ouverte = i"><img :src="ph" alt="" loading="lazy" /></button>
         </div>
       </section>
       <button v-if="lecture" type="button" class="ecouter" @click="parler(texteLu)"><Icone nom="son" class="em" /> Écouter</button>
     </section>
     <div v-if="ouverte !== null" class="grande" @click.self="ouverte = null">
       <BoutonIcone class="fermer" icone="fermer" libelle="Fermer la photo" gros @click="ouverte = null" />
-      <img :src="photosPersonne[ouverte].ecran" :alt="photosPersonne[ouverte].legende || ''" />
-      <p v-if="photosPersonne[ouverte].legende" class="legende">{{ photosPersonne[ouverte].legende }}</p>
+      <img :src="photosPersonne[ouverte]" alt="" />
       <template v-if="photosPersonne.length > 1">
         <button type="button" class="nav prec" aria-label="Photo précédente" @click="decaler(-1)"><Icone nom="precedent" /></button>
         <button type="button" class="nav suiv" aria-label="Photo suivante" @click="decaler(1)"><Icone nom="suivant" /></button>
@@ -117,7 +110,6 @@ h3 { margin: 0 0 10px; font-size: 1.6rem; color: var(--bleu-nuit); text-align: c
 .grande { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.92); display: grid; place-items: center; }
 .grande img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .grande .fermer { z-index: 2; }
-.legende { position: absolute; bottom: 16px; left: 16px; right: 16px; margin: 0; padding: 10px 16px; border-radius: 14px; background: rgb(0 0 0 / 0.55); color: white; font-size: 1.3rem; text-align: center; }
 .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 64px; height: 64px; border-radius: 50%; background: rgb(255 255 255 / 0.85); color: var(--bleu-nuit); font-size: 2rem; display: grid; place-items: center; }
 .prec { left: 12px; }
 .suiv { right: 12px; }
