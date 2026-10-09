@@ -22,6 +22,7 @@ const choisi = computed(() => accompagnes.value.find((m) => m.id === route.param
 const ONGLETS = [
   { cle: 'appareils', libelle: 'Appareils', icone: 'mobile' },
   { cle: 'alertes', libelle: 'Alertes', icone: 'cloche' },
+  { cle: 'agenda', libelle: 'Agenda', icone: 'agenda' },
   { cle: 'jeux', libelle: 'Jeux', icone: 'jeux' },
   { cle: 'messages', libelle: 'Messages', icone: 'message' }
 ]
@@ -86,6 +87,10 @@ const changerAlertes = (m, cle, valeur) => action(async () => {
 
 // Messagerie de la personne accompagnée : qui peut lui écrire en privé, réponses toutes faites,
 // lecture à voix haute, photos et messages vocaux
+// Agenda de la personne accompagnée : proposé ou non sur sa tablette
+const changerAgenda = (m, actif) => action(async () => {
+  m.agendaActif = (await api('PUT', `${url.value}/membres/${m.id}/agenda`, { actif })).actif
+})
 // Jeux de la personne accompagnée : accès, jeux proposés, nombre de propositions et de questions
 const changerJeux = (m, modifs) => action(async () => {
   m.jeux = await api('PUT', `${url.value}/membres/${m.id}/jeux`, { ...m.jeux, ...modifs })
@@ -196,6 +201,15 @@ const adresseApk = `${location.host}/apk`
           <span class="aide">{{ m.alertes.appareils
             ? `Reçues sur ${m.alertes.appareils} appareil${m.alertes.appareils > 1 ? 's' : ''}.`
             : `Pas encore activées : sur l'appareil de ${m.prenom}, touchez « Recevoir les alertes » sur l'écran d'accueil.` }}</span>
+        </div>
+        </template>
+        <template v-else-if="onglet === 'agenda'">
+        <div class="messagerie">
+          <span class="titre-alertes"><Icone nom="agenda" class="en-ligne" /> Agenda</span>
+          <label class="case"><input type="checkbox" :checked="m.agendaActif !== false" @change="changerAgenda(m, $event.target.checked)" /> {{ m.prenom }} a accès à son agenda</label>
+          <span class="aide">{{ m.agendaActif !== false
+            ? `${m.prenom} voit « Mon agenda », le programme du jour sur l'accueil et peut interroger l'assistant vocal sur ses rendez-vous.`
+            : `Sur la tablette de ${m.prenom} : plus de bouton « Mon agenda », plus de programme du jour, plus de rappels de rendez-vous ni de questions sur l'agenda dans l'assistant vocal. Les rendez-vous restent visibles dans l'agenda des aidants.` }}</span>
         </div>
         </template>
         <template v-else-if="onglet === 'jeux'">

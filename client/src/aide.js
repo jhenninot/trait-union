@@ -111,8 +111,9 @@ const FICHES = {
     comment: [
       { q: 'Configurer un appareil', r: 'Touchez « Configurer un appareil » : un code à 6 chiffres est créé. Installez l\'application sur la tablette, ouvrez-la et saisissez ce code.' },
       { q: 'Envoyer l\'application', r: 'Utilisez « Envoyer l\'application » pour transmettre le lien d\'installation par email, SMS ou WhatsApp.' },
-      { q: 'Où sont les réglages ?', r: 'Choisissez la personne dans le sous-menu « Personnes accompagnées » : ses réglages sont rangés en quatre onglets, Appareils, Alertes, Jeux et Messages.' },
+      { q: 'Où sont les réglages ?', r: 'Choisissez la personne dans le sous-menu « Personnes accompagnées » : ses réglages sont rangés en cinq onglets, Appareils, Alertes, Agenda, Jeux et Messages.' },
       { q: 'Régler les alertes et la messagerie', r: 'Onglet « Alertes » : quelles alertes reçoit la tablette (rappels de rendez-vous, nouvelles photos, nouveaux messages, anniversaires). Onglet « Messages » : qui peut lui écrire en privé et la lecture à voix haute des nouveaux messages.' },
+      { q: 'Retirer l\'agenda à une personne', r: 'Onglet « Agenda » : décochez l\'accès si la personne n\'a pas besoin qu\'on gère son agenda. Sur sa tablette, le bouton « Mon agenda », le programme du jour, les rappels de rendez-vous et les questions vocales sur l\'agenda disparaissent. Les rendez-vous du cercle restent visibles pour les aidants.' },
       { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille ou décédées, préférences musicales, remise à zéro des scores. Le score peut être partagé dans « Toute la famille » à la fin de chaque jeu avec score.' },
       { q: 'Préparer des réponses toutes faites', r: 'Ajoutez des phrases comme « J\'arrive » : la personne les envoie d\'un seul toucher.' },
       { q: 'Suivre l\'utilisation', r: 'Un bloc indique les jours où la tablette a servi, pour s\'assurer qu\'elle est bien utilisée.' }

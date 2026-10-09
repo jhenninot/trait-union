@@ -90,5 +90,6 @@ export const profilPublic = (u) => ({
   estAdmin: u.estAdmin,
   telephone: u.telephone,
   dateNaissance: u.dateNaissance,
-  adresse: u.adresse
+  adresse: u.adresse,
+  agendaActif: u.agendaActif !== false
 })

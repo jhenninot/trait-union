@@ -103,6 +103,8 @@ router.beforeEach(async (to) => {
   // Un appareil de personne accompagnée reste sur ses écrans simples
   if (session.typeSession === 'appareil' && !to.meta.appareil) return '/'
   if (session.typeSession !== 'appareil' && to.meta.seulementAppareil) return '/'
+  // Agenda retiré à cette personne par ses aidants
+  if (to.path === '/agenda' && session.utilisateur?.agendaActif === false) return '/'
 })
 
 preparerInstallation()

@@ -36,6 +36,8 @@ export const utilisateurs = pgTable('utilisateurs', {
   // Jeux d'une personne accompagnée, réglés par ses aidants (server/jeux.js) :
   // { actif, qui, age, musique, decedes, niveau: 2 | 3, questions: 3 | 5 | 8 | 10 | 15 | 20 }
   jeux: jsonb('jeux').$type(),
+  // Agenda proposé à une personne accompagnée (réglé par ses aidants) : faux = ni « Mon agenda », ni programme du jour, ni agenda dans l'assistant vocal
+  agendaActif: boolean('agenda_actif').notNull().default(true),
   // Compte qui ne peut plus se connecter ni recevoir d'alertes (posé aussi au décès)
   desactiveLe: timestamp('desactive_le', { withTimezone: true }),
   // Personne décédée (server/deces.js) : son compte est désactivé mais gardé, pour pouvoir

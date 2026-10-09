@@ -20,6 +20,9 @@ import { configurationActive, deviner } from './ia.js'
 export const INTENTIONS = ['journee', 'demain', 'heure', 'date', 'agenda', 'photos', 'famille', 'personne', 'qui', 'age', 'naissance', 'deces', 'anniversaire', 'lien', 'classement', 'telephone', 'adresse', 'appeler', 'jour', 'rdv', 'visites', 'messages', 'accueil', 'merci', 'inconnue']
 
 const JOURS_AGENDA = 60
+// Intentions qui parlent de l'agenda : sans agenda (réglage des aidants), elles ne sont ni comprises ni répondues
+const INTENTIONS_AGENDA = ['demain', 'agenda', 'jour', 'rdv', 'visites']
+const sansAgenda = (utilisateur) => utilisateur.agendaActif === false
 
 // Minuscules, sans accents ni ponctuation : « Qu'est-ce que j'ai aujourd'hui ? » → « qu est ce que j ai aujourd hui »
 export const normaliser = (texte) => String(texte ?? '')
@@ -376,13 +379,14 @@ const CHOIX = [
   { libelle: 'Mes photos', icone: 'photo', lien: '/photos' },
   { libelle: 'Ma famille', icone: 'famille', lien: '/famille' },
   { libelle: 'Mes messages', icone: 'message', lien: '/messages' },
-  { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda' }
+  { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda', agenda: true }
 ]
 
 // Réponse à une intention : { texte (à lire), lien (page à ouvrir, facultatif), choix (facultatif) }
 export async function repondre(utilisateur, intention, parametres = {}) {
   const maintenant = new Date()
   const aujourdhui = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate())
+  if (sansAgenda(utilisateur) && INTENTIONS_AGENDA.includes(intention)) intention = 'inconnue'
   switch (intention) {
     case 'heure':
       return { texte: `Il est ${heureParlee(maintenant)}.` }
@@ -394,7 +398,7 @@ export async function repondre(utilisateur, intention, parametres = {}) {
       const moment = h < 6 || h >= 22 ? 'la nuit' : h < 12 ? 'le matin' : h < 18 ? 'l\'après-midi' : 'le soir'
       const fete = anniversaires(utilisateur, famille, maintenant)
       return {
-        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${fete ? `${fete} ` : ''}${programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`,
+        texte: `Bonjour ${utilisateur.prenom}. Nous sommes ${dateParlee(maintenant)}, il est ${heureParlee(maintenant)}, c'est ${moment}. ${fete ? `${fete} ` : ''}${sansAgenda(utilisateur) ? '' : programme(agenda, aujourdhui, 'aujourd\'hui', maintenant)}`.trim(),
         lien: '/'
       }
     }
@@ -513,7 +517,7 @@ export async function repondre(utilisateur, intention, parametres = {}) {
     case 'merci':
       return { texte: 'D\'accord. Je reste là si vous avez besoin.' }
     default:
-      return { texte: 'Je n\'ai pas bien compris. Que voulez-vous faire ?', choix: CHOIX }
+      return { texte: 'Je n\'ai pas bien compris. Que voulez-vous faire ?', choix: CHOIX.filter((c) => !c.agenda || !sansAgenda(utilisateur)) }
   }
 }
 
@@ -530,7 +534,8 @@ export async function comprendre(utilisateur, phrases) {
     // d'un mot marquant de son nom (4 lettres ou plus, pas un nombre ni un mot comme « photos »)
     const album = listeAlbums.find((a) => normaliser(a.nom).split(' ')
       .some((m) => m.length > 3 && !/^\d+$/.test(m) && !MOTS_ALBUM_IGNORES.has(m) && mots.includes(m)))
-    const intention = MOTS_CLES.find(([, cles]) => contient(phrase, cles))?.[0]
+    const trouvee = MOTS_CLES.find(([, cles]) => contient(phrase, cles))?.[0]
+    const intention = sansAgenda(utilisateur) && INTENTIONS_AGENDA.includes(trouvee) ? undefined : trouvee
     if (album && (!intention || intention === 'photos')) return { intention: 'photos', parametres: { album } }
     // Un prénom de la famille : « quand vient Léa », « Léa »
     const proche = famille.find((p) => mots.includes(normaliser(p.prenom)))
@@ -579,9 +584,10 @@ async function langageNaturel(utilisateur, phrase, famille, listeAlbums) {
   const ids = (await mesCercles(utilisateur.id)).filter((c) => c.role === 'accompagne').map((c) => c.id)
   const config = await configurationActive(ids)
   if (!config) return null
-  const choix = await deviner(config, phrase, INTENTIONS)
+  const choix = await deviner(config, phrase, sansAgenda(utilisateur) ? INTENTIONS.filter((i) => !INTENTIONS_AGENDA.includes(i)) : INTENTIONS)
   if (!choix) return null
   const { intention } = choix
+  if (sansAgenda(utilisateur) && INTENTIONS_AGENDA.includes(intention)) return null
   const sujet = normaliser(choix.sujet)
   const mots = sujet.split(' ').filter(Boolean)
   const proche = famille.find((p) => mots.includes(normaliser(p.prenom)))

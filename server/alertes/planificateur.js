@@ -36,7 +36,7 @@ export function heureAlerte(rdv, occ) {
 
 // Membres du cercle qui ont un compte actif, avec ce qu'il faut pour appliquer les droits
 async function membresDuCercle(cercleId) {
-  const liste = await db.select({ utilisateurId: membres.utilisateurId, role: membres.role, estAdmin: utilisateurs.estAdmin })
+  const liste = await db.select({ utilisateurId: membres.utilisateurId, role: membres.role, estAdmin: utilisateurs.estAdmin, agendaActif: utilisateurs.agendaActif })
     .from(membres)
     .innerJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(and(eq(membres.cercleId, cercleId), isNull(utilisateurs.desactiveLe)))
@@ -95,7 +95,7 @@ async function envoyerRappels(maintenant) {
       if (!nouveau) continue
       if (!membresParCercle.has(rdv.cercleId)) membresParCercle.set(rdv.cercleId, await membresDuCercle(rdv.cercleId))
       // Seulement les personnes qui voient le rendez-vous (mêmes règles que l'agenda)
-      const destinataires = membresParCercle.get(rdv.cercleId).filter((m) => peutVoir(m, rdv))
+      const destinataires = membresParCercle.get(rdv.cercleId).filter((m) => peutVoir(m, rdv) && !(m.role === 'accompagne' && m.agendaActif === false))
       const corps = texteRappel(rdv, occ, maintenant)
       for (const chemin of ['accompagne', 'autres']) {
         const ids = destinataires.filter((m) => (m.role === 'accompagne') === (chemin === 'accompagne')).map((m) => m.utilisateurId)

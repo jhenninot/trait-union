@@ -160,7 +160,7 @@ const moment = () => {
         <span><strong>{{ p.prenom }}</strong><template v-if="p.lienAide">, {{ p.lienAide.toLowerCase() }}</template> · {{ ans(age(p.dateNaissance)) }}</span>
       </span>
     </RouterLink>
-    <RouterLink v-if="programme.length" to="/agenda" class="programme">
+    <RouterLink v-if="programme.length && session.utilisateur?.agendaActif !== false" to="/agenda" class="programme">
       <span class="titre-programme">Aujourd'hui</span>
       <span v-for="rdv in programme.slice(0, 3)" :key="rdv.cle" class="ligne-programme">
         <strong>{{ horaire(rdv) }}</strong> {{ rdv.titre }}

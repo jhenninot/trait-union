@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
+import { session } from '../session.js'
 import { assistant, ecouter, parler, arreterParole } from '../voix.js'
 import Icone from '../navigation/Icone.vue'
 
@@ -82,6 +83,7 @@ const CHOIX = [
   { libelle: 'Ma famille', icone: 'famille', lien: '/famille' },
   { libelle: 'Mon agenda', icone: 'agenda', lien: '/agenda' }
 ]
+const choixDefaut = computed(() => CHOIX.filter((c) => c.lien !== '/agenda' || session.utilisateur?.agendaActif !== false))
 </script>
 
 <template>
@@ -102,7 +104,7 @@ const CHOIX = [
         <p v-if="entendu" class="entendu">« {{ entendu }} »</p>
         <p class="grand">{{ reponse.texte }}</p>
         <div v-if="reponse.choix || reponse.rien" class="choix">
-          <button v-for="c in reponse.choix ?? CHOIX" :key="c.libelle" class="choix-bouton" @click="choisir(c)">
+          <button v-for="c in reponse.choix ?? choixDefaut" :key="c.libelle" class="choix-bouton" @click="choisir(c)">
             <Icone :nom="c.icone" class="emoji em" />{{ c.libelle }}
           </button>
         </div>

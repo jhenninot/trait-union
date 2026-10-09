@@ -6,6 +6,7 @@ import { assistant, ecouteDisponible, parler, lectureDisponible } from '../voix.
 import { etatMessagerie, ecouterMessagerie } from '../messagerie.js'
 import Icone from './Icone.vue'
 import { ouvrirAide } from '../aide.js'
+import { session } from '../session.js'
 import { reglagesJeux, jeuxDisponibles, chargerReglagesJeux } from '../jeux.js'
 
 // Barre de la personne accompagnée : quelques gros boutons, toujours au même endroit,
@@ -13,7 +14,7 @@ import { reglagesJeux, jeuxDisponibles, chargerReglagesJeux } from '../jeux.js'
 // Ajouter ici les prochaines rubriques quand elles existeront.
 const boutons = [
   { chemin: '/', icone: 'accueil', libelle: 'Accueil' },
-  { chemin: '/agenda', icone: 'agenda', libelle: 'Mon agenda' },
+  { chemin: '/agenda', icone: 'agenda', libelle: 'Mon agenda', agenda: true },
   { chemin: '/photos', icone: 'photo', libelle: 'Mes photos' },
   { chemin: '/famille', icone: 'famille', libelle: 'Ma famille', aussi: ['/mon-arbre'] },
   { chemin: '/messages', icone: 'message', libelle: 'Mes messages', badge: true },
@@ -21,7 +22,8 @@ const boutons = [
 ]
 const route = useRoute()
 // Le bouton « Jeux » disparaît quand les aidants ont coupé l'accès
-const visibles = computed(() => boutons.filter((b) => !b.jeux || (reglagesJeux.charge && jeuxDisponibles())))
+const visibles = computed(() => boutons.filter((b) => (!b.jeux || (reglagesJeux.charge && jeuxDisponibles())) && (!b.agenda || session.utilisateur?.agendaActif !== false)))
+// Le bouton « Mon agenda » disparaît quand les aidants ont coupé l'agenda
 // « Parler » ouvre l'assistant vocal, si l'appareil sait reconnaître la voix
 const voix = ecouteDisponible()
 

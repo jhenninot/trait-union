@@ -1,0 +1,1 @@
+ALTER TABLE "utilisateurs" ADD COLUMN "agenda_actif" boolean DEFAULT true NOT NULL;

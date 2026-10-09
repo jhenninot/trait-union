@@ -134,7 +134,7 @@ router.delete('/:cercleId/voix-ia', chargerCercle, exigerAdmin, async (req, res)
 
 router.get('/:cercleId', chargerCercle, async (req, res) => {
   const liste = await db
-    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, jeux: utilisateurs.jeux, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
+    .select({ id: membres.id, prenom: membres.prenom, nom: membres.nom, email: membres.email, role: membres.role, lien: membres.lien, utilisateurId: membres.utilisateurId, avatar: utilisateurs.avatar, alertes: utilisateurs.alertes, messagerie: utilisateurs.messagerie, jeux: utilisateurs.jeux, agendaActif: utilisateurs.agendaActif, telephone: utilisateurs.telephone, dateNaissance: utilisateurs.dateNaissance, adresse: utilisateurs.adresse, decede: utilisateurs.decede, dateDeces: utilisateurs.dateDeces })
     .from(membres)
     .leftJoin(utilisateurs, eq(membres.utilisateurId, utilisateurs.id))
     .where(eq(membres.cercleId, req.cercle.id))
@@ -173,7 +173,7 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
     ...req.cercle,
     monRole: req.role,
     peutGerer: req.peutGerer,
-    membres: liste.map(({ utilisateurId, email, avatar, alertes, messagerie, jeux, dateNaissance, adresse, ...m }) => ({
+    membres: liste.map(({ utilisateurId, email, avatar, alertes, messagerie, jeux, agendaActif, dateNaissance, adresse, ...m }) => ({
       ...m,
       lien: liens.get(utilisateurId) ?? m.lien,
       lienCalcule: liens.has(utilisateurId),
@@ -200,7 +200,8 @@ router.get('/:cercleId', chargerCercle, async (req, res) => {
       // Les aidants règlent la messagerie des personnes accompagnées
       messagerie: req.peutGerer && m.role === 'accompagne' ? reglagesMessagerie(messagerie) : undefined,
       // Les aidants règlent les jeux des personnes accompagnées
-      jeux: req.peutGerer && m.role === 'accompagne' ? reglagesJeux(jeux) : undefined
+      jeux: req.peutGerer && m.role === 'accompagne' ? reglagesJeux(jeux) : undefined,
+      agendaActif: req.peutGerer && m.role === 'accompagne' ? agendaActif !== false : undefined
     }))
   })
 })
@@ -409,6 +410,13 @@ router.put('/:cercleId/membres/:membreId/messagerie', chargerCercle, exigerGesti
   const messagerie = { prive, reponses, lectureAuto: Boolean(req.body.lectureAuto), vocal: req.body.vocal !== false }
   await db.update(utilisateurs).set({ messagerie }).where(eq(utilisateurs.id, req.membre.utilisateurId))
   res.json(reglagesMessagerie(messagerie))
+})
+
+// Agenda d'une personne accompagnée : proposé ou non sur sa tablette (les rendez-vous du cercle restent dans l'agenda des aidants)
+router.put('/:cercleId/membres/:membreId/agenda', chargerCercle, exigerGestion, chargerAccompagne, async (req, res) => {
+  const agendaActif = req.body?.actif !== false
+  await db.update(utilisateurs).set({ agendaActif }).where(eq(utilisateurs.id, req.membre.utilisateurId))
+  res.json({ actif: agendaActif })
 })
 
 // Jeux d'une personne accompagnée : accès, jeux proposés, nombre de propositions et de questions.
