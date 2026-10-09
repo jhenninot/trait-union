@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, lt, desc, asc, isNull, isNotNull, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { photos, albums, utilisateurs } from '../db/schema.js'
+import { photos, albums, membres, utilisateurs } from '../db/schema.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
 import { stockageActif, lienSigne, infoObjet, supprimerObjet } from '../stockage/s3.js'
@@ -127,6 +127,14 @@ router.get('/', async (req, res) => {
   }
   if (req.query.album === 'aucun') conditions.push(isNull(photos.albumId))
   else if (req.query.album) conditions.push(eq(photos.albumId, await albumDuCercle(req, req.query.album)))
+  // ?membre=<id d'un membre du cercle> : seulement les photos envoyées par cette personne
+  if (req.query.membre) {
+    const [membre] = await db.select({ utilisateurId: membres.utilisateurId }).from(membres)
+      .where(and(eq(membres.id, String(req.query.membre)), eq(membres.cercleId, req.cercle.id)))
+    if (!membre) throw new ErreurSaisie('Membre introuvable')
+    if (!membre.utilisateurId) return res.json({ actif: true, photos: [], suite: false })
+    conditions.push(eq(photos.creeParId, membre.utilisateurId))
+  }
   const limite = Math.min(Number(req.query.limite) || 60, 200)
   const decalage = Math.max(0, Math.trunc(Number(req.query.decalage)) || 0)
   const sens = req.query.ordre === 'asc' ? asc : desc

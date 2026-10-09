@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { api } from '../api.js'
 import { dateLongue, ageTexte, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { lienMessage } from '../messagerie.js'
@@ -17,6 +18,18 @@ const ans = (date) => ageTexte(date)
 const annee = (d) => d?.slice(0, 4)
 const lecture = lectureDisponible()
 // Phrase de l'arbre (« Léo est votre arrière-petit-fils… ») ou, à défaut, prénom et lien
+// Photos envoyées par cette personne (si elle est inscrite dans un cercle) : grille, puis grande photo
+const photosPersonne = ref([])
+const ouverte = ref(null)
+onMounted(async () => {
+  if (!p.value.membreId || !p.value.cercleId || p.value.decede) return
+  const r = await api('GET', `/cercles/${p.value.cercleId}/photos?membre=${p.value.membreId}&limite=200`).catch(() => null)
+  photosPersonne.value = r?.photos ?? []
+})
+const decaler = (n) => {
+  const t = photosPersonne.value.length
+  ouverte.value = (ouverte.value + n + t) % t
+}
 const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].filter(Boolean).join(', '))
 </script>
 
@@ -24,7 +37,7 @@ const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].
   <div class="voile" @click.self="emit('fermer')">
     <section class="fiche" role="dialog" :aria-label="p.prenom">
       <BoutonIcone class="fermer" icone="fermer" libelle="Fermer" gros @click="emit('fermer')" />
-      <Avatar :src="p.avatar" :prenom="p.prenom" :taille="petit ? 110 : 150" :class="{ gris: p.decede }" />
+      <Avatar :src="p.avatar" :prenom="p.prenom" :taille="petit ? 260 : 300" :class="{ gris: p.decede }" />
       <h2>{{ p.prenom }} <span v-if="p.nom" class="nom">{{ p.nom }}</span></h2>
       <p v-if="p.lienAide || p.lien" class="lien grand">{{ p.lienAide ?? p.lien }}</p>
       <p v-if="p.filiation" class="qui">{{ p.filiation }}</p>
@@ -54,8 +67,23 @@ const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].
         <span>{{ annee(p.dateNaissance) ?? '' }}<template v-if="p.dateNaissance && p.dateDeces"> – </template>{{ annee(p.dateDeces) ?? '' }}</span>
       </p>
       <p v-if="p.aSavoir" class="savoir">{{ p.aSavoir }}</p>
+      <section v-if="photosPersonne.length" class="photos" aria-label="Ses photos">
+        <h3>Ses photos</h3>
+        <div class="grille">
+          <button v-for="(ph, i) in photosPersonne" :key="ph.id" type="button" @click="ouverte = i"><img :src="ph.miniature" alt="" loading="lazy" /></button>
+        </div>
+      </section>
       <button v-if="lecture" type="button" class="ecouter" @click="parler(texteLu)"><Icone nom="son" class="em" /> Écouter</button>
     </section>
+    <div v-if="ouverte !== null" class="grande" @click.self="ouverte = null">
+      <BoutonIcone class="fermer" icone="fermer" libelle="Fermer la photo" gros @click="ouverte = null" />
+      <img :src="photosPersonne[ouverte].ecran" :alt="photosPersonne[ouverte].legende || ''" />
+      <p v-if="photosPersonne[ouverte].legende" class="legende">{{ photosPersonne[ouverte].legende }}</p>
+      <template v-if="photosPersonne.length > 1">
+        <button type="button" class="nav prec" aria-label="Photo précédente" @click="decaler(-1)"><Icone nom="precedent" /></button>
+        <button type="button" class="nav suiv" aria-label="Photo suivante" @click="decaler(1)"><Icone nom="suivant" /></button>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -81,9 +109,21 @@ h2 .nom { font-size: 1.6rem; color: var(--gris); font-weight: 400; }
 .savoir { margin: 0; width: 100%; font-size: 1.5rem; line-height: 1.45; background: #fff7ec; border-radius: 18px; padding: 14px 20px; text-align: center; white-space: pre-line; }
 .ecouter { display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 700; padding: 14px 26px; border-radius: 18px; background: var(--vert-clair); color: var(--vert); }
 .ecouter .icone { font-size: 2rem; }
+h3 { margin: 0 0 10px; font-size: 1.6rem; color: var(--bleu-nuit); text-align: center; }
+.photos { width: 100%; }
+.grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.grille button { padding: 0; border: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 1; background: var(--vert-clair); }
+.grille img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.grande { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.92); display: grid; place-items: center; }
+.grande img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.grande .fermer { z-index: 2; }
+.legende { position: absolute; bottom: 16px; left: 16px; right: 16px; margin: 0; padding: 10px 16px; border-radius: 14px; background: rgb(0 0 0 / 0.55); color: white; font-size: 1.3rem; text-align: center; }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); width: 64px; height: 64px; border-radius: 50%; background: rgb(255 255 255 / 0.85); color: var(--bleu-nuit); font-size: 2rem; display: grid; place-items: center; }
+.prec { left: 12px; }
+.suiv { right: 12px; }
 @media (max-width: 600px) {
   .voile { padding: 0; }
-  .fiche { border-radius: 0; height: 100%; padding: 24px 16px; gap: 12px; justify-content: center; }
+  .fiche { border-radius: 0; height: 100%; padding: 24px 16px; gap: 12px; justify-content: safe center; }
   h2 { font-size: 2rem; }
   h2 .nom { font-size: 1.4rem; }
   .lien { font-size: 1.3rem; }

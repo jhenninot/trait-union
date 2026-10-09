@@ -236,7 +236,8 @@ const FICHES_ACCOMPAGNE = {
     titre: 'Ma famille', icone: 'famille',
     intro: 'Toutes les personnes de votre famille, avec leur photo et leur lien avec vous.',
     comment: [
-      { q: 'Voir une personne', r: 'Touchez son nom : sa fiche s\'affiche en grand, avec son numéro de téléphone.' },
+      { q: 'Voir une personne', r: 'Touchez son nom : sa fiche s\'affiche en grand, avec sa grande photo et son numéro de téléphone.' },
+      { q: 'Voir les photos d\'une personne', r: 'Dans sa fiche, faites défiler jusqu\'à « Ses photos » : touchez une photo pour l\'agrandir, puis les flèches pour passer à la suivante.' },
       { q: 'Voir mon arbre de famille', r: 'Touchez « Mon arbre » : vous voyez qui est le fils, la petite-fille, le neveu de qui.' }
     ],
     voix: ['Qui est Marie ?', 'Montre-moi ma famille', 'Qui est le fils de Paul ?', 'Quel âge a Marie ?']
@@ -245,7 +246,7 @@ const FICHES_ACCOMPAGNE = {
     titre: 'Mon arbre', icone: 'arbre',
     intro: 'Votre famille dessinée en arbre : parents, enfants, petits-enfants.',
     comment: [
-      { q: 'Voir une personne', r: 'Touchez un nom pour voir sa fiche.' },
+      { q: 'Voir une personne', r: 'Touchez un nom pour voir sa fiche, avec sa grande photo et les photos qu\'elle a envoyées.' },
       { q: 'Revenir à la liste', r: 'Touchez « Ma famille ».' }
     ],
     voix: []
