@@ -100,6 +100,7 @@ const FICHES = {
     comment: [
       { q: 'Quels jeux existent ?', r: '« Qui est-ce ? » (retrouver un prénom), « Quel âge ? » (deviner une tranche d\'âge) et « Quelle est cette chanson ? » (quiz musical) et « Il y a longtemps… » (retrouver les grands événements de la jeunesse de la personne). Chacun existe aussi en version avec score.' },
       { q: 'Activer ou régler les jeux', r: 'Dans « Personnes accompagnées », onglet « Jeux » de la personne : accès, jeux proposés, niveau, nombre de questions, préférences musicales.' },
+      { q: 'Ajouter des personnes extérieures à la famille', r: 'Sur cette page (sans choisir de personne), la section « Personnes extérieures à la famille » : un voisin, un ami, une personnalité, avec plusieurs photos et sa date de naissance. Elles servent à « Qui est-ce ? » et « Quel âge ? » pour toutes les personnes accompagnées du cercle. Seuls les aidants et les superviseurs techniques la voient ; tous les membres peuvent jouer.' },
       { q: 'Remettre les scores à zéro', r: 'Dans le même onglet, « Remettre à zéro » pour chaque jeu avec score. Les points comptent aussi le bonus de rapidité.' },
       { q: 'Partager un score avec la famille', r: 'À la fin d\'un jeu avec score, « Partager mon score avec la famille » envoie un message dans « Toute la famille » (par exemple : « Léa a marqué 600 points sur 1000 »). Tout le monde peut le faire, la personne accompagnée comme ses proches.' }
     ],
@@ -114,7 +115,7 @@ const FICHES = {
       { q: 'Où sont les réglages ?', r: 'Choisissez la personne dans le sous-menu « Personnes accompagnées » : ses réglages sont rangés en cinq onglets, Appareils, Alertes, Agenda, Jeux et Messages.' },
       { q: 'Régler les alertes et la messagerie', r: 'Onglet « Alertes » : quelles alertes reçoit la tablette (rappels de rendez-vous, nouvelles photos, nouveaux messages, anniversaires). Onglet « Messages » : qui peut lui écrire en privé et la lecture à voix haute des nouveaux messages.' },
       { q: 'Retirer l\'agenda à une personne', r: 'Onglet « Agenda » : décochez l\'accès si la personne n\'a pas besoin qu\'on gère son agenda. Sur sa tablette, le bouton « Mon agenda », le programme du jour, les rappels de rendez-vous et les questions vocales sur l\'agenda disparaissent. Les rendez-vous du cercle restent visibles pour les aidants.' },
-      { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille ou décédées, préférences musicales, remise à zéro des scores. Le score peut être partagé dans « Toute la famille » à la fin de chaque jeu avec score.' },
+      { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille (leurs fiches se gèrent dans la rubrique « Jeux » du menu) ou décédées, préférences musicales, remise à zéro des scores. Le score peut être partagé dans « Toute la famille » à la fin de chaque jeu avec score.' },
       { q: 'Préparer des réponses toutes faites', r: 'Ajoutez des phrases comme « J\'arrive » : la personne les envoie d\'un seul toucher.' },
       { q: 'Suivre l\'utilisation', r: 'Un bloc indique les jours où la tablette a servi, pour s\'assurer qu\'elle est bien utilisée.' }
     ],

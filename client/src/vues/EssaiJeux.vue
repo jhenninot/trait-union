@@ -4,6 +4,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import { api } from '../api.js'
 import Avatar from './Avatar.vue'
 import Jeux from './Jeux.vue'
+import PersonnesJeux from './PersonnesJeux.vue'
 
 // Rubrique « Jeux » des aidants et des proches : essayer les jeux d'une personne accompagnée, avec
 // ses réglages et les photos de sa famille. Rien n'est compté dans ses statistiques.
@@ -41,6 +42,11 @@ const choisi = computed(() => accompagnes.value.find((m) => m.utilisateurId === 
             <strong>{{ m.prenom }}</strong>
           </RouterLink>
         </div>
+        <!-- Bibliothèque des personnes extérieures à la famille, commune à tous les aidés du cercle : aidants et superviseurs seulement -->
+        <section v-if="cercle.peutGerer" class="exterieures">
+          <h2>Personnes extérieures à la famille</h2>
+          <PersonnesJeux :cercle-id="cercle.id" />
+        </section>
       </template>
     </template>
   </main>
@@ -52,6 +58,8 @@ h1 { margin: 0 0 4px; }
 .sous { color: var(--gris); margin: 0 0 16px; }
 .liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; max-width: 760px; }
 .carte { display: flex; align-items: center; gap: 12px; background: white; border-radius: 14px; padding: 14px 16px; text-decoration: none; color: var(--bleu-nuit); box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+.exterieures { max-width: 760px; margin-top: 28px; }
+.exterieures h2 { font-size: 1.15rem; margin: 0 0 8px; }
 .info { background: #fff7ec; color: #b46a22; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
 .erreur { color: var(--rouge); }
 </style>

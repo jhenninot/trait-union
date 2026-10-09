@@ -20,7 +20,7 @@ router.use((req, res, next) => {
 })
 
 function exigerGestion(req, res, next) {
-  if (!req.peutGerer) return res.status(403).json({ erreur: 'Réservé aux aidants du cercle' })
+  if (!req.peutGerer) return res.status(403).json({ erreur: 'Réservé aux aidants et superviseurs techniques du cercle' })
   next()
 }
 
