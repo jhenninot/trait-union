@@ -33,7 +33,7 @@ const ESSENTIEL = [
     icone: 'agenda',
     couleur: 'bleu',
     titre: 'Un agenda partagé par tous',
-    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens, et le reste n\'encombre pas son écran.'
+    texte: 'Médecin, kiné, visites, toilette, médicaments : chacun ajoute les rendez-vous, avec une alerte avant l\'heure. Elle voit les siens, et le reste n\'encombre pas son écran. Et si elle n\'a pas besoin d\'agenda, les aidants le retirent d\'une case à cocher : le bouton, le programme du jour et les questions vocales disparaissent de sa tablette.'
   },
   {
     icone: 'photo',
