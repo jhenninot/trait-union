@@ -7,7 +7,7 @@ import ClassementScore from './ClassementScore.vue'
 // « Quelle est cette chanson ? » : un extrait de 30 secondes, 2 ou 3 titres à choisir. Comme les
 // autres jeux, pas de score ni de chrono : une erreur ou « Je ne sais pas » donne la réponse, et
 // l'extrait continue. « J'aime » / « J'aime moins » aident les aidants à choisir les prochaines chansons.
-const props = defineProps({ pour: { type: String, default: null }, score: { type: Boolean, default: false } }) // essai par un aidant : pas de réactions enregistrées
+const props = defineProps({ pour: { type: String, default: null }, score: { type: Boolean, default: false }, cercleId: { type: String, default: null } }) // essai par un aidant : pas de réactions enregistrées
 const emit = defineEmits(['quitter', 'rejouer'])
 const questions = ref([])
 const etat = ref('chargement') // 'chargement', 'jeu', 'vide' ou 'fini'
@@ -118,7 +118,7 @@ function suivante() {
 
     <template v-else-if="etat === 'fini'">
       <h1>Bravo !</h1>
-      <ClassementScore v-if="score" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
+      <ClassementScore v-if="score" jeu="musique" :pour="pour" :cercle-id="cercleId" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
       <div v-else class="bulle"><p class="grand">Vous avez écouté {{ questions.length }} chanson{{ questions.length > 1 ? 's' : '' }}.</p><p class="moyen">C'était un beau moment.</p></div>
       <div class="actions">
         <button type="button" class="gros" @click="emit('rejouer')"><Icone nom="lecture" /> Rejouer</button>

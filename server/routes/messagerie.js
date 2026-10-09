@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { and, eq, sql, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { conversations, messages, lectures, reactionsMessage, sondages, sondageReponses, rendezVous } from '../db/schema.js'
+import { conversations, messages, lectures, reactionsMessage, sondages, sondageReponses, rendezVous, scoresQuiz, utilisateurs, membres } from '../db/schema.js'
 import { exigerConnexion } from '../auth/sessions.js'
 import * as valider from '../auth/validation.js'
 import { ErreurSaisie } from '../auth/validation.js'
@@ -439,6 +439,56 @@ router.post('/conversations/:id/messages', chargerConversation, async (req, res)
   const [message] = await db.insert(messages).values({ ...valeurs, fichier: { duree, format, extension }, publie: false }).returning()
   const envoi = lienSigne(stockage, 'PUT', cleVocal(message), { duree: DUREE_ENVOI, entetes: { 'content-type': format, 'content-length': taille } })
   res.status(201).json({ id: message.id, envoi })
+})
+
+// Fin d'un jeu avec score : le joueur partage son score dans « Toute la famille » (tout rôle, aidé compris).
+// Corps : { jeu: 'musique' | 'qui' | 'age' | 'souvenirs', points, questions, pour?, cercleId? }. Le message est écrit ici
+// (pas de texte libre) et le score doit exister parmi ceux que le joueur vient d'enregistrer.
+// « pour » : un aidant ou un proche qui a joué avec les réglages d'une personne accompagnée.
+const TITRES_JEUX = { musique: 'Quiz musical', qui: 'Qui est-ce ?', age: 'Quel âge ?', souvenirs: 'Il y a longtemps…' }
+router.post('/partager-score', async (req, res) => {
+  const jeu = String(req.body.jeu ?? '')
+  if (!TITRES_JEUX[jeu]) throw new ErreurSaisie('Jeu inconnu')
+  const points = Number(req.body.points)
+  const questions = Number(req.body.questions)
+  if (!Number.isInteger(points) || !Number.isInteger(questions) || questions < 1) throw new ErreurSaisie('Score invalide')
+  const moiId = req.utilisateur.id
+  const aideId = req.body.pour ? String(req.body.pour) : moiId
+  const [existe] = await db.select({ id: scoresQuiz.id }).from(scoresQuiz).where(and(
+    eq(scoresQuiz.aideId, aideId), eq(scoresQuiz.joueurId, moiId), eq(scoresQuiz.jeu, jeu),
+    eq(scoresQuiz.points, points), eq(scoresQuiz.questions, questions))).limit(1)
+  if (!existe) throw new ErreurSaisie('Ce score n\'a pas été enregistré')
+
+  // Cercles concernés : ceux du joueur (celui du jeu essayé si « cercleId », ceux de la personne accompagnée si « pour »)
+  let cercles = await mesCercles(moiId)
+  if (req.body.cercleId) cercles = cercles.filter((c) => c.id === String(req.body.cercleId))
+  if (aideId !== moiId) {
+    const dansCercle = new Set((await db.select({ id: membres.cercleId }).from(membres)
+      .where(and(eq(membres.utilisateurId, aideId), eq(membres.role, 'accompagne')))).map((m) => m.id))
+    cercles = cercles.filter((c) => dansCercle.has(c.id))
+  } else {
+    const siens = cercles.filter((c) => c.role === 'accompagne')
+    if (siens.length) cercles = siens
+  }
+  let aide = ''
+  if (aideId !== moiId) {
+    const [a] = await db.select({ prenom: utilisateurs.prenom }).from(utilisateurs).where(eq(utilisateurs.id, aideId))
+    aide = a ? ` (partie de ${a.prenom})` : ''
+  }
+  const texte = `${req.utilisateur.prenom} a marqué ${points} points sur ${questions * 200} au jeu « ${TITRES_JEUX[jeu]} »${aide}.`
+
+  let partages = 0
+  for (const c of cercles) {
+    await creerGroupes(c.id)
+    const [conversation] = await db.select().from(conversations).where(and(eq(conversations.cercleId, c.id), eq(conversations.type, 'famille')))
+    const { liste, moi } = await vueCercle(req, c.id)
+    if (!conversation || !moi || !peutEcrire(conversation, moi, liste)) continue
+    const [message] = await db.insert(messages).values({ conversationId: conversation.id, cercleId: c.id, auteurId: moiId, type: 'texte', texte }).returning()
+    await annoncer({ conversation, liste, moi }, message)
+    partages++
+  }
+  if (!partages) return res.status(403).json({ erreur: 'Aucune conversation familiale où partager ce score' })
+  res.status(201).json({ partages })
 })
 
 // Le navigateur a envoyé le fichier d'une photo ou d'un message vocal : on vérifie qu'il est arrivé

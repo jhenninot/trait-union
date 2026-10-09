@@ -98,9 +98,10 @@ const FICHES = {
     titre: 'Jeux', icone: 'jeux',
     intro: 'Essayez les jeux d\'une personne accompagnée, tels qu\'elle les voit sur sa tablette. Choisissez la personne dans le sous-menu « Jeux ».',
     comment: [
-      { q: 'Quels jeux existent ?', r: '« Qui est-ce ? » (retrouver un prénom), « Quel âge ? » (deviner une tranche d\'âge) et « Quelle est cette chanson ? » (quiz musical). Chacun existe aussi en version avec score.' },
+      { q: 'Quels jeux existent ?', r: '« Qui est-ce ? » (retrouver un prénom), « Quel âge ? » (deviner une tranche d\'âge) et « Quelle est cette chanson ? » (quiz musical) et « Il y a longtemps… » (retrouver les grands événements de la jeunesse de la personne). Chacun existe aussi en version avec score.' },
       { q: 'Activer ou régler les jeux', r: 'Dans « Personnes accompagnées », onglet « Jeux » de la personne : accès, jeux proposés, niveau, nombre de questions, préférences musicales.' },
-      { q: 'Remettre les scores à zéro', r: 'Dans le même onglet, « Remettre à zéro » pour chaque jeu avec score. Les points comptent aussi le bonus de rapidité.' }
+      { q: 'Remettre les scores à zéro', r: 'Dans le même onglet, « Remettre à zéro » pour chaque jeu avec score. Les points comptent aussi le bonus de rapidité.' },
+      { q: 'Partager un score avec la famille', r: 'À la fin d\'un jeu avec score, « Partager mon score avec la famille » envoie un message dans « Toute la famille » (par exemple : « Léa a marqué 600 points sur 1000 »). Tout le monde peut le faire, la personne accompagnée comme ses proches.' }
     ],
     astuces: ['Vos essais ne comptent pas dans les scores de la personne accompagnée.']
   },
@@ -112,7 +113,7 @@ const FICHES = {
       { q: 'Envoyer l\'application', r: 'Utilisez « Envoyer l\'application » pour transmettre le lien d\'installation par email, SMS ou WhatsApp.' },
       { q: 'Où sont les réglages ?', r: 'Choisissez la personne dans le sous-menu « Personnes accompagnées » : ses réglages sont rangés en quatre onglets, Appareils, Alertes, Jeux et Messages.' },
       { q: 'Régler les alertes et la messagerie', r: 'Onglet « Alertes » : quelles alertes reçoit la tablette (rappels de rendez-vous, nouvelles photos, nouveaux messages, anniversaires). Onglet « Messages » : qui peut lui écrire en privé et la lecture à voix haute des nouveaux messages.' },
-      { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille ou décédées, préférences musicales, remise à zéro des scores.' },
+      { q: 'Régler les jeux', r: 'Onglet « Jeux » : jeux proposés (avec ou sans score), niveau, nombre de questions, personnes extérieures à la famille ou décédées, préférences musicales, remise à zéro des scores. Le score peut être partagé dans « Toute la famille » à la fin de chaque jeu avec score.' },
       { q: 'Préparer des réponses toutes faites', r: 'Ajoutez des phrases comme « J\'arrive » : la personne les envoie d\'un seul toucher.' },
       { q: 'Suivre l\'utilisation', r: 'Un bloc indique les jours où la tablette a servi, pour s\'assurer qu\'elle est bien utilisée.' }
     ],
@@ -256,6 +257,7 @@ const FICHES_ACCOMPAGNE = {
       { q: 'Jouer à « Quel âge ? »', r: 'Regardez la photo et touchez l\'âge qui convient. Pas besoin d\'être précis.' },
       { q: 'Jouer à « Quelle est cette chanson ? »', r: 'Écoutez l\'extrait de musique, puis touchez le titre qui convient. Touchez « Réécouter » pour l\'entendre encore, et « J\'aime » ou « J\'aime moins » à la fin.' },
       { q: 'Jouer pour marquer des points', r: 'Certains jeux comptent des points : plus vous répondez vite, plus vous gagnez. À la fin, vous voyez votre meilleur score et les trois meilleurs scores.' },
+      { q: 'Montrer mon score à la famille', r: 'À la fin d\'un jeu avec score, touchez « Partager mon score avec la famille » : votre score arrive dans les messages de toute la famille.' },
       { q: 'Si je ne sais pas', r: 'Touchez « Je ne sais pas » : on vous donne la réponse.' },
       { q: 'Écouter', r: 'Touchez le haut-parleur : la tablette lit la question ou la réponse.' }
     ],

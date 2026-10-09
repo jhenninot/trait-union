@@ -188,12 +188,12 @@ const lireQuestion = () => parler(base.value === 'qui' ? 'Quel est son prénom ?
     </template>
 
     <!-- Quiz musical -->
-    <QuizMusical v-else-if="jeu === 'musique' || jeu === 'musiqueScore'" :key="partie" :pour="pour" :score="jeu === 'musiqueScore'" @quitter="retour" @rejouer="jouer(jeu)" />
+    <QuizMusical v-else-if="jeu === 'musique' || jeu === 'musiqueScore'" :key="partie" :pour="pour" :cercle-id="cercleId" :score="jeu === 'musiqueScore'" @quitter="retour" @rejouer="jouer(jeu)" />
 
     <!-- Fin de partie -->
     <template v-else-if="fini">
       <h1>Bravo !</h1>
-      <ClassementScore v-if="score" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
+      <ClassementScore v-if="score" :jeu="base" :pour="pour" :cercle-id="cercleId" :total="total" :maximum="maximum" :meilleur="meilleur" :classement="classement" :questions="questions.length" />
       <div v-else-if="souvenirs" class="bulle"><p class="grand">Vous avez remonté le temps.</p><p class="moyen">C'était un beau moment.</p></div>
       <div v-else class="bulle"><p class="grand">Vous avez revu {{ questions.length }} personne{{ questions.length > 1 ? 's' : '' }} de votre famille.</p><p class="moyen">C'était un beau moment.</p></div>
       <div v-if="!souvenirs" class="visages"><Avatar v-for="x in questions" :key="x.personne.id" :src="x.photo" :prenom="x.personne.prenom" :taille="petit ? 56 : 90" /></div>

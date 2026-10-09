@@ -1,6 +1,20 @@
 <script setup>
-// Fin d'un jeu avec score : le score de la partie, le meilleur score du joueur et les trois meilleurs scores
-defineProps({ total: Number, maximum: Number, meilleur: Number, classement: { type: Array, default: () => [] }, questions: Number })
+import { ref } from 'vue'
+import { api } from '../api.js'
+import Icone from '../navigation/Icone.vue'
+
+// Fin d'un jeu avec score : le score de la partie, le meilleur score du joueur et les trois meilleurs scores,
+// avec un bouton pour partager le score dans la conversation « Toute la famille ».
+// jeu : clé du jeu ('musique', 'qui', 'age', 'souvenirs') ; pour / cercleId : partie jouée pour une personne accompagnée
+const props = defineProps({ total: Number, maximum: Number, meilleur: Number, classement: { type: Array, default: () => [] }, questions: Number, jeu: String, pour: String, cercleId: String })
+const etat = ref('') // '' | 'envoi' | 'fait' | 'erreur'
+async function partager() {
+  etat.value = 'envoi'
+  try {
+    await api('POST', '/messagerie/partager-score', { jeu: props.jeu, points: props.total, questions: props.questions, pour: props.pour || undefined, cercleId: props.cercleId || undefined })
+    etat.value = 'fait'
+  } catch { etat.value = 'erreur' }
+}
 </script>
 
 <template>
@@ -15,6 +29,11 @@ defineProps({ total: Number, maximum: Number, meilleur: Number, classement: { ty
         <span class="rang">{{ i + 1 }}</span><span class="nom">{{ c.prenom }}{{ c.moi ? ' (vous)' : '' }}</span><strong>{{ c.points }} points</strong>
       </li>
     </ol>
+  </div>
+  <div v-if="jeu" class="partage">
+    <p v-if="etat === 'fait'" class="fait"><Icone nom="coche" class="en-ligne" /> Score partagé avec la famille.</p>
+    <button v-else type="button" class="partager" :disabled="etat === 'envoi'" @click="partager"><Icone nom="message" class="en-ligne" /> Partager mon score avec la famille</button>
+    <p v-if="etat === 'erreur'" class="erreur">Le score n'a pas pu être partagé. Réessayez.</p>
   </div>
 </template>
 
@@ -31,7 +50,13 @@ defineProps({ total: Number, maximum: Number, meilleur: Number, classement: { ty
 .rang { width: 36px; height: 36px; border-radius: 50%; background: #f3f0ea; display: grid; place-items: center; font-weight: 700; flex: none; }
 .nom { flex: 1; }
 .podium strong { white-space: nowrap; }
+.partage { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.partager { display: inline-flex; align-items: center; gap: 10px; background: var(--vert-clair); color: var(--vert); font-weight: 700; font-size: 1.3rem; border-radius: 18px; padding: 14px 26px; }
+.partager :deep(.icone) { width: 28px; height: 28px; }
+.fait { margin: 0; font-size: 1.3rem; font-weight: 700; color: var(--vert); }
+.erreur { margin: 0; font-size: 1.1rem; color: #b46a22; }
 @media (max-width: 600px) {
+  .partager { font-size: 1.05rem; padding: 12px 18px; }
   .podium li { font-size: 1.15rem; }
   .grand { font-size: 1.5rem; }
   .moyen { font-size: 1.1rem; }
