@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { dateLongue, ageTexte, lienTelephone, lienSms, lienWhatsApp } from '../coordonnees.js'
 import { parler, lectureDisponible } from '../voix.js'
 import { lienMessage } from '../messagerie.js'
+import { balayage as vBalayage, diapos, prechargerVoisines } from '../balayage.js'
+import { zoom as vZoom } from '../zoom.js'
 import Avatar from './Avatar.vue'
 import BoutonIcone from '../navigation/BoutonIcone.vue'
 import Icone from '../navigation/Icone.vue'
@@ -18,11 +20,13 @@ const annee = (d) => d?.slice(0, 4)
 const lecture = lectureDisponible()
 // Phrase de l'arbre (« Léo est votre arrière-petit-fils… ») ou, à défaut, prénom et lien
 // Photos du profil de la personne (aussi utilisées dans les jeux) : grille, puis grande photo
-const photosPersonne = computed(() => (p.value.photosJeu ?? []).map((x) => x.url ?? x).filter(Boolean))
+const photosPersonne = computed(() => (p.value.photosJeu ?? []).map((x) => x.url ?? x).filter(Boolean).map((url) => ({ id: url, url })))
 const ouverte = ref(null)
+// Défilement au doigt (balayage) ; la liste tourne en rond
 const decaler = (n) => {
   const t = photosPersonne.value.length
   ouverte.value = (ouverte.value + n + t) % t
+  prechargerVoisines(photosPersonne.value, ouverte.value, 'url')
 }
 const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].filter(Boolean).join(', '))
 </script>
@@ -64,18 +68,20 @@ const texteLu = computed(() => p.value.phrase ?? [p.value.prenom, p.value.lien].
       <section v-if="photosPersonne.length" class="photos" aria-label="Ses photos">
         <h3>Ses photos</h3>
         <div class="grille">
-          <button v-for="(ph, i) in photosPersonne" :key="ph" type="button" @click="ouverte = i"><img :src="ph" alt="" loading="lazy" /></button>
+          <button v-for="(ph, i) in photosPersonne" :key="ph.id" type="button" @click="ouverte = i"><img :src="ph.url" alt="" loading="lazy" /></button>
         </div>
       </section>
       <button v-if="lecture" type="button" class="ecouter" @click="parler(texteLu)"><Icone nom="son" class="em" /> Écouter</button>
     </section>
     <div v-if="ouverte !== null" class="grande" @click.self="ouverte = null">
       <BoutonIcone class="fermer" icone="fermer" libelle="Fermer la photo" gros @click="ouverte = null" />
-      <img :src="photosPersonne[ouverte]" alt="" />
-      <template v-if="photosPersonne.length > 1">
-        <button type="button" class="nav prec" aria-label="Photo précédente" @click="decaler(-1)"><Icone nom="precedent" /></button>
-        <button type="button" class="nav suiv" aria-label="Photo suivante" @click="decaler(1)"><Icone nom="suivant" /></button>
-      </template>
+      <div v-balayage="{ suivante: () => decaler(1), precedente: () => decaler(-1) }" v-zoom="true" class="cadre">
+        <div class="piste">
+          <div v-for="d in diapos(photosPersonne, ouverte, true)" :key="d.cle" :data-role="d.role" :data-id="d.photo.id">
+            <img :src="d.photo.url" alt="" />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -108,11 +114,11 @@ h3 { margin: 0 0 10px; font-size: 1.6rem; color: var(--bleu-nuit); text-align: c
 .grille button { padding: 0; border: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 1; background: var(--vert-clair); }
 .grille img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .grande { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.92); display: grid; place-items: center; }
+.grande { overflow: hidden; }
+.cadre { position: absolute; inset: 0; display: flex; }
+.piste { flex: 1; min-width: 0; }
 .grande img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .grande .fermer { z-index: 2; }
-.nav { position: absolute; top: 50%; transform: translateY(-50%); width: 64px; height: 64px; border-radius: 50%; background: rgb(255 255 255 / 0.85); color: var(--bleu-nuit); font-size: 2rem; display: grid; place-items: center; }
-.prec { left: 12px; }
-.suiv { right: 12px; }
 @media (max-width: 600px) {
   .voile { padding: 0; }
   .fiche { border-radius: 0; height: 100%; padding: 24px 16px; gap: 12px; justify-content: safe center; }

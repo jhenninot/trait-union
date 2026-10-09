@@ -237,7 +237,7 @@ const FICHES_ACCOMPAGNE = {
     intro: 'Toutes les personnes de votre famille, avec leur photo et leur lien avec vous.',
     comment: [
       { q: 'Voir une personne', r: 'Touchez son nom : sa fiche s\'affiche en grand, avec sa grande photo et son numéro de téléphone.' },
-      { q: 'Voir les photos d\'une personne', r: 'Dans sa fiche, faites défiler jusqu\'à « Ses photos » (celles de son profil) : touchez une photo pour l\'agrandir, puis les flèches pour passer à la suivante.' },
+      { q: 'Voir les photos d\'une personne', r: 'Dans sa fiche, faites défiler jusqu\'à « Ses photos » (celles de son profil) : touchez une photo pour l\'agrandir, puis glissez le doigt vers la gauche ou la droite pour passer à la suivante. Écartez deux doigts pour zoomer.' },
       { q: 'Voir mon arbre de famille', r: 'Touchez « Mon arbre » : vous voyez qui est le fils, la petite-fille, le neveu de qui.' }
     ],
     voix: ['Qui est Marie ?', 'Montre-moi ma famille', 'Qui est le fils de Paul ?', 'Quel âge a Marie ?']
